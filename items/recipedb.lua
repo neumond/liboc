@@ -69,14 +69,24 @@ M.items = {
         name="Diamond",
         ident="minecraft:diamond"
     },
-
-
-    ["stick"]={
-        name="Stick",
-        recipe=recipe1x2("planks", "planks"),
-        output=4,
-        ident="minecraft:stick"
+    ["redstone"]={
+        name="Redstone",
+        ident="minecraft:redstone"
     },
+    ["slime_ball"]={
+        name="Slimeball",
+        ident="minecraft:slime_ball"
+    },
+    ["ender_pearl"]={
+        name="Ender pearl",
+        ident="minecraft:ender_pearl"
+    },
+    ["ender_eye"]={
+        name="Eye of Ender",
+        ident="minecraft:ender_eye"
+    },
+
+
     ["iron_nugget"]={
         name="Iron nugget",
         recipe=recipe1x1("iron_ingot"),
@@ -104,21 +114,11 @@ M.items = {
     },
 
 
-    ["sugarcane"]={
-        name="Sugarcane",
-        ident="minecraft:reeds"
-    },
-    ["paper"]={
-        name="Paper",
-        recipe=recipe3x1("sugarcane", "sugarcane", "sugarcane"),
-        output=3,
-        ident="minecraft:paper"
-    },
-
-
-    ["redstone"]={
-        name="Redstone",
-        ident="minecraft:redstone"
+    ["stick"]={
+        name="Stick",
+        recipe=recipe1x2("planks", "planks"),
+        output=4,
+        ident="minecraft:stick"
     },
     ["clock"]={
         name="Clock",
@@ -129,6 +129,45 @@ M.items = {
         },
         ident="minecraft:clock"
     },
+    ["redstone_torch"]={
+        name="Redstone torch",
+        recipe=recipe1x2("redstone", "stick"),
+        ident="minecraft:redstone_torch"
+    },
+    ["lever"]={
+        name="Lever",
+        recipe=recipe1x2("stick", "cobblestone"),
+        ident="minecraft:lever"
+    },
+
+
+    ["chest"]={
+        name="Chest",
+        recipe={
+            "planks", "planks", "planks",
+            "planks", nil, "planks",
+            "planks", "planks", "planks"
+        },
+        ident="minecraft:chest"
+    },
+    ["hopper"]={
+        name="Hopper",
+        recipe={
+            "iron_ingot", nil, "iron_ingot",
+            "iron_ingot", "chest", "iron_ingot",
+            nil, "iron_ingot", nil
+        },
+        ident="minecraft:hopper"
+    },
+    ["dropper"]={
+        name="Dropper",
+        recipe={
+            "cobblestone", "cobblestone", "cobblestone",
+            "cobblestone", nil, "cobblestone",
+            "cobblestone", "planks", "cobblestone"
+        },
+        ident="minecraft:dropper"
+    },
     ["piston"]={
         name="Piston",
         recipe={
@@ -138,8 +177,23 @@ M.items = {
         },
         ident="minecraft:piston"
     },
+    ["sticky_piston"]={
+        name="Sticky piston",
+        recipe=recipe1x2("slime_ball", "piston"),
+        ident="minecraft:sticky_piston"
+    },
 
 
+    ["sugarcane"]={
+        name="Sugarcane",
+        ident="minecraft:reeds"
+    },
+    ["paper"]={
+        name="Paper",
+        recipe=recipe3x1("sugarcane", "sugarcane", "sugarcane"),
+        output=3,
+        ident="minecraft:paper"
+    },
     ["cactus"]={
         name="Cactus",
         ident="minecraft:cactus"
@@ -150,10 +204,23 @@ M.items = {
         ident="minecraft:dye",
         damage=2
     },
+    ["clay_ball"]={
+        name="Clay ball",
+        ident="minecraft:clay_ball"
+    },
     ["clay"]={
-        name="Clay",  -- todo: recipe
+        name="Clay",
+        recipe=recipe2x2(
+            "clay_ball", "clay_ball",
+            "clay_ball", "clay_ball"
+        ),
         ident="minecraft:clay"
     },
+
+
+    -- CIRCUITS & MATERIALS
+
+
     ["raw_pcb"]={
         name="Raw circuit board",
         recipe=recipe3x1("gold_ingot", "clay", "dye_green"),
@@ -167,8 +234,6 @@ M.items = {
         ident="opencomputers:material",
         damage=4
     },
-
-
     ["transistor"]={
         name="Transistor",
         recipe={
@@ -176,11 +241,10 @@ M.items = {
             "gold_nugget", "paper", "gold_nugget",
             nil, "redstone", nil
         },
+        output=8,
         ident="opencomputers:material",
         damage=6
     },
-
-
     ["chip1"]={
         name="Chip I",
         recipe={
@@ -214,18 +278,6 @@ M.items = {
         ident="opencomputers:material",
         damage=9
     },
-
-
-    ["cu"]={
-        name="Control unit",
-        recipe={
-            "gold_nugget", "redstone", "gold_nugget",
-            "transistor", "clock", "transistor",
-            "gold_nugget", "transistor", "gold_nugget"
-        },
-        ident="opencomputers:material",
-        damage=11
-    },
     ["alu"]={
         name="ALU",
         recipe={
@@ -236,6 +288,41 @@ M.items = {
         ident="opencomputers:material",
         damage=10
     },
+    ["cu"]={
+        name="Control unit",
+        recipe={
+            "gold_nugget", "redstone", "gold_nugget",
+            "transistor", "clock", "transistor",
+            "gold_nugget", "transistor", "gold_nugget"
+        },
+        ident="opencomputers:material",
+        damage=11
+    },
+    ["disk"]={
+        name="Disk",
+        recipe={
+            nil, "iron_nugget", nil,
+            "iron_nugget", nil, "iron_nugget",
+            nil, "iron_nugget", nil
+        },
+        ident="opencomputers:material",
+        damage=12
+    },
+
+
+    ["cable"]={
+        name="Cable",
+        recipe={
+            nil, "iron_nugget", nil,
+            "iron_nugget", "redstone", "iron_nugget",
+            nil, "iron_nugget", nil
+        },
+        output=4,
+        ident="opencomputers:cable"
+    },
+
+
+    -- CPU
 
 
     ["cpu1"]={
@@ -268,6 +355,9 @@ M.items = {
         ident="opencomputers:component",
         damage=2
     },
+
+
+    -- RAM
 
 
     ["ram1"]={
@@ -326,6 +416,9 @@ M.items = {
     },
 
 
+    -- CARDS
+
+
     ["card_base"]={
         name="Card base",
         recipe={
@@ -336,8 +429,6 @@ M.items = {
         ident="opencomputers:material",
         damage=5
     },
-
-
     ["gpu1"]={
         name="Graphic card I",
         recipe=recipe3x2(
@@ -364,13 +455,83 @@ M.items = {
         ),
         ident="opencomputers:card",
         damage=3
-    }
+    },
+    ["redstonecard"]={
+        name="Redstone card",
+        recipe=recipe2x2(
+            "redstone_torch", "chip1",
+            nil, "card_base"
+        ),
+        ident="opencomputers:card",
+        damage=4
+    },
+    ["lancard"]={
+        name="Network card",
+        recipe=recipe2x2(
+            "cable", "chip1",
+            nil, "card_base"
+        ),
+        ident="opencomputers:card",
+        damage=6
+    },
+    ["wlancard"]={
+        name="Wireless card",
+        recipe=recipe2x2(
+            "ender_pearl", "chip2",
+            nil, "card_base"
+        ),
+        ident="opencomputers:card",
+        damage=7
+    },
+
+
+    -- STORAGE
+
+
+    ["eeprom"]={
+        name="EEPROM",
+        recipe={
+            "gold_nugget", "transistor", "gold_nugget",
+            "chip1", "paper", "chip1",
+            "gold_nugget", "redstone_torch", "gold_nugget"
+        },
+        ident="opencomputers:storage",
+        damage=0
+    },
+    ["diskette"]={
+        name="Floppy disk",
+        recipe={
+            "iron_nugget", "lever", "iron_nugget",
+            "paper", "disk", "paper",
+            "iron_nugget", "paper", "iron_nugget"
+        },
+        ident="opencomputers:storage",
+        damage=1
+    },
+
+
+    -- CASES
+
+
+    -- ["case1"]={
+    --     name="Computer case I",
+    --     recipe=,
+    --     ident="opencomputers:case1"
+    -- },
+    -- ["case2"]={
+    --     name="Computer case II",
+    --     recipe=,
+    --     ident="opencomputers:case2"
+    -- },
+    -- ["case3"]={
+    --     name="Computer case III",
+    --     recipe=,
+    --     ident="opencomputers:case3"
+    -- }
 }
 
 
 local detection_map = {}
-
-
 for k, v in pairs(M.items) do
     assert(v.ident ~= nil)
     if v.damage == nil then
@@ -383,6 +544,15 @@ for k, v in pairs(M.items) do
         assert(type(detection_map[v.ident]) == "table")
         assert(detection_map[v.ident][v.damage] == nil)
         detection_map[v.ident][v.damage] = k
+    end
+end
+
+
+for k, v in pairs(M.items) do
+    if v.recipe ~= nil then
+        for i, item in ipairs(v.recipe) do
+            assert(M.items[item] ~= nil, "Unknown item in recipe: " .. item)
+        end
     end
 end
 
