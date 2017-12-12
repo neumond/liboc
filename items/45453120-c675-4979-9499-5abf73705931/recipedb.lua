@@ -1,4 +1,5 @@
 local M = {}
+local utils = require("utils")
 
 
 function recipe1x1(item)
@@ -308,7 +309,9 @@ local detection_map = {
 
 
 function M.detect(slot)
+    if slot == nil then return end
     local s = detection_map[slot.name]
+    if s == nil then return end
     if type(s) == "string" then return s end
     return s[slot.damage]
 end
@@ -345,6 +348,25 @@ function M.formatRecipe(recipe)
         rows[row] = table.concat(r, " | ")
     end
     return table.concat(rows, "\n")
+end
+
+
+function M.recipeSummary(recipe)
+    local r = {}
+    for i=1,9 do
+        local v = recipe[i]
+        if v ~= nil then
+            utils.stock.put(r, v, 1)
+        end
+    end
+    return r
+end
+
+
+function M.recipeOutput(item_id)
+    local output = M.items[item_id].output
+    if output == nil then output = 1 end
+    return output
 end
 
 

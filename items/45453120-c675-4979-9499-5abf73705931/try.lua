@@ -5,7 +5,8 @@ local success, second = c.craft({
     ["gold_ingot"]=1,
     ["redstone"]=7,
     ["sugarcane"]=6,
-    ["iron_nugget"]=8
+    ["iron_nugget"]=8,
+    ["gpu1"]=10
 }, "gpu1", 1)
 
 if success then
