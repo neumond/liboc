@@ -1,18 +1,23 @@
 c = require("crafting")
-local success, craftLog, needStock = c.craft({
-    -- ["iron_ingot"]=3,
-    -- ["pcb"]=2,
-    -- ["gold_ingot"]=1,
-    -- ["redstone"]=7,
-    -- ["sugarcane"]=6
+local success, second = c.craft({
+    ["iron_ingot"]=3,
+    ["pcb"]=2,
+    ["gold_ingot"]=1,
+    ["redstone"]=7,
+    ["sugarcane"]=6,
+    ["iron_nugget"]=8
 }, "gpu1", 1)
 
-print("Success", success)
-print("Craftlog")
-for i, v in ipairs(craftLog) do
-    print(v)
-end
-print("needStock")
-for k, v in pairs(needStock) do
-    print(k, v)
+if success then
+    print("Success")
+    print("Craftlog:")
+    for i, v in ipairs(second) do
+        print(v.item, v.times)
+    end
+else
+    print("Failure")
+    print("NeedStock:")
+    for k, v in pairs(second) do
+        print(k, v)
+    end
 end

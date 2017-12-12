@@ -11,6 +11,11 @@ function copyTable(t)
 end
 
 
+function isTableEmpty(t)
+    return next(t) == nil
+end
+
+
 function takeFromStock(stock, item_id, amount)
     if stock[item_id] == nil then return 0 end
     local taken = math.min(stock[item_id], amount)
@@ -58,18 +63,33 @@ function getRecipeOutput(item_id)
 end
 
 
-function M.craft(stock, item_id, amountNeeded, craftLog, needStock)
-    if craftLog == nil then craftLog = {} end
-    if needStock == nil then needStock = {} end
+function regroupCraftLog(craftLog)
+    local result = {}
+    local index = {}
+    local tip = 1
+    for i, step in ipairs(craftLog) do
+        if index[step.item] == nil then
+            index[step.item] = tip
+            tip = tip + 1
+            table.insert(result, step)
+        else
+            local k = index[step.item]
+            result[k].times = result[k].times + step.times
+        end
+    end
+    return result
+end
 
+
+function craftInner(stock, item_id, amountNeeded, craftLog, needStock)
     local amountForCraft = getAmountForCraft(stock, item_id, amountNeeded)
     if amountForCraft <= 0 then return true end
 
     local recipe = db.items[item_id].recipe
     if recipe == nil then
-        -- print("Need", amountForCraft, "of", item_id)
         putIntoStock(needStock, item_id, amountForCraft)
-        return false
+        putIntoStock(stock, item_id, amountForCraft)
+        return craftLog, needStock
     end
 
     local output = getRecipeOutput(item_id)
@@ -77,36 +97,41 @@ function M.craft(stock, item_id, amountNeeded, craftLog, needStock)
 
     -- gather requirements
     local recipeSum = recipeSummary(recipe)
-    local successfulRepeats = plannedRepeats
     local takenForCraft = {}
     for reqId, recipeAmount in pairs(recipeSum) do
         local reqAmount = recipeAmount * plannedRepeats
-        M.craft(stock, reqId, reqAmount, craftLog, needStock)
+        craftInner(stock, reqId, reqAmount, craftLog, needStock)
         local reqTaken = takeFromStock(stock, reqId, reqAmount)
-        successfulRepeats = math.min(successfulRepeats, math.floor(reqTaken / recipeAmount))
         takenForCraft[reqId] = reqTaken
     end
 
-    -- print("Crafting", item_id, successfulRepeats, "times")
-    if successfulRepeats > 0 then
-        table.insert(craftLog, item_id)
-        table.insert(craftLog, successfulRepeats)
-    end
+    table.insert(craftLog, {item=item_id, times=plannedRepeats})
 
     -- remove used crafting supplies
     for reqId, recipeAmount in pairs(recipeSum) do
-        takeFromStock(takenForCraft, reqId, recipeAmount * successfulRepeats)
+        takeFromStock(takenForCraft, reqId, recipeAmount * plannedRepeats)
     end
 
     -- put craft product into main stock
-    putIntoStock(stock, item_id, output * successfulRepeats)
+    putIntoStock(stock, item_id, output * plannedRepeats)
 
     -- put back unused
     for reqId, reqAmount in pairs(takenForCraft) do
         putIntoStock(stock, reqId, reqAmount)
     end
 
-    return successfulRepeats == plannedRepeats, craftLog, needStock
+    return craftLog, needStock
+end
+
+
+function M.craft(stock, item_id, amountNeeded)
+    stock = copyTable(stock)
+    craftLog, needStock = craftInner(stock, item_id, amountNeeded, {}, {})
+    if isTableEmpty(needStock) then
+        return true, regroupCraftLog(craftLog)
+    else
+        return false, needStock
+    end
 end
 
 
