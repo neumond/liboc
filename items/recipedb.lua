@@ -57,6 +57,10 @@ M.items = {
         name="Cobblestone",
         ident="minecraft:cobblestone"
     },
+    ["sand"]={
+        name="Sand",
+        ident="minecraft:sand"
+    },
     ["iron_ingot"]={
         name="Iron ingot",
         ident="minecraft:iron_ingot"
@@ -84,6 +88,33 @@ M.items = {
     ["ender_eye"]={
         name="Eye of Ender",
         ident="minecraft:ender_eye"
+    },
+    ["obsidian"]={
+        name="Obsidian",
+        ident="minecraft:obsidian"
+    },
+    ["yellow_dust"]={
+        name="Glowstone dust",
+        ident="minecraft:glowstone_dust"
+    },
+    ["clay_ball"]={
+        name="Clay ball",
+        ident="minecraft:clay_ball"
+    },
+    ["clay"]={
+        name="Clay",
+        recipe=recipe2x2(
+            "clay_ball", "clay_ball",
+            "clay_ball", "clay_ball"
+        ),
+        ident="minecraft:clay"
+    },
+
+
+    ["glass"]={
+        name="Glass",
+        furnace="sand",
+        ident="minecraft:glass"
     },
 
 
@@ -139,6 +170,15 @@ M.items = {
         recipe=recipe1x2("stick", "cobblestone"),
         ident="minecraft:lever"
     },
+    ["iron_fence"]={
+        name="Iron fence",
+        recipe=recipe3x2(
+            "iron_ingot", "iron_ingot", "iron_ingot",
+            "iron_ingot", "iron_ingot", "iron_ingot"
+        ),
+        output=16,
+        ident="minecraft:iron_bars"
+    },
 
 
     ["chest"]={
@@ -188,15 +228,25 @@ M.items = {
         name="Sugarcane",
         ident="minecraft:reeds"
     },
+    ["cactus"]={
+        name="Cactus",
+        ident="minecraft:cactus"
+    },
+
+
     ["paper"]={
         name="Paper",
         recipe=recipe3x1("sugarcane", "sugarcane", "sugarcane"),
         output=3,
         ident="minecraft:paper"
     },
-    ["cactus"]={
-        name="Cactus",
-        ident="minecraft:cactus"
+
+
+    ["dye_red"]={
+        name="Red dye",
+        ident="minecraft:dye",
+        -- todo: recipe?
+        damage=1
     },
     ["dye_green"]={
         name="Green dye",
@@ -204,17 +254,10 @@ M.items = {
         ident="minecraft:dye",
         damage=2
     },
-    ["clay_ball"]={
-        name="Clay ball",
-        ident="minecraft:clay_ball"
-    },
-    ["clay"]={
-        name="Clay",
-        recipe=recipe2x2(
-            "clay_ball", "clay_ball",
-            "clay_ball", "clay_ball"
-        ),
-        ident="minecraft:clay"
+    ["dye_blue"]={
+        name="Lapis lazuli",
+        ident="minecraft:dye",
+        damage=4
     },
 
 
@@ -508,26 +551,155 @@ M.items = {
         ident="opencomputers:storage",
         damage=1
     },
+    ["hdd1"]={
+        name="HDD I",
+        recipe={
+            "chip1", "disk", "iron_ingot",
+            "pcb", "disk", "piston",
+            "chip1", "disk", "iron_ingot"
+        },
+        ident="opencomputers:storage",
+        damage=2
+    },
+    ["hdd2"]={
+        name="HDD II",
+        recipe={
+            "chip2", "disk", "gold_ingot",
+            "pcb", "disk", "piston",
+            "chip2", "disk", "gold_ingot"
+        },
+        ident="opencomputers:storage",
+        damage=3
+    },
+    ["hdd3"]={
+        name="HDD III",
+        recipe={
+            "chip3", "disk", "diamond",
+            "pcb", "disk", "piston",
+            "chip3", "disk", "diamond"
+        },
+        ident="opencomputers:storage",
+        damage=4
+    },
 
 
-    -- CASES
+    -- CASES, SCREENS, DEVICES
 
 
-    -- ["case1"]={
-    --     name="Computer case I",
-    --     recipe=,
-    --     ident="opencomputers:case1"
-    -- },
-    -- ["case2"]={
-    --     name="Computer case II",
-    --     recipe=,
-    --     ident="opencomputers:case2"
-    -- },
-    -- ["case3"]={
-    --     name="Computer case III",
-    --     recipe=,
-    --     ident="opencomputers:case3"
-    -- }
+    ["case1"]={
+        name="Computer case I",
+        recipe={
+            "iron_ingot", "chip1", "iron_ingot",
+            "iron_fence", "chest", "iron_fence",
+            "iron_ingot", "pcb", "iron_ingot",
+        },
+        ident="opencomputers:case1"
+    },
+    ["case2"]={
+        name="Computer case II",
+        recipe={
+            "gold_ingot", "chip2", "gold_ingot",
+            "iron_fence", "chest", "iron_fence",
+            "gold_ingot", "pcb", "gold_ingot",
+        },
+        ident="opencomputers:case2"
+    },
+    ["case3"]={
+        name="Computer case III",
+        recipe={
+            "diamond", "chip3", "diamond",
+            "iron_fence", "chest", "iron_fence",
+            "diamond", "pcb", "diamond",
+        },
+        ident="opencomputers:case3"
+    },
+    ["screen1"]={
+        name="Screen I",
+        recipe={
+            "iron_ingot", "redstone", "iron_ingot",
+            "redstone", "chip1", "glass",
+            "iron_ingot", "redstone", "iron_ingot",
+        },
+        ident="opencomputers:screen1"
+    },
+    ["screen2"]={
+        name="Screen II",
+        recipe={
+            "gold_ingot", "dye_red", "gold_ingot",
+            "dye_green", "chip2", "glass",
+            "gold_ingot", "dye_blue", "gold_ingot",
+        },
+        ident="opencomputers:screen2"
+    },
+    ["screen3"]={
+        name="Screen III",
+        recipe={
+            "obsidian", "yellow_dust", "obsidian",
+            "yellow_dust", "chip3", "glass",
+            "obsidian", "yellow_dust", "obsidian",
+        },
+        ident="opencomputers:screen3"
+    },
+    ["floppy_drive"]={
+        name="Floppy drive",
+        recipe={
+            "iron_ingot", "chip1", "iron_ingot",
+            "piston", "stick", nil,
+            "iron_ingot", "pcb", "iron_ingot",
+        },
+        ident="opencomputers:diskdrive"
+    },
+
+
+    -- KEYBOARD
+
+
+    ["stone"]={
+        name="Stone",
+        furnace="cobblestone",
+        ident="minecraft:stone"
+    },
+    ["button"]={
+        name="Button",
+        recipe=recipe1x1("stone"),
+        ident="minecraft:stone_button"
+    },
+    ["buttons"]={
+        name="Button group",
+        recipe=recipe3x2(
+            "button", "button", "button",
+            "button", "button", "button"
+        ),
+        ident="opencomputers:material",
+        damage=14
+    },
+    ["arrow_buttons"]={
+        name="Arrow buttons",
+        recipe=recipe3x2(
+            nil, "button", nil,
+            "button", "button", "button"
+        ),
+        ident="opencomputers:material",
+        damage=15
+    },
+    ["numpad_buttons"]={
+        name="Numpad keypad",
+        recipe={
+            "button", "button", "button",
+            "button", "button", "button",
+            "button", "button", "button"
+        },
+        ident="opencomputers:material",
+        damage=16
+    },
+    ["keyboard"]={
+        name="Keyboard",
+        recipe=recipe3x2(
+            "buttons", "buttons", "buttons",
+            "buttons", "arrow_buttons", "numpad_buttons"
+        ),
+        ident="opencomputers:keyboard"
+    }
 }
 
 
@@ -553,6 +725,9 @@ for k, v in pairs(M.items) do
         for i, item in ipairs(v.recipe) do
             assert(M.items[item] ~= nil, "Unknown item in recipe: " .. item)
         end
+    end
+    if v.furnace ~= nil then
+        assert(M.items[v.furnace] ~= nil, "Unknown item in recipe: " .. v.furnace)
     end
 end
 
