@@ -48,37 +48,63 @@ end
 
 
 local cat = {
-    basic_elements = {
-        title="Basic elements",
+    cases = {
+        title="Cases, screens, keyboards",
         run=makeMenu(function(menu)
             return menu
-                :addItem("transistor")
-                :addItem("chip1")
-                :addItem("chip2")
-                :addItem("chip3")
+                :addItem("case1")
+                :addItem("case2")
+                :addItem("case3")
+                :addItem("screen1")
+                :addItem("screen2")
+                :addItem("screen3")
+                :addItem("keyboard")
         end)
     },
-    cases = {
-        title="Cases",
+    cpus = {
+        title="CPUs",
         run=makeMenu(function(menu)
             return menu
-                :addSelectable("case1", nil)
+                :addItem("cpu1")
+                :addItem("cpu2")
+                :addItem("cpu3")
+        end)
+    },
+    ram = {
+        title="RAM modules",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("ram1")
+                :addItem("ram1_plus")
+                :addItem("ram2")
+                :addItem("ram2_plus")
+                :addItem("ram3")
+                :addItem("ram3_plus")
+        end)
+    },
+    storage = {
+        title="Storage",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("diskette")
+                :addItem("floppy_drive")
+                :addItem("eeprom")
+                :addItem("hdd1")
+                :addItem("hdd2")
+                :addItem("hdd3")
         end)
     },
     cards = {
         title="Cards",
         run=makeMenu(function(menu)
             return menu
-                :addItem("gpu1", nil)
-                :addItem("gpu2", nil)
-                :addItem("gpu3", nil)
-        end)
-    },
-    devices = {
-        title="Devices",
-        run=makeMenu(function(menu)
-            return menu
-                :addSelectable("floppy", nil)
+                :addItem("gpu1")
+                :addItem("gpu2")
+                :addItem("gpu3")
+                :addItem("lancard")
+                :addItem("cable")
+                :addItem("wlancard")
+                :addItem("redstonecard")
         end)
     }
 }
@@ -87,10 +113,11 @@ local cat = {
 function main()
     local menuFunc = makeMenu(function(menu)
         return menu
-            :addCategory(cat.basic_elements)
             :addCategory(cat.cases)
+            :addCategory(cat.cpus)
+            :addCategory(cat.ram)
+            :addCategory(cat.storage)
             :addCategory(cat.cards)
-            :addCategory(cat.devices)
     end)
     menuFunc("Recipe assembler")
     menulib.clearScreen()

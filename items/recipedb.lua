@@ -551,6 +551,15 @@ M.items = {
         ident="opencomputers:storage",
         damage=1
     },
+    ["floppy_drive"]={
+        name="Floppy drive",
+        recipe={
+            "iron_ingot", "chip1", "iron_ingot",
+            "piston", "stick", nil,
+            "iron_ingot", "pcb", "iron_ingot",
+        },
+        ident="opencomputers:diskdrive"
+    },
     ["hdd1"]={
         name="HDD I",
         recipe={
@@ -639,15 +648,6 @@ M.items = {
             "obsidian", "yellow_dust", "obsidian",
         },
         ident="opencomputers:screen3"
-    },
-    ["floppy_drive"]={
-        name="Floppy drive",
-        recipe={
-            "iron_ingot", "chip1", "iron_ingot",
-            "piston", "stick", nil,
-            "iron_ingot", "pcb", "iron_ingot",
-        },
-        ident="opencomputers:diskdrive"
     },
 
 
