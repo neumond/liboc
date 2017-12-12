@@ -83,7 +83,7 @@ Menu.__index = Menu
 M.Menu = Menu
 
 
-function Menu.new(allowBack)
+function Menu.new(allowBack, preSelect)
     local self = setmetatable({}, Menu)
 
     M.clearScreen()
@@ -91,6 +91,8 @@ function Menu.new(allowBack)
     self.planeWidth, self.planeHeight = gpu.getResolution()
 
     self.allowBack = allowBack
+    self.preSelectValue = preSelect
+    self.preSelectIndex = 1
     self.yOffset = 0
     self.hasChoices = false
     self.choiceCount = 0
@@ -120,6 +122,10 @@ function Menu.addSelectable(self, text, value)
     table.insert(self.choiceValues, value)
     self.choiceCount = self.choiceCount + 1
     self.hasChoices = true
+    if self.preSelectValue ~= nil and value == self.preSelectValue then
+        self.preSelectIndex = self.choiceCount
+    end
+
     local dy = self:_writeText("  [ " .. text .. " ]")
     self.yOffset = self.yOffset + dy
     return self
@@ -147,7 +153,7 @@ function Menu.run(self)
     end
 
     if self.hasChoices then
-        select = 1
+        select = self.preSelectIndex
         drawSelection(select, true)
     end
 

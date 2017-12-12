@@ -40,9 +40,10 @@ end
 
 function makeMenu(mcons)
     return function(titlePrefix)
+        local choice = nil
         while true do
-            local choice = mcons(
-                Menu.new(true)
+            choice = mcons(
+                Menu.new(true, choice)
                     :addText(titlePrefix)
                     :addSeparator()
             ):run()
@@ -58,21 +59,26 @@ Menu.addCategory = function(self, c)
 end
 
 
+local item_cat_cache = {}
+
+
 Menu.addItem = function(self, item_id)
-    local item = ITEMS[item_id]
-    local item_cat = {
-        title=item.name,
-        run=makeMenu(function(menu)
-            if item.recipe ~= nil then
-                menu:addText("Recipe:\n")
-                menu:addText(formatRecipe(item_id))
-            else
-                menu:addText("No recipe available.")
-            end
-            return menu
-        end)
-    }
-    return self:addCategory(item_cat)
+    if item_cat_cache[item_id] == nil then
+        local item = ITEMS[item_id]
+        item_cat_cache[item_id] = {
+            title=item.name,
+            run=makeMenu(function(menu)
+                if item.recipe ~= nil then
+                    menu:addText("Recipe:\n")
+                    menu:addText(formatRecipe(item_id))
+                else
+                    menu:addText("No recipe available.")
+                end
+                return menu
+            end)
+        }
+    end
+    return self:addCategory(item_cat_cache[item_id])
 end
 
 
