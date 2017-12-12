@@ -6,7 +6,7 @@ local KEYS = {
     ["up"]=200,
     ["down"]=208,
     ["enter"]=28,
-    ["back"]=14,  -- todo: use left arrow instead
+    ["back"]=203
 }
 local CURSOR = ">"
 
@@ -25,14 +25,6 @@ local CURSOR = ">"
 --         return gpu_w, gpu_h
 --     end
 -- }
-
-
-function testEvents()
-    for i=1,10 do
-        local evt, adr, char, code, player = event.pull("key_down")
-        print(evt, adr, char, code, player)
-    end
-end
 
 
 function stringLines(lines)
@@ -83,42 +75,6 @@ end
 function M.clearScreen()
     local w, h = gpu.getResolution()
     gpu.fill(1, 1, w, h, " ")
-end
-
-
-function M.info(text)
-    M.clearScreen()
-    local w, h = gpu.getResolution()
-    outputTextToWindow(text, 0, 0, w, h)
-
-    while true do
-        local _, _, _, key = event.pull("key_down")
-        if key == KEYS.back then return end
-    end
-end
-
-
-function M.choice(choices, title, allowBack)
-    local yOffset = 0
-
-    M.clearScreen()
-
-    -- output title
-    if title ~= nil then
-        for tline in stringLines(title) do
-            yOffset = yOffset + 1
-            gpu.set(1, yOffset, tline)
-        end
-    end
-
-    -- output options
-    local size = 0
-    for i, v in ipairs(choices) do
-        gpu.set(2, i + yOffset, v)
-        size = i
-    end
-
-
 end
 
 
@@ -208,7 +164,7 @@ function Menu.run(self)
                 break
             end
         end
-        if key == KEYS.back and allowBack then
+        if key == KEYS.back and self.allowBack then
             select = nil
             break
         end
