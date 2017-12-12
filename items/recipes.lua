@@ -1,6 +1,16 @@
 local menulib = require("menulib")
 local Menu = menulib.Menu
 local db = require("recipedb")
+local term = require("term")
+local inv = require("inventory")
+local event = require("event")
+
+
+function waitForKey()
+    repeat
+        local _, _, _, key = event.pull("key_down")
+    until key == 28
+end
 
 
 function makeMenu(mcons)
@@ -36,6 +46,14 @@ Menu.addItem = function(self, item_id)
                 if item.recipe ~= nil then
                     menu:addText("Recipe:\n")
                     menu:addText(db.formatRecipe(item.recipe))
+                    menu:addCategory({
+                        title="Assemble",
+                        run=function()
+                            term.clear()
+                            inv.assemble(item_id, 1)
+                            waitForKey()
+                        end
+                    })
                 else
                     menu:addText("No recipe available.")
                 end
@@ -106,6 +124,13 @@ local cat = {
                 :addItem("wlancard")
                 :addItem("redstonecard")
         end)
+    },
+    test = {
+        title="Test",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("iron_nugget")
+        end)
     }
 }
 
@@ -118,9 +143,10 @@ function main()
             :addCategory(cat.ram)
             :addCategory(cat.storage)
             :addCategory(cat.cards)
+            :addCategory(cat.test)
     end)
     menuFunc("Recipe assembler")
-    menulib.clearScreen()
+    term.clear()
 end
 
 

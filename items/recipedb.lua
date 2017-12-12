@@ -794,4 +794,9 @@ function M.recipeOutput(item_id)
 end
 
 
+function M.getItemName(item_id)
+    return M.items[item_id].name
+end
+
+
 return M

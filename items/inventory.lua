@@ -126,19 +126,23 @@ function M.assemble(itemId, amount)
     local success, clog = craftingPlanner.craft(M.getStockData(), itemId, amount)
     if not success then
         print("Not enough items")
+        for k, v in pairs(clog) do
+            print(string.format("%s: %i", db.getItemName(k), v))
+        end
         return false
     end
 
     for i, v in ipairs(clog) do
-        print("Assembling", v.item)
+        print(string.format("Assembling %s", db.getItemName(v.item)))
         for k=1,v.times do
-            print(k, "of", v.times)
+            print(string.format("Pass %i of %i", k, v.times))
             if not M.assembleRecipe(db.items[v.item].recipe, db.recipeOutput(v.item)) then
                 print("Recipe assembly has failed")
                 return false
             end
         end
     end
+    print("Finished successfully.")
     return true
 end
 
