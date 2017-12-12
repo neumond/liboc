@@ -11,6 +11,24 @@ function recipe1x1(item)
 end
 
 
+function recipe1x2(a, b)
+    return {
+        a, nil, nil,
+        b, nil, nil,
+        nil, nil, nil
+    }
+end
+
+
+function recipe2x2(a, b, c, d)
+    return {
+        a, b, nil,
+        c, d, nil,
+        nil, nil, nil
+    }
+end
+
+
 function recipe3x1(a, b, c)
     return {
         nil, nil, nil,
@@ -31,51 +49,76 @@ end
 
 M.items = {
     ["planks"]={
-        name="Wood planks"
+        name="Wood planks",
+        ident="minecraft:planks",
+        damage=0
     },
     ["cobblestone"]={
-        name="Cobblestone"
+        name="Cobblestone",
+        ident="minecraft:cobblestone"
     },
     ["iron_ingot"]={
-        name="Iron ingot"
+        name="Iron ingot",
+        ident="minecraft:iron_ingot"
     },
     ["gold_ingot"]={
-        name="Gold ingot"
+        name="Gold ingot",
+        ident="minecraft:gold_ingot"
     },
     ["diamond"]={
-        name="Diamond"
+        name="Diamond",
+        ident="minecraft:diamond"
     },
 
 
+    ["stick"]={
+        name="Stick",
+        recipe=recipe1x2("planks", "planks"),
+        output=4,
+        ident="minecraft:stick"
+    },
     ["iron_nugget"]={
         name="Iron nugget",
         recipe=recipe1x1("iron_ingot"),
-        output=9
+        output=9,
+        ident="minecraft:iron_nugget"
     },
     ["gold_nugget"]={
         name="Gold nugget",
         recipe=recipe1x1("gold_ingot"),
-        output=9
+        output=9,
+        ident="minecraft:gold_nugget"
+    },
+    ["cutting_wire"]={
+        name="Cutting wire",
+        recipe=recipe3x1("stick", "iron_nugget", "stick"),
+        ident="opencomputers:material",
+        damage=0
     },
     ["diamond_chip"]={
         name="Diamond chip",
-        recipe=recipe1x1("diamond"),
-        output=6
+        recipe=recipe1x2("diamond", "cutting_wire"),
+        output=6,
+        ident="opencomputers:material",
+        damage=29
     },
 
 
     ["sugarcane"]={
-        name="Sugarcane"
+        name="Sugarcane",
+        ident="minecraft:reeds"
     },
     ["paper"]={
         name="Paper",
         recipe=recipe3x1("sugarcane", "sugarcane", "sugarcane"),
-        output=3
+        output=3,
+        ident="minecraft:paper"
     },
 
 
     ["redstone"]={
-        name="Redstone"
+        name="Redstone",
+        ident="minecraft:redstone"
     },
     ["clock"]={
         name="Clock",
@@ -83,7 +126,8 @@ M.items = {
             nil, "gold_ingot", nil,
             "gold_ingot", "redstone", "gold_ingot",
             nil, "gold_ingot", nil
-        }
+        },
+        ident="minecraft:clock"
     },
     ["piston"]={
         name="Piston",
@@ -91,28 +135,37 @@ M.items = {
             "planks", "planks", "planks",
             "cobblestone", "iron_ingot", "cobblestone",
             "cobblestone", "redstone", "cobblestone"
-        }
+        },
+        ident="minecraft:piston"
     },
 
 
     ["cactus"]={
-        name="Cactus"
+        name="Cactus",
+        ident="minecraft:cactus"
     },
     ["dye_green"]={
         name="Green dye",
-        furnace="cactus"
+        furnace="cactus",
+        ident="minecraft:dye",
+        damage=2
     },
     ["clay"]={
-        name="Clay"  -- todo: recipe
+        name="Clay",  -- todo: recipe
+        ident="minecraft:clay"
     },
     ["raw_pcb"]={
         name="Raw circuit board",
         recipe=recipe3x1("gold_ingot", "clay", "dye_green"),
-        output=8
+        output=8,
+        ident="opencomputers:material",
+        damage=2
     },
     ["pcb"]={
         name="PCB",
-        furnace="raw_pcb"
+        furnace="raw_pcb",
+        ident="opencomputers:material",
+        damage=4
     },
 
 
@@ -122,7 +175,9 @@ M.items = {
             "iron_nugget", "iron_nugget", "iron_nugget",
             "gold_nugget", "paper", "gold_nugget",
             nil, "redstone", nil
-        }
+        },
+        ident="opencomputers:material",
+        damage=6
     },
 
 
@@ -133,7 +188,9 @@ M.items = {
             "redstone", "transistor", "redstone",
             "iron_nugget", "iron_nugget", "iron_nugget"
         },
-        output=8
+        output=8,
+        ident="opencomputers:material",
+        damage=7
     },
     ["chip2"]={
         name="Chip II",
@@ -142,7 +199,9 @@ M.items = {
             "redstone", "transistor", "redstone",
             "gold_nugget", "gold_nugget", "gold_nugget"
         },
-        output=4
+        output=4,
+        ident="opencomputers:material",
+        damage=8
     },
     ["chip3"]={
         name="Chip III",
@@ -151,7 +210,9 @@ M.items = {
             "redstone", "transistor", "redstone",
             "diamond_chip", "diamond_chip", "diamond_chip"
         },
-        output=2
+        output=2,
+        ident="opencomputers:material",
+        damage=9
     },
 
 
@@ -161,7 +222,9 @@ M.items = {
             "gold_nugget", "redstone", "gold_nugget",
             "transistor", "clock", "transistor",
             "gold_nugget", "transistor", "gold_nugget"
-        }
+        },
+        ident="opencomputers:material",
+        damage=11
     },
     ["alu"]={
         name="ALU",
@@ -169,7 +232,9 @@ M.items = {
             "iron_nugget", "redstone", "iron_nugget",
             "transistor", "chip1", "transistor",
             "iron_nugget", "transistor", "iron_nugget"
-        }
+        },
+        ident="opencomputers:material",
+        damage=10
     },
 
 
@@ -179,7 +244,9 @@ M.items = {
             "iron_nugget", "redstone", "iron_nugget",
             "chip1", "cu", "chip1",
             "iron_nugget", "alu", "iron_nugget"
-        }
+        },
+        ident="opencomputers:component",
+        damage=0
     },
     ["cpu2"]={
         name="CPU II",
@@ -187,7 +254,9 @@ M.items = {
             "gold_nugget", "redstone", "gold_nugget",
             "chip2", "cu", "chip2",
             "gold_nugget", "alu", "gold_nugget"
-        }
+        },
+        ident="opencomputers:component",
+        damage=1
     },
     ["cpu3"]={
         name="CPU III",
@@ -195,7 +264,9 @@ M.items = {
             "diamond_chip", "redstone", "diamond_chip",
             "chip3", "cu", "chip3",
             "diamond_chip", "alu", "diamond_chip"
-        }
+        },
+        ident="opencomputers:component",
+        damage=2
     },
 
 
@@ -204,42 +275,54 @@ M.items = {
         recipe=recipe3x2(
             "chip1", "iron_nugget", "chip1",
             nil, "pcb", nil
-        )
+        ),
+        ident="opencomputers:component",
+        damage=6
     },
     ["ram1_plus"]={
         name="RAM I+",
         recipe=recipe3x2(
             "chip1", "chip2", "chip1",
             nil, "pcb", nil
-        )
+        ),
+        ident="opencomputers:component",
+        damage=7
     },
     ["ram2"]={
         name="RAM II",
         recipe=recipe3x2(
             "chip2", "iron_nugget", "chip2",
             nil, "pcb", nil
-        )
+        ),
+        ident="opencomputers:component",
+        damage=8
     },
     ["ram2_plus"]={
         name="RAM II+",
         recipe=recipe3x2(
             "chip2", "chip3", "chip2",
             nil, "pcb", nil
-        )
+        ),
+        ident="opencomputers:component",
+        damage=9
     },
     ["ram3"]={
         name="RAM III",
         recipe=recipe3x2(
             "chip3", "iron_nugget", "chip3",
             nil, "pcb", nil
-        )
+        ),
+        ident="opencomputers:component",
+        damage=10
     },
     ["ram3_plus"]={
         name="RAM III+",
         recipe=recipe3x2(
             "chip3", "chip3", "chip3",
             "chip2", "pcb", "chip2"
-        )
+        ),
+        ident="opencomputers:component",
+        damage=11
     },
 
 
@@ -249,7 +332,9 @@ M.items = {
             "iron_nugget", nil, nil,
             "iron_nugget", "pcb", nil,
             "iron_nugget", "gold_nugget", nil
-        }
+        },
+        ident="opencomputers:material",
+        damage=5
     },
 
 
@@ -258,54 +343,48 @@ M.items = {
         recipe=recipe3x2(
             "chip1", "alu", "ram1",
             nil, "card_base", nil
-        )
+        ),
+        ident="opencomputers:card",
+        damage=1
     },
     ["gpu2"]={
         name="Graphic card II",
         recipe=recipe3x2(
             "chip2", "alu", "ram2",
             nil, "card_base", nil
-        )
+        ),
+        ident="opencomputers:card",
+        damage=2
     },
     ["gpu3"]={
         name="Graphic card III",
         recipe=recipe3x2(
             "chip3", "alu", "ram3",
             nil, "card_base", nil
-        )
+        ),
+        ident="opencomputers:card",
+        damage=3
     }
 }
 
 
-local detection_map = {
-    ["minecraft:planks"]={
-        [0]="planks"
-    },
-    ["minecraft:cobblestone"]="cobblestone",
-    ["minecraft:iron_ingot"]="iron_ingot",
-    ["minecraft:gold_ingot"]="gold_ingot",
-    ["minecraft:diamond"]="diamond",
-    ["minecraft:iron_nugget"]="iron_nugget",
-    ["minecraft:gold_nugget"]="gold_nugget",
-    ["opencomputers:material"]={
-        [4]="pcb",
-        [6]="transistor",
-        [7]="chip1",
-        [8]="chip2",
-        [9]="chip3",
-        [29]="diamond_chip"
-    },
-    ["minecraft:reeds"]="sugarcane",
-    ["minecraft:paper"]="paper",
-    ["minecraft:redstone"]="redstone",
-    ["minecraft:clock"]="clock",
-    ["minecraft:piston"]="piston",
-    ["minecraft:clay"]="clay",
-    ["minecraft:cactus"]="cactus",
-    ["minecraft:dye"]={
-        [2]="dye_green"
-    }
-}
+local detection_map = {}
+
+
+for k, v in pairs(M.items) do
+    assert(v.ident ~= nil)
+    if v.damage == nil then
+        assert(detection_map[v.ident] == nil)
+        detection_map[v.ident] = k
+    else
+        if detection_map[v.ident] == nil then
+            detection_map[v.ident] = {}
+        end
+        assert(type(detection_map[v.ident]) == "table")
+        assert(detection_map[v.ident][v.damage] == nil)
+        detection_map[v.ident][v.damage] = k
+    end
+end
 
 
 function M.detect(slot)

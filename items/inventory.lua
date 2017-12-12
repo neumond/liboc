@@ -86,22 +86,38 @@ function itemsToCraftingSlot(targetSlot, itemId, amount)
             if robot.count(targetSlot) == amount then return true end
         end
     end
+    print("No such item", itemId)
     return false
 end
 
 
 function M.assembleRecipe(recipe, amount)
-    if not cleanTable() then return false end
+    if not cleanTable() then
+        print("Failed to clean table")
+        return false
+    end
 
     for i=1,9 do
         local itemId = recipe[i]
         if itemId ~= nil then
-            if not itemsToCraftingSlot(table[i], itemId, 1) then return false end
+            if not itemsToCraftingSlot(table[i], itemId, 1) then
+                print("Failed to find crafting item")
+                return false
+            end
         end
     end
 
     robot.select(output_slot)
-    return component.crafting.craft(amount)
+    local success, n = component.crafting.craft(amount)
+    if not success then
+        print("Crafting has failed")
+        return false
+    end
+    if n == 0 then
+        print("Nothing has been crafted")
+        return false
+    end
+    return true
 end
 
 
@@ -110,15 +126,17 @@ function M.assemble(itemId, amount)
     local success, clog = craftingPlanner.craft(M.getStockData(), itemId, amount)
     if not success then
         print("Not enough items")
-        for k, v in pairs(clog) do
-            print(k, v)
-        end
         return false
     end
 
     for i, v in ipairs(clog) do
+        print("Assembling", v.item)
         for k=1,v.times do
-            if not M.assembleRecipe(v.item) then return false end
+            print(k, "of", v.times)
+            if not M.assembleRecipe(db.items[v.item].recipe, db.recipeOutput(v.item)) then
+                print("Recipe assembly has failed")
+                return false
+            end
         end
     end
     return true
