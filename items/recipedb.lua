@@ -535,7 +535,7 @@ M.items = {
         name="EEPROM",
         recipe={
             "gold_nugget", "transistor", "gold_nugget",
-            "chip1", "paper", "chip1",
+            "paper", "chip1", "paper",
             "gold_nugget", "redstone_torch", "gold_nugget"
         },
         ident="opencomputers:storage",
