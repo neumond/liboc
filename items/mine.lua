@@ -55,6 +55,36 @@ function reversePath(path)
   return r
 end
 
+function attackingForward()
+  while not robot.forward() do
+    robot.swing()
+  end
+end
+
+function hardForward()
+  while not robot.forward() do
+    os.sleep(3)
+  end
+end
+
+function hardBack()
+  while not robot.back() do
+    os.sleep(3)
+  end
+end
+
+function hardDown()
+  while not robot.down() do
+    os.sleep(3)
+  end
+end
+
+function hardUp()
+  while not robot.up() do
+    os.sleep(3)
+  end
+end
+
 function walkReversed(path)
   for i, v in ipairs(path) do
     if v == "left" then
@@ -63,15 +93,14 @@ function walkReversed(path)
       robot.turnLeft()
     else
       for k=1,v do
-        while not robot.forward() do
-          robot.swing()
-        end
+        attackingForward()
       end
     end
   end
 end
 
 function unload()
+  hardForward()
   for slot=2,16 do
     local items = robot.count(slot)
     if items > 0 then
@@ -80,13 +109,16 @@ function unload()
     end
   end
   robot.select(1)
+  hardBack()
 end
 
 function miningSession()
+  hardUp()
   local path = walk()
   robot.turnAround()
   walkReversed(reversePath(path))
   robot.turnAround()
+  hardDown()
 end
 
 function waitForPickAxe()
@@ -98,9 +130,13 @@ function waitForPickAxe()
 end
 
 function getPickAxe()
-  robot.back()
+  hardBack()
+  hardDown()
+  hardDown()
   local r = waitForPickAxe()
-  robot.forward()
+  hardUp()
+  hardUp()
+  hardForward()
   return r
 end
 
