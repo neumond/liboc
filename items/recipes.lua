@@ -125,6 +125,32 @@ local cat = {
                 :addItem("redstonecard")
         end)
     },
+    upgrades = {
+        title="Upgrades",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("inventory_upgrade")
+                :addItem("inventory_controller_upgrade")
+                :addItem("crafting_upgrade")
+        end)
+    },
+    devices = {
+        title="Devices",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("adapter")
+                :addItem("assembler")
+                :addItem("disassembler")
+        end)
+    },
+    printing = {
+        title="Printing",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("printer")
+                :addItem("cartridge_full")
+        end)
+    },
     test = {
         title="Test",
         run=makeMenu(function(menu)
@@ -143,6 +169,9 @@ function main()
             :addCategory(cat.ram)
             :addCategory(cat.storage)
             :addCategory(cat.cards)
+            :addCategory(cat.upgrades)
+            :addCategory(cat.devices)
+            :addCategory(cat.printing)
             :addCategory(cat.test)
     end)
     menuFunc("Recipe assembler")

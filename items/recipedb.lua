@@ -116,6 +116,21 @@ M.items = {
         furnace="sand",
         ident="minecraft:glass"
     },
+    ["glass_pane"]={
+        name="Glass pane",
+        recipe=recipe3x2(
+            "glass", "glass", "glass",
+            "glass", "glass", "glass"
+        ),
+        output=16,
+        ident="minecraft:glass_pane"
+    },
+
+
+    ["string"]={
+        name="String",
+        ident="minecraft:string"
+    },
 
 
     ["iron_nugget"]={
@@ -179,8 +194,44 @@ M.items = {
         output=16,
         ident="minecraft:iron_bars"
     },
+    ["bow"]={
+        name="Bow",
+        recipe={
+            nil, "stick", "string",
+            "stick", nil, "string",
+            nil, "stick", "string"
+        },
+        ident="minecraft:bow",
+        damage=0
+    },
 
 
+    ["bucket"]={
+        name="Bucket",
+        recipe=recipe3x2(
+            "iron_ingot", nil, "iron_ingot",
+            nil, "iron_ingot", nil
+        ),
+        ident="minecraft:bucket"
+    },
+    ["bucket_water"]={
+        name="Bucket of water",
+        ident="minecraft:water_bucket"
+    },
+    ["bucket_lava"]={
+        name="Bucket of lava",
+        ident="minecraft:lava_bucket"
+    },
+
+
+    ["workbench"]={
+        name="Workbench",
+        recipe=recipe2x2(
+            "planks", "planks",
+            "planks", "planks"
+        ),
+        ident="minecraft:crafting_table"
+    },
     ["chest"]={
         name="Chest",
         recipe={
@@ -204,9 +255,18 @@ M.items = {
         recipe={
             "cobblestone", "cobblestone", "cobblestone",
             "cobblestone", nil, "cobblestone",
-            "cobblestone", "planks", "cobblestone"
+            "cobblestone", "redstone", "cobblestone"
         },
         ident="minecraft:dropper"
+    },
+    ["dispenser"]={
+        name="Dispenser",
+        recipe={
+            "cobblestone", "cobblestone", "cobblestone",
+            "cobblestone", "bow", "cobblestone",
+            "cobblestone", "redstone", "cobblestone"
+        },
+        ident="minecraft:dispenser"
     },
     ["piston"]={
         name="Piston",
@@ -242,6 +302,11 @@ M.items = {
     },
 
 
+    ["dye_black"]={
+        name="Ink sac",
+        ident="minecraft:dye",
+        damage=0
+    },
     ["dye_red"]={
         name="Red dye",
         ident="minecraft:dye",
@@ -258,6 +323,24 @@ M.items = {
         name="Lapis lazuli",
         ident="minecraft:dye",
         damage=4
+    },
+    ["dye_cyan"]={
+        name="Cyan dye",
+        ident="minecraft:dye",
+        -- todo: recipe?
+        damage=6
+    },
+    ["dye_yellow"]={
+        name="Yellow dye",
+        ident="minecraft:dye",
+        -- todo: recipe?
+        damage=11
+    },
+    ["dye_magenta"]={
+        name="Magenta dye",
+        ident="minecraft:dye",
+        -- todo: recipe?
+        damage=13
     },
 
 
@@ -280,7 +363,7 @@ M.items = {
     ["transistor"]={
         name="Transistor",
         recipe={
-            "iron_nugget", "iron_nugget", "iron_nugget",
+            "iron_ingot", "iron_ingot", "iron_ingot",
             "gold_nugget", "paper", "gold_nugget",
             nil, "redstone", nil
         },
@@ -350,6 +433,16 @@ M.items = {
         },
         ident="opencomputers:material",
         damage=12
+    },
+    ["analyzer"]={
+        name="Analyzer",
+        recipe={
+            "redstone_torch", nil, nil,
+            "transistor", "gold_nugget", nil,
+            "pcb", "gold_nugget", nil
+        },
+        ident="opencomputers:tool",
+        damage=0
     },
 
 
@@ -592,7 +685,7 @@ M.items = {
     },
 
 
-    -- CASES, SCREENS, DEVICES
+    -- CASES, SCREENS
 
 
     ["case1"]={
@@ -699,6 +792,106 @@ M.items = {
             "buttons", "arrow_buttons", "numpad_buttons"
         ),
         ident="opencomputers:keyboard"
+    },
+
+
+    -- UPGRADES
+
+
+    ["inventory_upgrade"]={
+        name="Inventory upgrade",
+        recipe={
+            "planks", "hopper", "planks",
+            "dropper", "chest", "piston",
+            "planks", "chip1", "planks"
+        },
+        ident="opencomputers:upgrade",
+        damage=17
+    },
+    ["inventory_controller_upgrade"]={
+        name="Inventory controller upgrade",
+        recipe={
+            "gold_ingot", "analyzer", "gold_ingot",
+            "dropper", "chip2", "piston",
+            "gold_ingot", "pcb", "gold_ingot"
+        },
+        ident="opencomputers:upgrade",
+        damage=18
+    },
+    ["crafting_upgrade"]={
+        name="Crafting upgrade",
+        recipe={
+            "iron_ingot", nil, "iron_ingot",
+            "chip1", "workbench", "chip1",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:upgrade",
+        damage=11
+    },
+
+
+    -- DEVICES
+
+
+    ["adapter"]={
+        name="Adapter",
+        recipe={
+            "iron_ingot", "cable", "iron_ingot",
+            "cable", "chip1", "cable",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:adapter"
+    },
+    ["assembler"]={
+        name="Assembler",
+        recipe={
+            "iron_ingot", "workbench", "iron_ingot",
+            "piston", "chip2", "piston",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:assembler"
+    },
+    ["disassembler"]={
+        name="Disassembler",
+        recipe={
+            "cu", "glass_pane", "analyzer",
+            "piston", nil, "obsidian",
+            "iron_ingot", "bucket_lava", "iron_ingot"
+        },
+        ident="opencomputers:disassembler"
+    },
+
+
+    -- PRINTER
+
+
+    ["printer"]={
+        name="3D Printer",
+        recipe={
+            "iron_ingot", "hopper", "iron_ingot",
+            "piston", "chip3", "piston",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:printer"
+    },
+    ["cartridge_empty"]={
+        name="Empty cartridge",
+        recipe={
+            "iron_nugget", "dispenser", "iron_nugget",
+            "transistor", "bucket", "transistor",
+            "iron_nugget", "pcb", "iron_nugget"
+        },
+        ident="opencomputers:material",
+        damage=26
+    },
+    ["cartridge_full"]={
+        name="Full cartridge",
+        recipe=recipe3x2(
+            "cartridge_empty", nil, "dye_black",
+            "dye_cyan", "dye_magenta", "dye_yellow"
+        ),
+        ident="opencomputers:material",
+        damage=27
     }
 }
 
@@ -722,8 +915,11 @@ end
 
 for k, v in pairs(M.items) do
     if v.recipe ~= nil then
-        for i, item in ipairs(v.recipe) do
-            assert(M.items[item] ~= nil, "Unknown item in recipe: " .. item)
+        for i=1,9 do
+            local item = v.recipe[i]
+            if item ~= nil then
+                assert(M.items[item] ~= nil, "Unknown item in recipe: " .. item)
+            end
         end
     end
     if v.furnace ~= nil then
