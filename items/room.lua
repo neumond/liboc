@@ -1,6 +1,19 @@
+-- constants
+
+
 local CHEST_CASCADES = 3
+local maxChests = CHEST_CASCADES * 4
+
+
+-- globals
+
 
 local robot = require("robot")
+local sides = require("sides")
+local component = require("component")
+local invComp = component.inventory_controller
+local invModule = require("inventory")
+local db = require("recipedb")
 
 
 -- General navigation on a plane
@@ -100,26 +113,118 @@ function Navigation.getChestPairPosition(n)
 end
 
 
-function Navigation.getFurnacePosition(n)
-    n = n - 1
-    local x = n % 2
-    if x == 0 then x = -1 end
-    local z = math.floor(n / 2) * 2 + 1
-    return x, z, false
-end
-
-
 function Navigation.getChestPosition(n)
     n = n - 1
     x, z = Navigation.getChestPairPosition(math.floor(n / 2))
-    return x, z, n % 2 == 1
+    return x, z, (n % 2 == 1) and sides.up or sides.down
+end
+
+
+function Navigation.gotoInput()
+    Navigation.gotoPosition(-1, -1)
+    Navigation.rotate("Z-")
+    return sides.front
 end
 
 
 function Navigation.gotoOutput()
-    Navigation.gotoPosition(0, -1)
+    Navigation.gotoPosition(1, -1)
     Navigation.rotate("Z-")
+    return sides.front
 end
+
+
+function Navigation.gotoChest(n)
+    local x, z, side = Navigation.getChestPosition(n)
+    Navigation.gotoPosition(x, z)
+    return side
+end
+
+
+function Navigation.getFurnaceEntryPosition(n)
+    n = n - 1
+    local x = n % 2
+    if x == 0 then x = -1 end
+    local z = math.floor(n / 2) * 2 + 1
+    return x, z, x > 0 and "X+" or "X-"
+end
+
+
+function Navigation.gotoFurnace(n)
+    x
+end
+
+
+--
+
+
+local StorageIndex = {}
+
+
+function StorageIndex.initialize()
+    StorageIndex.slots = {}
+    StorageIndex.emptySlots = {}
+    StorageIndex.blockedSlots = {}
+
+
+    function addSlot(itemData)
+        local newSlot = {}
+        table.insert(StorageIndex.slots, newSlot)
+        if itemData == nil then
+            table.insert(StorageIndex.emptySlots, #StorageIndex.slots)
+        else
+            local itemId = db.detect(itemData)
+            if itemId == nil then
+                table.insert(StorageIndex.blockedSlots, #StorageIndex.slots)
+            else
+                newSlot.content = {
+                    item=itemId,
+                    count=itemData.size,
+                    capacity=itemData.maxSize
+                }
+            end
+        end
+        return newSlot
+    end
+
+
+    for k in invModule.iterNonTableSlots()
+        local slot = addSlot(invComp.getStackInInternalSlot(k))
+        slot.address = {
+            type="internal",
+            slot=k
+        }
+    end
+
+    for i=1,maxChests do
+        local side = Navigation.gotoChest(i)
+        for k=1,invComp.getInventorySize(side) do
+            local slot = addSlot(invComp.getStackInSlot(side, k))
+            slot.address = {
+                type="chest",
+                chest=i,
+                slot=k
+            }
+        end
+    end
+
+end
+
+
+function buildStorageIndex()
+    -- todo: check furnaces
+
+    local slots = {}
+    local emptySlots = {}
+    local blockedSlots = {}
+
+
+
+
+end
+
+
+--
 
 
 function main()

@@ -31,6 +31,9 @@ function iterNonTableSlots()
 end
 
 
+M.iterNonTableSlots = iterNonTableSlots
+
+
 function M.getStockData()
     local r = {}
     for i=1,robot.inventorySize() do
