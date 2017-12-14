@@ -14,6 +14,8 @@ local component = require("component")
 local invComp = component.inventory_controller
 local invModule = require("inventory")
 local db = require("recipedb")
+local utils = require("utils")
+local M = {}
 
 
 -- General navigation on a plane
@@ -141,54 +143,74 @@ function Navigation.gotoChest(n)
 end
 
 
-function Navigation.getFurnaceEntryPosition(n)
-    n = n - 1
-    local x = n % 2
-    if x == 0 then x = -1 end
-    local z = math.floor(n / 2) * 2 + 1
-    return x, z, x > 0 and "X+" or "X-"
+-- Storage room indexing
+
+
+local StorageIndex = {itemMap={}}
+
+
+function StorageIndex.itemMapAdd(itemId, slotId)
+    if StorageIndex.itemMap[itemId] == nil then
+        StorageIndex.itemMap[itemId] = {}
+    end
+    StorageIndex.itemMap[itemId][slotId] = true
 end
 
 
-function Navigation.gotoFurnace(n)
-    x
+function StorageIndex.itemMapDelete(itemId, slotId)
+    if StorageIndex.itemMap[itemId] == nil then
+        return
+    end
+    StorageIndex.itemMap[itemId][slotId] = nil
 end
 
 
---
-
-
-local StorageIndex = {}
+function StorageIndex.itemMapFind(itemId)
+    if StorageIndex.itemMap[itemId] == nil then
+        return nil
+    end
+    local slotId = next(StorageIndex.itemMap[itemId])
+    return slotId
+end
 
 
 function StorageIndex.initialize()
+    -- todo: clean table after StorageIndex.initialize
+
     StorageIndex.slots = {}
     StorageIndex.emptySlots = {}
-    StorageIndex.blockedSlots = {}
+    StorageIndex.itemMap = {}
+    StorageIndex.stock = {}
 
 
     function addSlot(itemData)
         local newSlot = {}
-        table.insert(StorageIndex.slots, newSlot)
+
+        function registerNewSlot()
+            table.insert(StorageIndex.slots, newSlot)
+            return #StorageIndex.slots
+        end
+
         if itemData == nil then
-            table.insert(StorageIndex.emptySlots, #StorageIndex.slots)
+            table.insert(StorageIndex.emptySlots, registerNewSlot())
         else
             local itemId = db.detect(itemData)
-            if itemId == nil then
-                table.insert(StorageIndex.blockedSlots, #StorageIndex.slots)
-            else
+            if itemId ~= nil then
                 newSlot.content = {
                     item=itemId,
                     count=itemData.size,
                     capacity=itemData.maxSize
                 }
+                newSlot.id = registerNewSlot()
+                StorageIndex.itemMapAdd(itemId, newSlot.id)
+                utils.stock.put(StorageIndex.stock, itemId, itemData.size)
             end
         end
         return newSlot
     end
 
 
-    for k in invModule.iterNonTableSlots()
+    for k in invModule.iterNonTableSlots() do
         local slot = addSlot(invComp.getStackInInternalSlot(k))
         slot.address = {
             type="internal",
@@ -207,33 +229,16 @@ function StorageIndex.initialize()
             }
         end
     end
-
-end
-
-
-function buildStorageIndex()
-    -- todo: check furnaces
-
-    local slots = {}
-    local emptySlots = {}
-    local blockedSlots = {}
-
-
-
-
 end
 
 
 --
 
 
-function main()
+function runOperation(func)
     assert(robot.up())
 
-    for _, i in ipairs({5, 7, 1, 3, 4, 2}) do
-        local x, z, ud = Navigation.getChestPosition(i)
-        Navigation.gotoPosition(x, z)
-    end
+    func()
 
     Navigation.gotoPosition(0, 0)
     Navigation.rotate("Z+")
@@ -241,4 +246,14 @@ function main()
 end
 
 
-main()
+function main()
+    for _, i in ipairs({5, 7, 1, 3, 4, 2}) do
+        local x, z, ud = Navigation.getChestPosition(i)
+        Navigation.gotoPosition(x, z)
+    end
+end
+
+
+M.runOperation = runOperation
+M.StorageIndex = StorageIndex
+return M
