@@ -249,7 +249,7 @@ end
 function Storage.cleanTableSlot(tableSlot)
     local localSlotId = Storage.tableSlotToRealSlot(tableSlot)
     local itemData = invComp.getStackInInternalSlot(localSlotId)
-    if itemData == nil then return true end  -- already empty
+    if itemData == nil then return end  -- already empty
     local itemId = db.detect(itemData)
     assert(itemId ~= nil, "Unknown item in table slot")
 
@@ -284,11 +284,58 @@ end
 
 function Storage.cleanTable()
     for i=1,9 do
-        if not Storage.cleanTableSlot(i) then return false end
+        Storage.cleanTableSlot(i)
     end
-    if not Storage.cleanTableSlot("output") then return false end
-    return true
+    Storage.cleanTableSlot("output")
 end
+
+
+function Storage.assembleRecipe(itemId, amount)
+    local dbItem = db.items[itemId]
+    if amount > 1 then
+        local maxAmount
+        db.recipeOutput(itemId)
+    end
+
+    Storage.cleanTable()
+    for i=1,9 do
+        local itemId = dbItem.recipe[i]
+        if itemId ~= nil then
+            Storage.fillTableSlot(i, itemId, 1)
+        end
+    end
+    robot.select(Storage.tableSlotToRealSlot("output"))
+
+    local success, n = component.crafting.craft(amount)
+    assert(success, "Crafting has failed")
+    assert(n > 0, "Nothing has been crafted")
+end
+
+
+-- function M.assemble(itemId, amount)
+--     if amount == nil then amount = 1 end
+--     local success, clog = craftingPlanner.craft(M.getStockData(), itemId, amount)
+--     if not success then
+--         print("Not enough items")
+--         for k, v in pairs(clog) do
+--             print(string.format("%s: %i", db.getItemName(k), v))
+--         end
+--         return false
+--     end
+--
+--     for i, v in ipairs(clog) do
+--         print(string.format("Assembling %s", db.getItemName(v.item)))
+--         for k=1,v.times do
+--             print(string.format("Pass %i of %i", k, v.times))
+--             if not M.assembleRecipe(db.items[v.item].recipe, db.recipeOutput(v.item)) then
+--                 print("Recipe assembly has failed")
+--                 return false
+--             end
+--         end
+--     end
+--     print("Finished successfully.")
+--     return true
+-- end
 
 
 --
