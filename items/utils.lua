@@ -15,6 +15,18 @@ function M.isTableEmpty(t)
 end
 
 
+function M.findInArray(a, val)
+    for i, v in ipairs(a) do
+        if v == val then return i end
+    end
+end
+
+
+function M.removeFromArray(a, val)
+    return table.remove(a, M.findInArray(a, val))
+end
+
+
 M.stock = {}
 
 
@@ -36,6 +48,24 @@ function M.stock.put(stock, item_id, amount)
         exist = 0
     end
     stock[item_id] = exist + amount
+end
+
+
+function makeClass(constructor, classData)
+    -- local class = makeClass(function(self)
+    --     ...
+    -- end)
+
+    if classData == nil then classData = {} end
+    classData.__index = classData
+
+    classData.new = function(...)
+        local self = setmetatable({}, classData)
+        constructor(self, ...)
+        return self
+    end
+
+    return classData
 end
 
 

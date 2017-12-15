@@ -143,92 +143,374 @@ function Navigation.gotoChest(n)
 end
 
 
--- Storage room indexing
+-- ItemTip
 
 
-local StorageIndex = {itemMap={}}
+local ItemTip = makeClass(function(self)
+    self.slot = nil
+end)
 
 
-function StorageIndex.itemMapAdd(itemId, slotId)
-    if StorageIndex.itemMap[itemId] == nil then
-        StorageIndex.itemMap[itemId] = {}
+function ItemTip.maybeBetter(self, slotId)
+    if (self.slot == nil) or (slotId < self.slot) then
+        self.slot = slotId
     end
-    StorageIndex.itemMap[itemId][slotId] = true
 end
 
 
-function StorageIndex.itemMapDelete(itemId, slotId)
-    if StorageIndex.itemMap[itemId] == nil then
+function ItemTip.clear(self, slotId)
+    if slotId == self.slot then
+        self.slot = nil
+        return true
+    end
+    return false
+end
+
+
+-- ItemToSlotIndex
+
+
+local ItemToSlotIndex = makeClass(function(self)
+    self.data = {}
+end)
+
+
+function ItemToSlotIndex.getItem(self, itemId, autocreate)
+    if autocreate and self.data[itemId] == nil then
+        self.data[itemId] = {
+            slots={},
+            half=ItemTip.new(),
+            full=ItemTip.new()
+        }
+    end
+    return self.data[itemId]
+end
+
+
+function ItemToSlotIndex.refill(self, itemId, slotId, halfFilled)
+    -- item appears in a slot
+    assert(halfFilled ~= nil)
+    local item = self:getItem(itemId, true)
+    if item.slots[slotId] == halfFilled then return end
+
+    item.slots[slotId] = halfFilled
+    if halfFilled then
+        item.full:clear(slotId)
+        item.half:maybeBetter(slotId)
+    else
+        item.half:clear(slotId)
+        item.full:maybeBetter(slotId)
+    end
+end
+
+
+function ItemToSlotIndex.assignNewTip(item, tip, halfFilled)
+    for slotId, hf in pairs(item.slots) do
+        if halfFilled == hf then
+            tip:maybeBetter(slotId)
+        end
+    end
+end
+
+
+function ItemToSlotIndex.empty(self, itemId, slotId)
+    -- item disappears from a slot
+    local item = self:getItem(itemId, false)
+    if item == nil then return end
+    if item.slots[slotId] == nil then return end
+
+    self.slots[slotId] = nil
+    if utils.isTableEmpty(self.slots) then
+        -- no more items of this type
+        self.data[itemId] = nil
         return
     end
-    StorageIndex.itemMap[itemId][slotId] = nil
+    if item.full:clear(slotId) then
+        self.assignNewTip(item, item.full, false)
+    end
+    if item.half:clear(slotId) then
+        self.assignNewTip(item, item.half, true)
+    end
 end
 
 
-function StorageIndex.itemMapFind(itemId)
-    if StorageIndex.itemMap[itemId] == nil then
-        return nil
+function ItemToSlotIndex.findForInput(self, itemId)
+    local item = self:getItem(itemId, false)
+    if item == nil then return nil end
+    if item.half.slot ~= nil then
+        return item.half.slot
     end
-    local slotId = next(StorageIndex.itemMap[itemId])
+    return item.full.slot
+end
+
+
+function ItemToSlotIndex.findForOutput(self, itemId)
+    local item = self:getItem(itemId)
+    if item == nil then return nil end
+    return item.half.slot
+end
+
+
+-- EmptySlotIndex
+
+
+local EmptySlotIndex = makeClass(function(self)
+    -- by default all slots are busy
+    -- you have to explicitly .empty for every discovered empty slot
+    self.data = {}
+    self.tip = ItemTip.new()
+end)
+
+
+function EmptySlotIndex.assignNewTip(self)
+    for slotId, _ in pairs(self.data) do
+        tip:maybeBetter(slotId)
+    end
+end
+
+
+function EmptySlotIndex.fill(self, slotId)
+    -- slot becomes busy
+    if self.data[slotId] == nil then return end
+
+    self.data[slotId] = nil
+    if self.tip:clear(slotId) then
+        self:assignNewTip()
+    end
+end
+
+
+function EmptySlotIndex.empty(self, slotId)
+    -- slot becomes empty
+    if self.data[slotId] then return end
+
+    self.data[slotId] = true
+    self.tip:maybeBetter(slotId)
+end
+
+
+function EmptySlotIndex.find(self)
+    -- find an empty slot
+    return self.tip.slot
+end
+
+
+-- SlotIndex
+
+
+local SlotIndex = makeClass(function(self)
+    self.data = {}
+end)
+
+
+function SlotIndex.registerSlot(self, address)
+    -- register slot at initialization
+    -- by default slot is empty
+    -- you have to explicitly call .fill for every slot with contents
+    local newSlot = {
+        address=address,
+        content=nil
+    }
+    table.insert(self.data, newSlot)
+    return #self.data
+end
+
+
+function SlotIndex.fill(self, slotId, itemId)
+    -- item appears in a slot
+    self.data[slotId].content = itemId
+end
+
+
+function SlotIndex.empty(self, slotId)
+    -- slot becomes empty
+    self.data[slotId].content = nil
+end
+
+
+function SlotIndex.get(self, slotId)
+    return self.data[slotId].content
+end
+
+
+function SlotIndex.getAddress(self, slotId)
+    return self.data[slotId].address
+end
+
+
+-- IntegratedIndex
+
+
+local IntegratedIndex = makeClass(function(self)
+    self.itemToSlot = ItemToSlotIndex.new()
+    self.emptyIndex = EmptySlotIndex.new()
+    self.slots = SlotIndex.new()
+end)
+
+
+function IntegratedIndex.registerSlot(self, address, itemId, halfFilled)
+    local slotId = self.slots:registerSlot(address)
+    if itemId == nil then
+        self:empty(slotId)
+    else
+        self:refill(slotId, itemId, halfFilled)
+    end
     return slotId
 end
 
 
-function StorageIndex.initialize()
-    -- todo: clean table after StorageIndex.initialize
-
-    StorageIndex.slots = {}
-    StorageIndex.emptySlots = {}
-    StorageIndex.itemMap = {}
-    StorageIndex.stock = {}
-
-
-    function addSlot(itemData)
-        local newSlot = {}
-
-        function registerNewSlot()
-            table.insert(StorageIndex.slots, newSlot)
-            return #StorageIndex.slots
-        end
-
-        if itemData == nil then
-            table.insert(StorageIndex.emptySlots, registerNewSlot())
-        else
-            local itemId = db.detect(itemData)
-            if itemId ~= nil then
-                newSlot.content = {
-                    item=itemId,
-                    count=itemData.size,
-                    capacity=itemData.maxSize
-                }
-                newSlot.id = registerNewSlot()
-                StorageIndex.itemMapAdd(itemId, newSlot.id)
-                utils.stock.put(StorageIndex.stock, itemId, itemData.size)
-            end
-        end
-        return newSlot
+function IntegratedIndex.refill(self, slotId, itemId, halfFilled)
+    local existingItem = self.slots:get(slotId)
+    if existingItem ~= nil and existingItem ~= itemId then
+        -- replacing existing different item
+        self:empty(slotId)
     end
 
+    self.itemToSlot:refill(itemId, slotId, halfFilled)
+    self.emptyIndex:fill(slotId)
+    self.slots:fill(slotId, itemId)
+end
+
+
+function IntegratedIndex.empty(self, slotId)
+    local existingItem = self.slots:get(slotId)
+    if existingItem == nil then return end  -- already empty
+
+    self.itemToSlot:empty(existingItem, slotId)
+    self.emptyIndex:empty(slotId)
+    self.slots:empty(slotId)
+end
+
+
+function IntegratedIndex.getAddress(self, slotId)
+    return self.slots:getAddress(slotId)
+end
+
+
+function IntegratedIndex.findInputSlot(self, itemId)
+    return self.itemToSlot:findForInput(itemId)
+end
+
+
+function IntegratedIndex.findOutputSlot(self, itemId)
+    local slotId = self.itemToSlot:findForOutput(itemId)
+    if slotId == nil then
+        slotId = self.emptyIndex:find()
+    end
+    return slotId
+end
+
+
+-- Slot access functions
+
+
+local InternalSlot = makeClass(function(self, slot)
+    self.slot = slot
+end)
+
+
+function InternalSlot.getStack(self)
+    return invComp.getStackInInternalSlot(self.slot)
+end
+
+
+function InternalSlot.suck(self, amount)
+    local target = robot.select()
+    robot.select(self.slot)
+    local success = robot.transferTo(target, amount)
+    robot.select(target)
+    assert(success, "Can't suck items from internal slot")
+end
+
+
+function InternalSlot.drop(self, amount)
+    local success = robot.transferTo(self.slot, amount)
+    assert(success, "Can't drop items into internal slot")
+end
+
+
+local ChestSlot = makeClass(function(self, chest, slot)
+    self.chest = chest
+    self.slot = slot
+end)
+
+
+function ChestSlot.getStack(self)
+    local side = Navigation.gotoChest(self.chest)
+    return invComp.getStackInSlot(side, self.slot)
+end
+
+
+function ChestSlot.suck(self, amount)
+    local side = Navigation.gotoChest(self.chest)
+    local success, msg = invComp.suckFromSlot(side, self.slot, amount)
+    assert(success, msg)
+end
+
+
+function ChestSlot.drop(self, amount)
+    local side = Navigation.gotoChest(self.chest)
+    local success, msg = invComp.dropIntoSlot(side, self.slot, amount)
+    assert(success, msg)
+end
+
+
+-- Storage
+
+
+local Storage = {}
+
+
+function Storage.initialize()
+    Storage.index = IntegratedIndex.new()
+
+    function addSlot(address)
+        local itemData = address:getStack()
+        local itemId = db.detect(itemData)
+        return Storage.index:registerSlot(address, itemId)
+    end
 
     for k in invModule.iterNonTableSlots() do
-        local slot = addSlot(invComp.getStackInInternalSlot(k))
-        slot.address = {
-            type="internal",
-            slot=k
-        }
+        addSlot(InternalSlot.new(k))
     end
-
     for i=1,maxChests do
         local side = Navigation.gotoChest(i)
         for k=1,invComp.getInventorySize(side) do
-            local slot = addSlot(invComp.getStackInSlot(side, k))
-            slot.address = {
-                type="chest",
-                chest=i,
-                slot=k
-            }
+            addSlot(ChestSlot.new(i, k))
         end
     end
+end
+
+
+function Storage.tableSlotToRealSlot(tableSlot)
+    local s = M.tableSlots[tableSlot]
+    if s == nil then
+        s = invModule.tableOutputSlot
+    end
+    return s
+end
+
+
+function Storage.cleanTableSlot(tableSlot)
+    localSlotId = Storage.tableSlotToRealSlot(tableSlot)
+    local itemData = invComp.getStackInInternalSlot(localSlotId)
+    if itemData == nil then return true end
+    local itemId = db.detect(itemData)
+    assert(itemId ~= nil, "Unknown item in table slot")
+
+    slotId = Storage.index:findSlotWithItem(itemId)
+end
+
+
+function Storage.cleanTable()
+    for i=1,10 do
+        if not Storage.cleanTableSlot(i) then return false end
+    end
+    return true
+end
+
+
+function Storage.fillTableSlot(tableSlot, itemId, amount)
 end
 
 

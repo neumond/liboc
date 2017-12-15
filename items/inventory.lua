@@ -31,6 +31,8 @@ function iterNonTableSlots()
 end
 
 
+M.tableSlots = table
+M.tableOutputSlot = output_slot
 M.iterNonTableSlots = iterNonTableSlots
 
 
