@@ -113,6 +113,12 @@ M.items = {
         damage=0,
         stack=64
     },
+    ["emerald"]={
+        name="Emerald",
+        ident="minecraft:emerald",
+        damage=0,
+        stack=64
+    },
     ["redstone"]={
         name="Redstone",
         ident="minecraft:redstone",
@@ -133,7 +139,7 @@ M.items = {
     },
     ["ender_eye"]={
         name="Eye of Ender",
-        -- recipe={}, TODO
+        recipe=recipe1x2("blaze_powder", "ender_pearl"),
         ident="minecraft:ender_eye",
         damage=0,
         stack=64
@@ -166,6 +172,28 @@ M.items = {
         damage=0,
         stack=64
     },
+    ["lapis_block"]={
+        name="Lapis Lazuli Block",
+        recipe={
+            "dye_blue", "dye_blue", "dye_blue",
+            "dye_blue", "dye_blue", "dye_blue",
+            "dye_blue", "dye_blue", "dye_blue"
+        },
+        ident="minecraft:lapis_block",
+        damage=0,
+        stack=64
+    },
+    ["redstone_block"]={
+        name="Block of Redstone",
+        recipe={
+            "redstone", "redstone", "redstone",
+            "redstone", "redstone", "redstone",
+            "redstone", "redstone", "redstone"
+        },
+        ident="minecraft:redstone_block",
+        damage=0,
+        stack=64
+    },
 
 
     ["glass"]={
@@ -183,6 +211,16 @@ M.items = {
         ),
         output=16,
         ident="minecraft:glass_pane",
+        damage=0,
+        stack=64
+    },
+    ["bottle"]={
+        name="Glass Bottle",
+        recipe=recipe3x2(
+            "glass", nil, "glass",
+            nil, "glass", nil
+        ),
+        ident="minecraft:glass_bottle",
         damage=0,
         stack=64
     },
@@ -296,17 +334,28 @@ M.items = {
     },
     ["bucket_water"]={
         name="Water Bucket",
-        recipe={},
         ident="minecraft:water_bucket",
         damage=0,
         stack=1
     },
     ["bucket_lava"]={
         name="Lava Bucket",
-        recipe={},
         ident="minecraft:lava_bucket",
         damage=0,
         stack=1
+    },
+
+
+    ["leash"]={
+        name="Lead",
+        recipe={
+            "string", "string", nil,
+            "string", "slime_ball", nil,
+            nil, nil, "string",
+        },
+        ident="minecraft:lead",
+        damage=0,
+        stack=64
     },
 
 
@@ -382,6 +431,17 @@ M.items = {
         damage=0,
         stack=64
     },
+    ["cauldron"]={
+        name="Cauldron",
+        recipe={
+            "iron_ingot", nil, "iron_ingot",
+            "iron_ingot", nil, "iron_ingot",
+            "iron_ingot", "iron_ingot", "iron_ingot"
+        },
+        ident="minecraft:cauldron",
+        damage=0,
+        stack=64
+    },
 
 
     ["sugarcane"]={
@@ -393,6 +453,34 @@ M.items = {
     ["cactus"]={
         name="Cactus",
         ident="minecraft:cactus",
+        damage=0,
+        stack=64
+    },
+
+
+    ["blaze_rod"]={
+        name="Blaze Rod",
+        ident="minecraft:blaze_rod",
+        damage=0,
+        stack=64
+    },
+    ["blaze_powder"]={
+        name="Blaze Powder",
+        recipe=recipe1x1("blaze_rod"),
+        output=2,
+        ident="minecraft:blaze_powder",
+        damage=0,
+        stack=64
+    },
+    ["bone"]={
+        name="Bone",
+        ident="minecraft:bone",
+        damage=0,
+        stack=64
+    },
+    ["feather"]={
+        name="Feather",
+        ident="minecraft:feather",
         damage=0,
         stack=64
     },
@@ -450,35 +538,35 @@ M.items = {
     },
     ["dye_green"]={
         name="Cactus Green",
-        recipe={},
+        furnace="cactus",
         ident="minecraft:dye",
         damage=2,
         stack=64
     },
     ["dye_brown"]={
         name="Cocoa Beans",
-        recipe={},
         ident="minecraft:dye",
         damage=3,
         stack=64
     },
     ["dye_blue"]={
         name="Lapis Lazuli",
-        recipe={},
         ident="minecraft:dye",
         damage=4,
         stack=64
     },
     ["dye_purple"]={
         name="Purple Dye",
-        recipe={},
+        recipe=recipe1x2("dye_blue", "dye_red"),
+        output=2,
         ident="minecraft:dye",
         damage=5,
         stack=64
     },
     ["dye_cyan"]={
         name="Cyan Dye",
-        recipe={},
+        recipe=recipe1x2("dye_blue", "dye_green"),
+        output=2,
         ident="minecraft:dye",
         damage=6,
         stack=64
@@ -492,7 +580,8 @@ M.items = {
     },
     ["dye_gray"]={
         name="Gray Dye",
-        recipe={},
+        recipe=recipe1x2("dye_black", "dye_white"),
+        output=2,
         ident="minecraft:dye",
         damage=8,
         stack=64
@@ -506,7 +595,8 @@ M.items = {
     },
     ["dye_lime"]={
         name="Lime Dye",
-        recipe={},
+        recipe=recipe1x2("dye_green", "dye_white"),
+        output=2,
         ident="minecraft:dye",
         damage=10,
         stack=64
@@ -671,9 +761,31 @@ M.items = {
     },
     ["oc_manual"]={
         name="OpenComputers Manual",
-        recipe={},
+        recipe=recipe1x2("book", "chip1"),
         ident="opencomputers:tool",
         damage=4,
+        stack=64
+    },
+    ["capacitor"]={
+        name="Capacitor",
+        recipe={
+            "iron_ingot", "transistor", "iron_ingot",
+            "gold_nugget", "paper", "gold_nugget",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:capacitor",
+        damage=0,
+        stack=64
+    },
+    ["interweb"]={
+        name="Interweb",
+        recipe={
+            "string", "string", "string",
+            "string", "ender_pearl", "string",
+            "string", "string", "string",
+        },
+        ident="opencomputers:material",
+        damage=13,
         stack=64
     },
 
@@ -837,7 +949,10 @@ M.items = {
     },
     ["redstonecard2"]={
         name="Redstone Card (Tier 2)",
-        recipe={},
+        recipe=recipe3x2(
+            "redstone_block", "chip2", "ender_pearl",
+            nil, "card_base", nil
+        ),
         ident="opencomputers:card",
         damage=5,
         stack=64
@@ -864,56 +979,81 @@ M.items = {
     },
     ["internet_card"]={
         name="Internet Card",
-        recipe={},
+        recipe=recipe3x2(
+            "interweb", "chip2", "redstone_torch",
+            nil, "card_base", "obsidian"
+        ),
         ident="opencomputers:card",
         damage=8,
         stack=64
     },
-    ["linked_card"]={
-        name="Linked Card",
-        recipe={},
-        ident="opencomputers:card",
-        damage=9,
-        stack=64
-    },
+    -- TODO: special recipe creates pairs of cards
+    -- ["linked_card"]={
+    --     name="Linked Card",
+    --     recipe={},
+    --     ident="opencomputers:card",
+    --     damage=9,
+    --     stack=64
+    -- },
     ["datacard1"]={
         name="Data Card (Tier 1)",
-        recipe={},
+        recipe=recipe3x2(
+            "iron_nugget", "alu", "chip2",
+            nil, "card_base", nil
+        ),
         ident="opencomputers:card",
         damage=10,
         stack=64
     },
     ["datacard2"]={
         name="Data Card (Tier 2)",
-        recipe={},
+        recipe=recipe3x2(
+            "gold_nugget", "cpu1", "chip3",
+            nil, "card_base", nil
+        ),
         ident="opencomputers:card",
         damage=11,
         stack=64
     },
     ["datacard3"]={
         name="Data Card (Tier 3)",
-        recipe={},
+        recipe=recipe3x2(
+            "diamond_chip", "cpu2", "ram3",
+            nil, "card_base", nil
+        ),
         ident="opencomputers:card",
         damage=12,
         stack=64
     },
     ["card_upgrade1"]={
         name="Card Container (Tier 1)",
-        recipe={},
+        recipe={
+            "iron_ingot", "chip1", "iron_ingot",
+            "piston", "chest", nil,
+            "iron_ingot", "card_base", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=5,
         stack=64
     },
     ["card_upgrade2"]={
         name="Card Container (Tier 2)",
-        recipe={},
+        recipe={
+            "iron_ingot", "chip2", "iron_ingot",
+            "piston", "chest", nil,
+            "iron_ingot", "card_base", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=6,
         stack=64
     },
     ["card_upgrade3"]={
         name="Card Container (Tier 3)",
-        recipe={},
+        recipe={
+            "gold_ingot", "chip2", "gold_ingot",
+            "piston", "chest", nil,
+            "gold_ingot", "card_base", "gold_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=7,
         stack=64
@@ -958,7 +1098,11 @@ M.items = {
     },
     ["rack_floppy_drive"]={
         name="Rack Disk Drive",
-        recipe={},
+        recipe={
+            "obsidian", "chip1", "obsidian",
+            "iron_fence", "floppy_drive", "iron_fence",
+            "obsidian", "pcb", "obsidian"
+        },
         ident="opencomputers:component",
         damage=20,
         stack=64
@@ -1127,35 +1271,55 @@ M.items = {
 
     ["angel_upgrade"]={
         name="Angel Upgrade",
-        recipe={},
+        recipe={
+            "iron_ingot", "ender_pearl", "iron_ingot",
+            "chip1", "sticky_piston", "chip1",
+            "iron_ingot", "ender_pearl", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=0,
         stack=64
     },
     ["battery_upgrade1"]={
         name="Battery Upgrade (Tier 1)",
-        recipe={},
+        recipe={
+            "iron_nugget", "gold_nugget", "iron_nugget",
+            "iron_fence", "capacitor", "iron_fence",
+            "iron_nugget", "gold_nugget", "iron_nugget"
+        },
         ident="opencomputers:upgrade",
         damage=1,
         stack=64
     },
     ["battery_upgrade2"]={
         name="Battery Upgrade (Tier 2)",
-        recipe={},
+        recipe={
+            "iron_nugget", "capacitor", "iron_nugget",
+            "iron_fence", "gold_nugget", "iron_fence",
+            "iron_nugget", "capacitor", "iron_nugget"
+        },
         ident="opencomputers:upgrade",
         damage=2,
         stack=64
     },
     ["battery_upgrade3"]={
         name="Battery Upgrade (Tier 3)",
-        recipe={},
+        recipe={
+            "iron_nugget", "capacitor", "iron_nugget",
+            "capacitor", "diamond_chip", "capacitor",
+            "iron_nugget", "capacitor", "iron_nugget"
+        },
         ident="opencomputers:upgrade",
         damage=3,
         stack=64
     },
     ["chunkloader_upgrade"]={
         name="Chunkloader Upgrade",
-        recipe={},
+        recipe={
+            "gold_ingot", "glass", "gold_ingot",
+            "chip3", "ender_eye", "chip3",
+            "obsidian", "pcb", "obsidian"
+        },
         ident="opencomputers:upgrade",
         damage=4,
         stack=64
@@ -1173,53 +1337,82 @@ M.items = {
     },
     ["database_upgrade1"]={
         name="Database Upgrade (Tier 1)",
-        recipe={},
+        recipe={
+            "iron_ingot", "analyzer", "iron_ingot",
+            "chip1", "hdd1", "chip1",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=12,
         stack=64
     },
     ["database_upgrade2"]={
         name="Database Upgrade (Tier 2)",
-        recipe={},
+        recipe={
+            "iron_ingot", "analyzer", "iron_ingot",
+            "chip2", "hdd2", "chip2",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=13,
         stack=64
     },
     ["database_upgrade3"]={
         name="Database Upgrade (Tier 3)",
-        recipe={},
+        recipe={
+            "iron_ingot", "analyzer", "iron_ingot",
+            "chip3", "hdd3", "chip3",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=14,
         stack=64
     },
     ["experience_upgrade"]={
         name="Experience Upgrade",
-        recipe={},
+        recipe={
+            "gold_ingot", nil, "gold_ingot",
+            "chip2", "emerald", "chip2",
+            "gold_ingot", "pcb", "gold_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=15,
         stack=64
     },
     ["generator_upgrade"]={
         name="Generator Upgrade",
-        recipe={},
+        recipe={
+            "iron_ingot", nil, "iron_ingot",
+            "chip1", "piston", "chip1",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=16,
         stack=64
     },
     ["hover_upgrade1"]={
         name="Hover Upgrade (Tier 1)",
-        recipe={},
+        recipe={
+            "feather", "chip1", "feather",
+            "iron_nugget", "leather", "iron_nugget",
+            "feather", "pcb", "feather"
+        },
         ident="opencomputers:upgrade",
         damage=27,
         stack=64
     },
-    ["hover_upgrade2"]={
-        name="Hover Upgrade (Tier 2)",
-        recipe={},
-        ident="opencomputers:upgrade",
-        damage=28,
-        stack=64
-    },
+    -- TODO:
+    -- ["hover_upgrade2"]={
+    --     name="Hover Upgrade (Tier 2)",
+    --     recipe={
+    --         "endstone", "chip2", "endstone",
+    --         "gold_nugget", "iron_ingot", "gold_nugget",
+    --         "endstone", "pcb", "endstone"
+    --     },
+    --     ident="opencomputers:upgrade",
+    --     damage=28,
+    --     stack=64
+    -- },
     ["inventory_upgrade"]={
         name="Inventory Upgrade",
         recipe={
@@ -1244,84 +1437,133 @@ M.items = {
     },
     ["leash_upgrade"]={
         name="Leash Upgrade",
-        recipe={},
+        recipe={
+            "iron_ingot", "leash", "iron_ingot",
+            "leash", "cu", "leash",
+            "iron_ingot", "leash", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=26,
         stack=64
     },
-    ["navigation_upgrade"]={
-        name="Navigation Upgrade",
-        recipe={},
-        ident="opencomputers:upgrade",
-        damage=19,
-        stack=64
-    },
+    -- TODO:
+    -- ["navigation_upgrade"]={
+    --     name="Navigation Upgrade",
+    --     recipe={
+    --         "gold_ingot", "compass", "gold_ingot",
+    --         "chip2", "filled_map", "chip2",
+    --         "gold_ingot", "potion", "gold_ingot"
+    --     },
+    --     ident="opencomputers:upgrade",
+    --     damage=19,
+    --     stack=64
+    -- },
     ["piston_upgrade"]={
         name="Piston Upgrade",
-        recipe={},
+        recipe={
+            "iron_ingot", "piston", "iron_ingot",
+            "stick", "chip1", "stick",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=20,
         stack=64
     },
     ["sign_upgrade"]={
         name="Sign I/O Upgrade",
-        recipe={},
+        recipe={
+            "iron_ingot", "dye_black", "iron_ingot",
+            "chip1", "stick", "chip1",
+            "iron_ingot", "sticky_piston", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=21,
         stack=64
     },
     ["solar_upgrade"]={
         name="Solar Generator Upgrade",
-        recipe={},
+        recipe={
+            "glass", "glass", "glass",
+            "chip3", "lapis_block", "chip3",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=22,
         stack=64
     },
     ["tank_upgrade"]={
         name="Tank Upgrade",
-        recipe={},
+        recipe={
+            "planks", "iron_fence", "planks",
+            "dispenser", "cauldron", "piston",
+            "planks", "chip1", "planks"
+        },
         ident="opencomputers:upgrade",
         damage=23,
         stack=64
     },
     ["tank_controller_upgrade"]={
         name="Tank Controller Upgrade",
-        recipe={},
+        recipe={
+            "gold_ingot", "bottle", "gold_ingot",
+            "dispenser", "chip2", "piston",
+            "gold_ingot", "pcb", "gold_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=24,
         stack=64
     },
     ["tractor_beam_upgrade"]={
         name="Tractor Beam Upgrade",
-        recipe={},
+        recipe={
+            "gold_ingot", "piston", "gold_ingot",
+            "iron_ingot", "capacitor", "iron_ingot",
+            "gold_ingot", "chip3", "gold_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=25,
         stack=64
     },
     ["trading_upgrade"]={
         name="Trading Upgrade",
-        recipe={},
+        recipe={
+            "gold_ingot", "chest", "gold_ingot",
+            "emerald", "chip2", "emerald",
+            "dropper", "pcb", "piston"
+        },
         ident="opencomputers:upgrade",
         damage=29,
         stack=64
     },
     ["upgrade_container1"]={
         name="Upgrade Container (Tier 1)",
-        recipe={},
+        recipe={
+            "iron_ingot", "chip1", "iron_ingot",
+            "piston", "chest", nil,
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=8,
         stack=64
     },
     ["upgrade_container2"]={
         name="Upgrade Container (Tier 2)",
-        recipe={},
+        recipe={
+            "iron_ingot", "chip2", "iron_ingot",
+            "piston", "chest", nil,
+            "iron_ingot", "pcb", "iron_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=9,
         stack=64
     },
     ["upgrade_container3"]={
         name="Upgrade Container (Tier 3)",
-        recipe={},
+        recipe={
+            "gold_ingot", "chip2", "gold_ingot",
+            "piston", "chest", nil,
+            "gold_ingot", "pcb", "gold_ingot"
+        },
         ident="opencomputers:upgrade",
         damage=10,
         stack=64
