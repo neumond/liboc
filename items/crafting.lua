@@ -84,4 +84,7 @@ function M.craft(stock, item_id, amountNeeded)
 end
 
 
+M.planCrafting = M.craft
+
+
 return M
