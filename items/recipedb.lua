@@ -531,7 +531,6 @@ M.items = {
     },
     ["dye_red"]={
         name="Rose Red",
-        recipe={},
         ident="minecraft:dye",
         damage=1,
         stack=64
@@ -573,7 +572,8 @@ M.items = {
     },
     ["dye_light_gray"]={
         name="Light Gray Dye",
-        recipe={},
+        recipe=recipe1x2("dye_white", "dye_gray"),
+        output=2,
         ident="minecraft:dye",
         damage=7,
         stack=64
@@ -588,7 +588,8 @@ M.items = {
     },
     ["dye_pink"]={
         name="Pink Dye",
-        recipe={},
+        recipe=recipe1x2("dye_red", "dye_white"),
+        output=2,
         ident="minecraft:dye",
         damage=9,
         stack=64
@@ -603,35 +604,38 @@ M.items = {
     },
     ["dye_yellow"]={
         name="Dandelion Yellow",
-        recipe={},
         ident="minecraft:dye",
         damage=11,
         stack=64
     },
     ["dye_light_blue"]={
         name="Light Blue Dye",
-        recipe={},
+        recipe=recipe1x2("dye_blue", "dye_white"),
+        output=2,
         ident="minecraft:dye",
         damage=12,
         stack=64
     },
     ["dye_magenta"]={
         name="Magenta Dye",
-        recipe={},
+        recipe=recipe1x2("dye_purple", "dye_pink"),
+        output=2,
         ident="minecraft:dye",
         damage=13,
         stack=64
     },
     ["dye_orange"]={
         name="Orange Dye",
-        recipe={},
+        recipe=recipe1x2("dye_red", "dye_yellow"),
+        output=2,
         ident="minecraft:dye",
         damage=14,
         stack=64
     },
     ["dye_white"]={
         name="Bone Meal",
-        recipe={},
+        recipe=recipe1x1("bone"),
+        output=3,
         ident="minecraft:dye",
         damage=15,
         stack=64
@@ -990,7 +994,12 @@ M.items = {
     -- TODO: special recipe creates pairs of cards
     -- ["linked_card"]={
     --     name="Linked Card",
-    --     recipe={},
+    --     recipe={
+    --         "ender_eye", nil, "ender_eye",
+    --         "lancard", "interweb", "lancard",
+    --         "chip3", nil, "chip3"
+    --     },
+    --     output=2,
     --     ident="opencomputers:card",
     --     damage=9,
     --     stack=64
