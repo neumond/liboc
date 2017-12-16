@@ -28,24 +28,36 @@ function regroupCraftLog(craftLog)
 end
 
 
+function recipeSummary(recipe)
+    local r = {}
+    for i=1,9 do
+        local v = recipe[i]
+        if v ~= nil then
+            utils.stock.put(r, v, 1)
+        end
+    end
+    return r
+end
+
+
 function craftInner(stock, item_id, amountNeeded, craftLog, needStock)
     local amountForCraft = getAmountForCraft(stock, item_id, amountNeeded)
     if amountForCraft <= 0 then
         return craftLog, needStock
     end
 
-    local recipe = db.items[item_id].recipe
+    local recipe = db.getRecipe(item_id)
     if recipe == nil then
         utils.stock.put(needStock, item_id, amountForCraft)
         utils.stock.put(stock, item_id, amountForCraft)
         return craftLog, needStock
     end
 
-    local output = db.recipeOutput(item_id)
+    local output = db.getRecipeOutput(item_id)
     local plannedRepeats = math.ceil(amountForCraft / output)
 
     -- gather requirements
-    local recipeSum = db.recipeSummary(recipe)
+    local recipeSum = recipeSummary(recipe)
     local takenForCraft = {}
     for reqId, recipeAmount in pairs(recipeSum) do
         local reqAmount = recipeAmount * plannedRepeats

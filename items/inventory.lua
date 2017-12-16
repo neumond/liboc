@@ -141,7 +141,7 @@ function M.assemble(itemId, amount)
         print(string.format("Assembling %s", db.getItemName(v.item)))
         for k=1,v.times do
             print(string.format("Pass %i of %i", k, v.times))
-            if not M.assembleRecipe(db.items[v.item].recipe, db.recipeOutput(v.item)) then
+            if not M.assembleRecipe(db.getRecipe(v.item), db.getRecipeOutput(v.item)) then
                 print("Recipe assembly has failed")
                 return false
             end

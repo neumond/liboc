@@ -295,9 +295,8 @@ end
 
 function Storage.assembleRecipe(itemId, neededAmount)
     assert(neededAmount > 0)
-    local dbItem = db.items[itemId]
-    local output = db.recipeOutput(itemId)
-    local maxCrafts = math.floor(dbItem.stack / output)
+    local output = db.getRecipeOutput(itemId)
+    local maxCrafts = math.floor(db.getItemStack(itemId) / output)
     assert(maxCrafts > 0)
 
     Storage.cleanTable()
@@ -309,8 +308,9 @@ function Storage.assembleRecipe(itemId, neededAmount)
         local amountToCraft = nCrafts * output
         neededAmount = neededAmount - amountToCraft
 
+        local recipe = db.getRecipe(itemId)
         for i=1,9 do
-            local itemId = dbItem.recipe[i]
+            local itemId = recipe[i]
             if itemId ~= nil then
                 Storage.fillTableSlot(i, itemId, nCrafts)
             end
@@ -341,7 +341,7 @@ function Storage.assemble(itemId, amount)
     end
 
     for i, v in ipairs(clog) do
-        local q = v.times * db.recipeOutput(v.item)
+        local q = v.times * db.getRecipeOutput(v.item)
         print(string.format("Assembling %i of %s", q, db.getItemName(v.item)))
         Storage.assembleRecipe(v.item, q)
     end

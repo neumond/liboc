@@ -1,5 +1,4 @@
 local M = {}
-local utils = require("utils")
 
 
 function recipe1x1(item)
@@ -1657,6 +1656,9 @@ M.items = {
 }
 
 
+-- Self checks
+
+
 local detection_map = {}
 for k, v in pairs(M.items) do
     assert(v.ident ~= nil)
@@ -1694,7 +1696,21 @@ for k, v in pairs(M.items) do
 end
 
 
+-- Module interface
+
+
 function M.detect(slot)
+    -- argument is output of inventory_controller_upgrade's getStackInSlot/getStackInInternalSlot
+    -- M.detect({
+    --     name="minecraft:crafting_table",
+    --     damage=0,
+    --     maxDamage=0,
+    --     size=1,
+    --     maxSize=64,
+    --     label="Crafting Table",
+    --     hasTag=false
+    -- })
+    -- ="workbench"
     if slot == nil then return end
     local s = detection_map[slot.name]
     if s == nil then return end
@@ -1703,13 +1719,63 @@ function M.detect(slot)
 end
 
 
+function M.getItemType(itemId)
+    -- M.getItemType("workbench")
+    -- ="craftable"
+    local x = M.items[itemId]
+    if x.recipe ~= nil then
+        return "craftable"
+    elseif x.furnace ~= nil then
+        return "smeltable"
+    else
+        return "raw"
+    end
+end
+
+
+function M.getItemName(itemId)
+    -- M.getItemName("workbench")
+    -- ="Crafting Table"
+    return M.items[itemId].name
+end
+
+
+function M.getItemStack(itemId)
+    -- M.getItemStack("workbench")
+    -- =64
+    return M.items[itemId].stack
+end
+
+
+function M.getRecipe(itemId)
+    -- M.getRecipe("workbench")
+    -- ={
+    --     1="planks",
+    --     2="planks",
+    --     4="planks",
+    --     5="planks",
+    -- }
+    return M.items[itemId].recipe
+end
+
+
+function M.getRecipeOutput(itemId)
+    -- M.getRecipeOutput("iron_nugget")
+    -- =9
+    local output = M.items[item_id].output
+    if output == nil then output = 1 end
+    return output
+end
+
+
 function M.formatRecipe(recipe)
+    -- print(M.formatRecipe(M.getRecipe("workbench")))
     local widths={}
 
     function getName(row, col)
-        local name = recipe[row * 3 + col - 3]
-        if name == nil then return "" end
-        return M.items[name]["name"]
+        local item = recipe[row * 3 + col - 3]
+        if item == nil then return "" end
+        return M.getItemName(item)
     end
 
     for col=1,3 do
@@ -1734,30 +1800,6 @@ function M.formatRecipe(recipe)
         rows[row] = table.concat(r, " | ")
     end
     return table.concat(rows, "\n")
-end
-
-
-function M.recipeSummary(recipe)
-    local r = {}
-    for i=1,9 do
-        local v = recipe[i]
-        if v ~= nil then
-            utils.stock.put(r, v, 1)
-        end
-    end
-    return r
-end
-
-
-function M.recipeOutput(item_id)
-    local output = M.items[item_id].output
-    if output == nil then output = 1 end
-    return output
-end
-
-
-function M.getItemName(item_id)
-    return M.items[item_id].name
 end
 
 
