@@ -1684,6 +1684,11 @@ for k, v in pairs(M.items) do
     if v.furnace ~= nil then
         assert(M.items[v.furnace] ~= nil, "Unknown item in recipe: " .. v.furnace)
     end
+    assert(v.name ~= nil)
+    assert(type(v.name) == "string")
+    assert(v.stack ~= nil)
+    assert(v.stack > 0)
+    assert(v.stack <= 64)
 end
 
 

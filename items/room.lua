@@ -16,6 +16,7 @@ local invModule = require("inventory")
 local db = require("recipedb")
 local utils = require("utils")
 local IntegratedIndex = require("roomindex").IntegratedIndex
+local planCrafting = require("crafting").planCrafting
 local M = {}
 
 
@@ -208,9 +209,9 @@ function Storage.initialize()
     Storage.index = IntegratedIndex.new()
 
     function addSlot(address)
-        local itemData = address:getStack()
-        local itemId = db.detect(itemData)
-        return Storage.index:registerSlot(address, itemId)
+        local slotId = Storage.index:registerSlot(address)
+        Storage.updateSlotIndex(slotId)
+        return slotId
     end
 
     for k in invModule.iterNonTableSlots() do
@@ -233,7 +234,7 @@ function Storage.tableSlotToRealSlot(tableSlot)
 end
 
 
-function Storage.updateSlotIndex(self, slotId)
+function Storage.updateSlotIndex(slotId)
     local accessor = Storage.index:getAddress(slotId)
     local itemData = accessor:getStack()
     if itemData == nil then
@@ -242,7 +243,7 @@ function Storage.updateSlotIndex(self, slotId)
     end
     local itemId = db.detect(itemData)
     assert(itemId ~= nil, "Unknown item in storage slot")
-    Storage.index:refill(slotId, itemId, itemData.size < itemData.maxSize)
+    Storage.index:refill(slotId, itemId, itemData.size, itemData.maxSize)
 end
 
 
@@ -290,52 +291,61 @@ function Storage.cleanTable()
 end
 
 
-function Storage.assembleRecipe(itemId, amount)
+function Storage.assembleRecipe(itemId, neededAmount)
+    assert(neededAmount > 0)
     local dbItem = db.items[itemId]
-    if amount > 1 then
-        local maxAmount
-        db.recipeOutput(itemId)
-    end
+    local output = db.recipeOutput(itemId)
+    local maxCrafts = math.floor(dbItem.stack / output)
+    assert(maxCrafts > 0)
+    local maxAmount = maxCrafts * output
 
     Storage.cleanTable()
-    for i=1,9 do
-        local itemId = dbItem.recipe[i]
-        if itemId ~= nil then
-            Storage.fillTableSlot(i, itemId, 1)
-        end
-    end
-    robot.select(Storage.tableSlotToRealSlot("output"))
+    repeat
+        local nCrafts = math.min(
+            math.floor(neededAmount / output),
+            maxCrafts
+        )
+        local amountToCraft = nCrafts * output
+        neededAmount = neededAmount - amountToCraft
 
-    local success, n = component.crafting.craft(amount)
-    assert(success, "Crafting has failed")
-    assert(n > 0, "Nothing has been crafted")
+        for i=1,9 do
+            local itemId = dbItem.recipe[i]
+            if itemId ~= nil then
+                Storage.fillTableSlot(i, itemId, nCrafts)
+            end
+        end
+
+        robot.select(Storage.tableSlotToRealSlot("output"))
+
+        local success, n = component.crafting.craft(amountToCraft)
+        assert(success, "Crafting has failed")
+        assert(n > 0, "Nothing has been crafted")
+        assert(n == amountToCraft, "Crafted less than assigned")
+        if neededAmount > 0 then
+            Storage.cleanTableSlot("output")
+        end
+    until neededAmount <= 0
 end
 
 
--- function M.assemble(itemId, amount)
---     if amount == nil then amount = 1 end
---     local success, clog = craftingPlanner.craft(M.getStockData(), itemId, amount)
---     if not success then
---         print("Not enough items")
---         for k, v in pairs(clog) do
---             print(string.format("%s: %i", db.getItemName(k), v))
---         end
---         return false
---     end
---
---     for i, v in ipairs(clog) do
---         print(string.format("Assembling %s", db.getItemName(v.item)))
---         for k=1,v.times do
---             print(string.format("Pass %i of %i", k, v.times))
---             if not M.assembleRecipe(db.items[v.item].recipe, db.recipeOutput(v.item)) then
---                 print("Recipe assembly has failed")
---                 return false
---             end
---         end
---     end
---     print("Finished successfully.")
---     return true
--- end
+function Storage.assemble(itemId, amount)
+    if amount == nil then amount = 1 end
+    local success, clog = planCrafting(Storage.index.slots.stock, itemId, amount)
+    if not success then
+        print("Not enough items")
+        for k, v in pairs(clog) do
+            print(string.format("%s: %i", db.getItemName(k), v))
+        end
+        return false
+    end
+
+    for i, v in ipairs(clog) do
+        print(string.format("Assembling %s", db.getItemName(v.item)))
+        Storage.assembleRecipe(itemId, v.times * db.recipeOutput(v.item))
+    end
+    print("Finished successfully.")
+    return true
+end
 
 
 --
@@ -344,7 +354,11 @@ end
 function runOperation(func)
     assert(robot.up())
 
-    func()
+    local success, err = pcall(func)
+    if not success then
+        print("Error has occured:")
+        print(err)
+    end
 
     Navigation.gotoPosition(0, 0)
     Navigation.rotate("Z+")
@@ -352,14 +366,13 @@ function runOperation(func)
 end
 
 
-function main()
-    for _, i in ipairs({5, 7, 1, 3, 4, 2}) do
-        local x, z, ud = Navigation.getChestPosition(i)
-        Navigation.gotoPosition(x, z)
-    end
+function asmWrap(itemId, amount)
+    runOperation(function()
+        Storage.initialize()
+        Storage.assemble(itemId, amount)
+    end)
 end
 
 
-M.runOperation = runOperation
-M.StorageIndex = StorageIndex
+M.asmWrap = asmWrap
 return M

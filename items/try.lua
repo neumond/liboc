@@ -26,26 +26,18 @@ function craftPlanning()
 end
 
 
-function roomPositions()
-    -- 0  Z+
-    -- 1  X+
-    -- 2  Z-
-    -- 3  X-
-
-
-
-    function rotate(from, to)
-        
+function errtest()
+    function func()
+        assert(false, "lol")
     end
 
-
-    for _, from in ipairs(fwdMap) do
-        for _, to in ipairs(fwdMap) do
-            print(from, to, rotate(from, to))
-        end
+    local success, err = pcall(func)
+    if not success then
+        print("Error occured")
+        print(err)
     end
 end
 
 
 -- craftPlanning()
-roomPositions()
+errtest()

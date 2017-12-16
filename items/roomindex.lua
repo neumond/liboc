@@ -240,13 +240,9 @@ local IntegratedIndex = makeClass(function(self)
 end)
 
 
-function IntegratedIndex.registerSlot(self, address, itemId, halfFilled)
+function IntegratedIndex.registerSlot(self, address)
     local slotId = self.slots:registerSlot(address)
-    if itemId == nil then
-        self:empty(slotId)
-    else
-        self:refill(slotId, itemId, halfFilled)
-    end
+    self:empty(slotId)
     return slotId
 end
 
