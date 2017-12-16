@@ -515,6 +515,4 @@ end
 
 
 -- runTests()
-local M = {}
-M.IntegratedIndex = IntegratedIndex
-return M
+return IntegratedIndex

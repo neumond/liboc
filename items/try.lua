@@ -68,7 +68,29 @@ function variadic()
 end
 
 
+function keycodes()
+    local event = require("event")
+    for i=1,10 do
+        local evt, adr, char, code, player = event.pull("key_down")
+        print(evt, adr, char, code, player)
+    end
+end
+
+
+function returnFromDoBlock()
+    local b
+    do
+        function b(x)
+            return x + 2
+        end
+    end
+    print(b(2))
+end
+
+
 -- craftPlanning()
 -- errtest()
 -- variableHiding()
-variadic()
+-- variadic()
+-- keycodes()
+returnFromDoBlock()
