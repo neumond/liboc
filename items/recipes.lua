@@ -2,8 +2,9 @@ local menulib = require("menulib")
 local Menu = menulib.Menu
 local db = require("recipedb")
 local term = require("term")
-local inv = require("inventory")
+local room = require("room")
 local event = require("event")
+local assembleFunc = false
 
 
 function waitForKey()
@@ -50,7 +51,7 @@ Menu.addItem = function(self, item_id)
                         title="Assemble",
                         run=function()
                             term.clear()
-                            inv.assemble(item_id, 1)
+                            assembleFunc(item_id, 1)
                             waitForKey()
                         end
                     })
@@ -161,7 +162,9 @@ local cat = {
 }
 
 
-function main()
+function main(af)
+    assembleFunc = af
+
     local menuFunc = makeMenu(function(menu)
         return menu
             :addCategory(cat.cases)
@@ -179,4 +182,4 @@ function main()
 end
 
 
-main()
+room(main)

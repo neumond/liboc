@@ -1,7 +1,8 @@
 -- constants
 
 
-local CHEST_CASCADES = 3
+-- local CHEST_CASCADES = 3
+local CHEST_CASCADES = 1
 local maxChests = CHEST_CASCADES * 4
 
 
@@ -352,8 +353,11 @@ end
 
 function runOperation(func)
     assert(robot.up())
+    Storage.initialize()
 
-    local success, err = pcall(func)
+    local success, err = pcall(function()
+        func(Storage.assemble)
+    end)
     if not success then
         print("Error has occured:")
         print(err)
@@ -365,12 +369,4 @@ function runOperation(func)
 end
 
 
-function asmWrap(itemId, amount)
-    runOperation(function()
-        Storage.initialize()
-        Storage.assemble(itemId, amount)
-    end)
-end
-
-
-asmWrap("piston", 70)
+return runOperation
