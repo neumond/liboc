@@ -220,6 +220,7 @@ M.items = {
             "glass", nil, "glass",
             nil, "glass", nil
         ),
+        output=3,
         ident="minecraft:glass_bottle",
         damage=0,
         stack=64
@@ -353,6 +354,7 @@ M.items = {
             "string", "slime_ball", nil,
             nil, nil, "string",
         },
+        output=2,
         ident="minecraft:lead",
         damage=0,
         stack=64

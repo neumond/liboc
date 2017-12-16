@@ -4,7 +4,6 @@ local db = require("recipedb")
 local term = require("term")
 local room = require("room")
 local event = require("event")
-local assembleFunc = false
 
 
 function waitForKey()
@@ -51,7 +50,9 @@ Menu.addItem = function(self, item_id)
                         title="Assemble",
                         run=function()
                             term.clear()
-                            assembleFunc(item_id, 1)
+                            room(function(assembleFunc)
+                                assembleFunc(item_id, 1)
+                            end)
                             waitForKey()
                         end
                     })
@@ -123,16 +124,64 @@ local cat = {
                 :addItem("lancard")
                 :addItem("cable")
                 :addItem("wlancard")
-                :addItem("redstonecard")
+                :addItem("redstonecard1")
+                :addItem("redstonecard2")
+                :addItem("internet_card")
+                :addItem("datacard1")
+                :addItem("datacard2")
+                :addItem("datacard3")
         end)
     },
-    upgrades = {
-        title="Upgrades",
+    upgrades1 = {
+        title="Tier 1",
         run=makeMenu(function(menu)
             return menu
+                :addItem("battery_upgrade1")
+                :addItem("database_upgrade1")
+                :addItem("hover_upgrade1")
                 :addItem("inventory_upgrade")
-                :addItem("inventory_controller_upgrade")
+                :addItem("leash_upgrade")
+                :addItem("piston_upgrade")
+                :addItem("sign_upgrade")
+                :addItem("tank_upgrade")
+        end)
+    },
+    upgrades2 = {
+        title="Tier 2",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("angel_upgrade")
+                :addItem("battery_upgrade2")
                 :addItem("crafting_upgrade")
+                :addItem("database_upgrade2")
+                :addItem("generator_upgrade")
+                :addItem("inventory_controller_upgrade")
+                :addItem("solar_upgrade")
+                :addItem("tank_controller_upgrade")
+                :addItem("trading_upgrade")
+        end)
+    },
+    upgrades3 = {
+        title="Tier 3",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("battery_upgrade3")
+                :addItem("chunkloader_upgrade")
+                :addItem("database_upgrade3")
+                :addItem("experience_upgrade")
+                :addItem("tractor_beam_upgrade")
+        end)
+    },
+    slots = {
+        title="Slots",
+        run=makeMenu(function(menu)
+            return menu
+                :addItem("card_upgrade1")
+                :addItem("card_upgrade2")
+                :addItem("card_upgrade3")
+                :addItem("upgrade_container1")
+                :addItem("upgrade_container2")
+                :addItem("upgrade_container3")
         end)
     },
     devices = {
@@ -163,8 +212,6 @@ local cat = {
 
 
 function main(af)
-    assembleFunc = af
-
     local menuFunc = makeMenu(function(menu)
         return menu
             :addCategory(cat.cases)
@@ -172,7 +219,16 @@ function main(af)
             :addCategory(cat.ram)
             :addCategory(cat.storage)
             :addCategory(cat.cards)
-            :addCategory(cat.upgrades)
+            :addCategory({
+                title="Upgrades",
+                run=makeMenu(function(menu)
+                    return menu
+                        :addCategory(cat.upgrades1)
+                        :addCategory(cat.upgrades2)
+                        :addCategory(cat.upgrades3)
+                end)
+            })
+            :addCategory(cat.slots)
             :addCategory(cat.devices)
             :addCategory(cat.printing)
             :addCategory(cat.test)
@@ -182,4 +238,4 @@ function main(af)
 end
 
 
-room(main)
+main()

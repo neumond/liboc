@@ -253,6 +253,7 @@ function Storage.cleanTableSlot(tableSlot)
     if itemData == nil then return end  -- already empty
     local itemId = db.detect(itemData)
     assert(itemId ~= nil, "Unknown item in table slot")
+    robot.select(localSlotId)
 
     repeat
         slotId = Storage.index:findOutputSlot(itemId)
@@ -320,7 +321,7 @@ function Storage.assembleRecipe(itemId, neededAmount)
         local success, n = component.crafting.craft(amountToCraft)
         assert(success, "Crafting has failed")
         assert(n > 0, "Nothing has been crafted")
-        assert(n == amountToCraft, "Crafted less than assigned")
+        assert(n == amountToCraft, "Crafted unexpected amount")
         if neededAmount > 0 then
             Storage.cleanTableSlot("output")
         end
@@ -340,8 +341,9 @@ function Storage.assemble(itemId, amount)
     end
 
     for i, v in ipairs(clog) do
-        print(string.format("Assembling %s", db.getItemName(v.item)))
-        Storage.assembleRecipe(v.item, v.times * db.recipeOutput(v.item))
+        local q = v.times * db.recipeOutput(v.item)
+        print(string.format("Assembling %i of %s", q, db.getItemName(v.item)))
+        Storage.assembleRecipe(v.item, q)
     end
     print("Finished successfully.")
     return true
@@ -354,6 +356,7 @@ end
 function runOperation(func)
     assert(robot.up())
     Storage.initialize()
+    Storage.cleanTable()
 
     local success, err = pcall(function()
         func(Storage.assemble)
