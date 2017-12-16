@@ -39,5 +39,36 @@ function errtest()
 end
 
 
+function variableHiding()
+    function f(a)
+        print(a)
+        for i=1,3 do
+            local a=5
+            print(a)
+        end
+        print(a)
+    end
+
+    f(3)
+end
+
+
+function variadic()
+    function inner(...)
+        print(...)
+    end
+    function x(...)
+        inner("lol", ...)
+    end
+
+    x(1)
+    x(nil, 2)
+    x(2, 3, 4)
+    inner(3, "c", 8)
+end
+
+
 -- craftPlanning()
-errtest()
+-- errtest()
+-- variableHiding()
+variadic()

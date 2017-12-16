@@ -255,6 +255,7 @@ end
 
 
 function IntegratedIndex.empty(self, slotId)
+    local existingItem = self.slots:get(slotId)
     self.itemToSlot:empty(existingItem, slotId)
     self.emptyIndex:empty(slotId)
     self.slots:empty(slotId)
@@ -459,6 +460,46 @@ function testSlotIndex()
 end
 
 
+function testRealBug1()
+    local initialItems = {}
+    for i=239,247 do
+        initialItems[i] = {"cobblestone", 64, 64}
+    end
+    for i=347,349 do
+        initialItems[i] = {"redstone", 64, 64}
+    end
+    for i=401,410 do
+        initialItems[i] = {"iron_ingot", 64, 64}
+    end
+    initialItems[509] = {"wood", 64, 64}
+    initialItems[563] = {"wood", 64, 64}
+    initialItems[564] = {"wood", 64, 64}
+
+    local x = IntegratedIndex.new()
+    for i=1,670 do
+        x:registerSlot(nil)
+        if initialItems[i] ~= nil then
+            x:refill(i, unpack(initialItems[i]))
+        else
+            x:empty(i)
+        end
+    end
+
+    x:refill(509, "wood", 48, 64)
+    x:refill(1, "planks", 64, 64)
+    x:refill(509, "wood", 32, 64)
+    x:refill(2, "planks", 64, 64)
+    x:refill(509, "wood", 16, 64)
+    x:refill(3, "planks", 64, 64)
+    x:refill(509, "wood", 11, 64)
+    x:refill(4, "planks", 20, 64)
+    x:empty(4)
+
+    local slotId = x:findInputSlot("planks")
+    assert(slotId == 1)
+end
+
+
 function runTests()
     testItemToSlotIndex_simple()
     testItemToSlotIndex_halfToFull()
@@ -466,13 +507,14 @@ function runTests()
     testItemToSlotIndex_idemp()
     testEmptySlotIndex()
     testSlotIndex()
+    testRealBug1()
 end
 
 
 -- Module export
 
 
-runTests()
+-- runTests()
 local M = {}
 M.IntegratedIndex = IntegratedIndex
 return M

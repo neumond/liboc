@@ -17,7 +17,6 @@ local db = require("recipedb")
 local utils = require("utils")
 local IntegratedIndex = require("roomindex").IntegratedIndex
 local planCrafting = require("crafting").planCrafting
-local M = {}
 
 
 -- General navigation on a plane
@@ -230,7 +229,7 @@ function Storage.tableSlotToRealSlot(tableSlot)
     if tableSlot == "output" then
         return invModule.tableOutputSlot
     end
-    return M.tableSlots[tableSlot]
+    return invModule.tableSlots[tableSlot]
 end
 
 
@@ -271,12 +270,13 @@ function Storage.fillTableSlot(tableSlot, itemId, amount)
     assert(amount > 0)
     assert(amount <= 64)
     local localSlotId = Storage.tableSlotToRealSlot(tableSlot)
-    local itemData = nil
+    robot.select(localSlotId)
+    local itemData = {size=0}
 
     repeat
         slotId = Storage.index:findInputSlot(itemId)
         assert(slotId ~= nil, "No slot with such item available")
-        Storage.index:getAddress(slotId):suck(amount)
+        Storage.index:getAddress(slotId):suck(amount - itemData.size)
         Storage.updateSlotIndex(slotId)
         itemData = invComp.getStackInInternalSlot(localSlotId)
     until itemData.size == amount
@@ -297,7 +297,6 @@ function Storage.assembleRecipe(itemId, neededAmount)
     local output = db.recipeOutput(itemId)
     local maxCrafts = math.floor(dbItem.stack / output)
     assert(maxCrafts > 0)
-    local maxAmount = maxCrafts * output
 
     Storage.cleanTable()
     repeat
@@ -341,7 +340,7 @@ function Storage.assemble(itemId, amount)
 
     for i, v in ipairs(clog) do
         print(string.format("Assembling %s", db.getItemName(v.item)))
-        Storage.assembleRecipe(itemId, v.times * db.recipeOutput(v.item))
+        Storage.assembleRecipe(v.item, v.times * db.recipeOutput(v.item))
     end
     print("Finished successfully.")
     return true
@@ -374,5 +373,4 @@ function asmWrap(itemId, amount)
 end
 
 
-M.asmWrap = asmWrap
-return M
+asmWrap("piston", 70)
