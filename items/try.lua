@@ -115,6 +115,38 @@ function multiParams()
 end
 
 
+function renderingMarkup()
+    local m = require("ui.markup")
+
+    local lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras feugiat mattis augue condimentum finibus. Quisque vestibulum justo ut nisl interdum suscipit. Sed sed nunc vitae orci scelerisque viverra at ultricies metus. Nullam quam mauris, consectetur eu nunc sed, posuere ullamcorper quam. Phasellus eu turpis sed ipsum suscipit egestas viverra id odio. Duis hendrerit facilisis finibus. Maecenas consequat quis lorem ut mattis. Proin ultrices lectus ut felis tincidunt, eu porta quam mattis. Cras sagittis erat consectetur condimentum rhoncus. Curabitur convallis convallis mauris sed convallis. Curabitur a quam ac nisl sodales bibendum. Nunc ut sem eleifend leo viverra blandit vitae ac augue. Etiam faucibus ligula ac sem tempus ultrices. Donec suscipit ullamcorper nibh eu aliquam."
+
+    lipsumTable = {}
+    for w in lipsum:gmatch("%S+") do
+        table.insert(lipsumTable, w)
+    end
+
+    local text = m.Div(
+        m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
+        m.Div(table.unpack(lipsumTable))
+    )
+
+    local gpu = {
+        getResolution=function()
+            return 50, 50
+        end,
+        fill=function(x, y, w, h, char)
+            print("FILL", x, y, w, h, char)
+        end,
+        set=function(x, y, s)
+            print("SET", x, y, s)
+        end
+    }
+    -- local gpu = require("component").gpu
+
+    m.render(text, gpu)
+end
+
+
 -- craftPlanning()
 -- errtest()
 -- variableHiding()
@@ -122,4 +154,5 @@ end
 -- keycodes()
 -- returnFromDoBlock()
 -- coros()
-multiParams()
+-- multiParams()
+renderingMarkup()
