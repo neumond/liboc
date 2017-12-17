@@ -29,26 +29,35 @@ end
 
 function M.bufferingIterator(createIter)
     local buf = {}
-    local front = 1
+    local front = 0
     local back = 1
+    local flushUntil = front
     local finish = false
 
     function append(...)
-        buf[front] = {...}
         front = front + 1
+        buf[front] = {...}
+        return front
     end
 
     function prepend(...)
         back = back - 1
         buf[back] = {...}
+        return back
     end
 
     local iter = createIter(append, prepend)
     return function()
-        if front == back then
+        if flushUntil <= back then
             if finish then return nil end
-            finish = finish or iter()
+            finish, flushUntil = iter()
+            if flushUntil == nil then flushUntil = front end
         end
+        -- print("PUT", "back=", back, "front=", front, "flushUntil=", flushUntil)
+        -- for k, v in pairs(buf) do
+        --     print(k, v)
+        -- end
+        -- print("===")
         local value = buf[back]
         buf[back] = nil
         back = back + 1

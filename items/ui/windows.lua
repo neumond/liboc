@@ -40,7 +40,7 @@ local Element = utils.makeClass(function(self, ...)
     -- Abstract Element contains some text
     -- This class is intended for subclassing
     self.children = {...}
-    self.class = nil
+    self.className = nil
 end)
 
 
@@ -53,14 +53,14 @@ end
 
 
 function Element:class(s)
-    self.class = s
+    self.className = s
     return self
 end
 
 
 function Element:iterTokensCoro()
-    if self.class ~= nil then
-        coroutine.yield(Flow.pushClass, self.class)
+    if self.className ~= nil then
+        coroutine.yield(Flow.pushClass, self.className)
     end
 
     for _, child in ipairs(self.children) do
@@ -73,7 +73,7 @@ function Element:iterTokensCoro()
         end
     end
 
-    if self.class ~= nil then
+    if self.className ~= nil then
         coroutine.yield(Flow.popClass)
     end
 end
@@ -90,48 +90,69 @@ function removeGlueAddWordLengths(iter)
     -- i.e. Flow.glue makes next Flow.string non word-breaking
     return utils.bufferingIterator(function(append, prepend)
         local prevGlue = true
-        local overflow = nil
         local accuLength = 0
 
         function appendString(s)
             accuLength = accuLength + #s
-            append(Flow.string, s)
+            return append(Flow.string, s)
         end
 
         function flushWord()
+            if accuLength == 0 then return end  -- no word have accumulated
             prepend(Flow.wordSize, accuLength)
             accuLength = 0
         end
 
         return function()
-            if overflow ~= nil then
-                appendString(overflow)
-                overflow = nil
-            end
             while true do
                 local cmd, val = iter()
                 if cmd == nil then
                     flushWord()
-                    return true
-                end
-                if cmd == Flow.glue then
-                    prevGlue = true
-                else
-                    if cmd == Flow.string then
-                        if not prevGlue then
-                            overflow = val
-                            flushWord()
-                            return false
-                        end
-                        prevGlue = false
+                    return true, nil
+                elseif cmd == Flow.glue then
+                    prevGlue = true  -- setting flag and skipping this command
+                elseif cmd == Flow.string then
+                    if not prevGlue then  -- non-glued word boundary detected
+                        flushWord()
+                        local idx = appendString(val)
+                        return false, idx - 1  -- output everything except last string
+                    else  -- glued case
+                        prevGlue = false  -- reset flag
                         appendString(val)
-                    else
-                        append(cmd, val)
                     end
+                elseif cmd == Flow.newLine then
+                    flushWord()
+                    append(cmd, val)
+                    return false, nil
+                else
+                    append(cmd, val)
                 end
             end
         end
     end)
+end
+
+
+function squashNewLines(iter)
+    local prevNewLine = true  -- true to omit first newLine
+    return function()
+        while true do
+            local cmd, val = iter()
+            if cmd == nil then
+                return nil
+            elseif cmd ~= Flow.newLine then
+                if cmd == Flow.string then
+                    prevNewLine = false  -- has some content, don't omit newLine
+                end
+                return cmd, val
+            else
+                if not prevNewLine then
+                    prevNewLine = true
+                    return cmd, val
+                end
+            end
+        end
+    end
 end
 
 
@@ -177,6 +198,14 @@ function Div:iterTokens()
 end
 
 
+
+function Div:iterTokensCoro()
+    coroutine.yield(Flow.newLine)
+    Element.iterTokensCoro(self)
+    coroutine.yield(Flow.newLine)
+end
+
+
 -- function Div:render(context)
 --     context:block()
 --     assert(false, "Not implemented")
@@ -212,13 +241,13 @@ end)
 
 function makeTestDiv()
     -- <div class="quote">Some nonbr<span class="highlight">eaking</span> word</div>
-    return Div("Some", "nonbr", NBR, Span("eaking"):class("highlight"), "words"):class("quote")
+    return Div(Div(Div("Some", "nonbr", NBR, Span("eaking"):class("highlight"), "words"):class("quote")))
 end
 
 
 function testPrimitives()
     local p = makeTestDiv()
-    for cmd, value in removeGlueAddWordLengths(p:iterTokens()) do
+    for cmd, value in squashNewLines(removeGlueAddWordLengths(p:iterTokens())) do
         print(FlowNames[cmd], value)
     end
 end
