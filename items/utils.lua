@@ -66,7 +66,7 @@ function M.bufferingIterator(createIter)
             if finish then return nil end
             finish, flushUntil = iter()
             if flushUntil == nil then flushUntil = front end
-            if flushedAll() then return nil end
+            if finish and flushedAll() then return nil end
         end
         local value = buf[back]
         buf[back] = nil

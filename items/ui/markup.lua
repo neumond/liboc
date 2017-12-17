@@ -246,14 +246,9 @@ function render(markup, gpu)
     --   set
     -- it can be a proxy object to render into constrained parts of screen
 
-    for cmd, val in removeGlueAddWordLengths(markup:iterTokens()) do
-        print(cmd, val)
-    end
-
-    -- return renderInner(
-    --     squashNewLines(removeGlueAddWordLengths(markup:iterTokens())),
-    --     ,
-    --     gpu)
+    return renderInner(
+        squashNewLines(removeGlueAddWordLengths(markup:iterTokens())),
+        gpu)
 end
 
 

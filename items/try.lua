@@ -124,24 +124,25 @@ function renderingMarkup()
     for w in lipsum:gmatch("%S+") do
         table.insert(lipsumTable, w)
     end
+    lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
     local text = m.Div(
         m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
         m.Div(table.unpack(lipsumTable))
     )
 
-    local gpu = {
-        getResolution=function()
-            return 50, 50
-        end,
-        fill=function(x, y, w, h, char)
-            print("FILL", x, y, w, h, char)
-        end,
-        set=function(x, y, s)
-            print("SET", x, y, s)
-        end
-    }
-    -- local gpu = require("component").gpu
+    -- local gpu = {
+    --     getResolution=function()
+    --         return 50, 50
+    --     end,
+    --     fill=function(x, y, w, h, char)
+    --         print("FILL", x, y, w, h, char)
+    --     end,
+    --     set=function(x, y, s)
+    --         print("SET", x, y, s)
+    --     end
+    -- }
+    local gpu = require("component").gpu
 
     m.render(text, gpu)
 end
