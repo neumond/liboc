@@ -11,6 +11,16 @@ local Flow = {
 }
 
 
+local FlowNames = {  -- TODO: remove
+    [1]="string",
+    [2]="glue",
+    [3]="push",
+    [4]="pop",
+    [5]="newline",
+    [6]="word"
+}
+
+
 local NBR = {_isGlue=true}
 
 
@@ -74,66 +84,84 @@ function Element:iterTokens()
 end
 
 
-function smartElementIter(elm)
-    local iter = elm:iterTokens()
-
-    local prevGlue = true
+function bufferingIterator(createIter)
     local buf = {}
-    local bi = 0
-    local flui = 0
-    local accuLen = 0
-    local flushing = false
-    local overDelay = nil
+    local front = 1
+    local back = 1
+    local finish = false
 
-    function flush()
-        if accuLen > 0 then  -- word length first
-            local a = accuLen
-            accuLen = 0
-            return Flow.wordSize, a
-        end
-        if flui < bi then
-            flui = flui + 2
-            return buf[flui], buf[flui - 1]
-        end
-        buf = {}
-        flushing = false
-        delay(overDelay.cmd, overDelay.val)
+    function append(...)
+        buf[front] = {...}
+        front = front + 1
     end
 
-    function delay(cmd, value)
-        buf[bi + 1] = value
-        buf[bi + 2] = cmd
-        bi = bi + 2
-        if cmd == Flow.string then
-            accuLen = accuLen + #value
-        end
+    function prepend(...)
+        back = back - 1
+        buf[back] = {...}
     end
 
+    local iter = createIter(append, prepend)
     return function()
-        while true do
-            if flushing then
-                local cmd, val = flush()
-                if cmd ~= nil then return cmd, val end
-            else
+        if front == back then
+            if finish then return nil end
+            finish = finish or iter()
+        end
+        local value = buf[back]
+        buf[back] = nil
+        back = back + 1
+        return unpack(value)
+    end
+end
+
+
+function smartElementIter2(iter)
+    -- splitting point of words
+    -- Flow.string not preceded by Flow.glue
+    -- i.e. Flow.glue makes next Flow.string non word-breaking
+    return bufferingIterator(function(append, prepend)
+        local prevGlue = true
+        local overflow = nil
+        local accuLength = 0
+
+        function appendString(s)
+            accuLength = accuLength + #s
+            append(Flow.string, s)
+        end
+
+        function flushWord()
+            prepend(Flow.wordSize, accuLength)
+            accuLength = 0
+        end
+
+        return function()
+            if overflow ~= nil then
+                appendString(overflow)
+                overflow = nil
+            end
+            while true do
                 local cmd, val = iter()
-                if cmd == nil then return end
+                if cmd == nil then
+                    flushWord()
+                    return true
+                end
                 if cmd == Flow.glue then
                     prevGlue = true
                 else
-                    if not prevGlue then  -- if outside of glued mode
-                        flushing = true  -- flush everything
-                        flui = 0
-                        overDelay = {cmd=cmd, val=val}
-                    else
-                        delay(cmd, val)
-                    end
                     if cmd == Flow.string then
+                        if not prevGlue then
+                            overflow = val
+                            flushWord()
+                            return false
+                        end
                         prevGlue = false
+                        appendString(val)
+                    else
+                        append(cmd, val)
                     end
                 end
             end
         end
-    end
+    end)
 end
 
 
@@ -196,31 +224,15 @@ end)
 
 function makeTestDiv()
     -- <div class="quote">Some nonbr<span class="highlight">eaking</span> word</div>
-    return Div("Some", "nonbr", NBR, Span("eaking"):class("highlight"), "word"):class("quote")
+    return Div("Some", "nonbr", NBR, Span("eaking"):class("highlight"), "words"):class("quote")
 end
 
 
 function testPrimitives()
     local p = makeTestDiv()
-    for cmd, value in smartElementIter(p) do
-        print("OUTPUT", cmd, value)
+    for cmd, value in smartElementIter2(p:iterTokens()) do
+        print(FlowNames[cmd], value)
     end
-end
-
-
-function outputText()
-    local p = makeTestDiv()
-    local prevGlue = true
-    for cmd, value in p:iterTokens() do
-        if cmd == Flow.string then
-            if not prevGlue then io.write(" ") end
-            io.write(value)
-            prevGlue = false
-        elseif cmd == Flow.glue then
-            prevGlue = true
-        end
-    end
-    print("")
 end
 
 

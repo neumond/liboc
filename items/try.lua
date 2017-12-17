@@ -102,10 +102,24 @@ function coros()
 end
 
 
+function multiParams()
+    function a()
+        return 2, 3
+    end
+
+    function b(x, y)
+        print(x, y)
+    end
+
+    b(a())
+end
+
+
 -- craftPlanning()
 -- errtest()
 -- variableHiding()
 -- variadic()
 -- keycodes()
 -- returnFromDoBlock()
-coros()
+-- coros()
+multiParams()
