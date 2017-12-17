@@ -262,13 +262,18 @@ end
 
 function renderPrimitives(gpu)
     local screenWidth, screenHeight = gpu.getResolution()
+    screenWidth = 10
+
+    screenWidth = screenWidth + 1  -- for 1-based indexing
 
     local currentLine = 1
     local currentX = 1
     local needPreSpace = false
 
     function startNewLine()
+        gpu.fill(currentX, currentLine, screenWidth - currentX, 1, " ")
         currentLine = currentLine + 1
+        currentX = 1
         needPreSpace = false
     end
 
@@ -281,7 +286,7 @@ function renderPrimitives(gpu)
         if currentX >= screenWidth then return end
         local fits, len = fitWidth(utils.strlen(s))
         if not fits then
-            s = utils.strsub(s, 1, len - 1) + "…"
+            s = utils.strsub(s, 1, len - 1) .. "…"
         end
         gpu.set(currentX, currentLine, s)
         currentX = currentX + len
@@ -315,7 +320,7 @@ end
 renderPrimitives(require("component").gpu)
 -- renderPrimitives({
 --     getResolution=function()
---         return 30, 30
+--         return 10, 30
 --     end,
 --     set=function(x, y, s)
 --         print("OUTPUT", x, y, s)
