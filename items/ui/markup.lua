@@ -1,4 +1,5 @@
 local utils = require("utils")
+local selectorModule = require("ui.selectors")
 
 
 local Flow = {
@@ -184,7 +185,7 @@ end
 -- Renderer
 
 
-function renderInner(tokenIter, gpu)
+function renderInner(tokenIter, selectorEngine, gpu)
     local screenWidth, screenHeight = gpu.getResolution()
 
     screenWidth = screenWidth + 1  -- for 1-based indexing
@@ -217,8 +218,6 @@ function renderInner(tokenIter, gpu)
     end
 
     for cmd, value in tokenIter do
-        -- TODO: Flow.pushClass
-        -- TODO: Flow.popClass
         if cmd == Flow.newLine then
             if startNewLine() then return end
         elseif cmd == Flow.string then
@@ -234,21 +233,45 @@ function renderInner(tokenIter, gpu)
                 end
                 needPreSpace = true
             end
+        elseif cmd == Flow.pushClass then
+            selectorEngine:push(value)
+        elseif cmd == Flow.popClass then
+            selectorEngine:pop()
         end
     end
 end
 
 
-function render(markup, gpu)
+function render(markup, styles, gpu)
     -- gpu must provide methods
     --   getResolution
     --   fill
     --   set
+    --   getForeground
+    --   setForeground
+    --   getBackground
+    --   setBackground
     -- it can be a proxy object to render into constrained parts of screen
 
-    return renderInner(
+    local oldForeground = gpu.getForeground()
+    local oldBackground = gpu.getBackground()
+
+    function changedStyleCallback(k, v)
+        if k == "color" then
+            gpu.setForeground(v)
+        elseif k == "background" then
+            gpu.setBackground(v)
+        end
+    end
+
+    local r = renderInner(
         squashNewLines(removeGlueAddWordLengths(markup:iterTokens())),
+        selectorModule.SelectorEngine(styles, changedStyleCallback),
         gpu)
+
+    gpu.setForeground(oldForeground)
+    gpu.setBackground(oldBackground)
+    return r
 end
 
 
@@ -263,5 +286,6 @@ return {
     Span=Span,
     Div=Div,
     NBR=NBR,
+    Selector=selectorModule.Selector,
     render=render
 }

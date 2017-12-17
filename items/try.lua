@@ -126,10 +126,6 @@ function renderingMarkup()
     end
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
-    local text = m.Div(
-        m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
-        m.Div(table.unpack(lipsumTable))
-    )
 
     -- local gpu = {
     --     getResolution=function()
@@ -140,11 +136,44 @@ function renderingMarkup()
     --     end,
     --     set=function(x, y, s)
     --         print("SET", x, y, s)
+    --     end,
+    --     getForeground=function()
+    --         return 0xFFFFFF
+    --     end,
+    --     setForeground=function(v)
+    --         print("COLOR", v)
+    --     end,
+    --     getBackground=function()
+    --         return 0x000000
+    --     end,
+    --     setBackground=function(v)
+    --         print("BACKGROUND", v)
     --     end
     -- }
     local gpu = require("component").gpu
 
-    m.render(text, gpu)
+
+    local text = m.Div(
+        m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
+        m.Div(table.unpack(lipsumTable))
+    )
+    local styles = {
+        m.Selector({"quote"}, {color=0x8080FF}),
+        m.Selector({"highlight"}, {color=0xFF0000})
+    }
+
+
+    m.render(text, styles, gpu)
+
+
+    function waitForKey()
+        local event = require("event")
+        repeat
+            local _, _, _, key = event.pull("key_down")
+        until key == 28
+    end
+
+    waitForKey()
 end
 
 

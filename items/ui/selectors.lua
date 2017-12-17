@@ -3,8 +3,7 @@ local utils = require("utils")
 
 local DEFAULT_STYLES = {
     color=0xFFFFFF,
-    background=0x000000,
-    align="left"
+    background=0x000000
 }
 
 
@@ -35,6 +34,10 @@ local StyleStack = utils.makeClass(function(self, changedStyleCallback)
 
     self.currentStyles = utils.copyTable(DEFAULT_STYLES)  -- style values
     self.currentStyleIndices = {}  -- top priorities for every style
+
+    for k, v in pairs(self.currentStyles) do
+        self.changedStyleCallback(k, v)
+    end
 end)
 
 
@@ -292,4 +295,10 @@ function testSelectorEngine()
 end
 
 
-testSelectorEngine()
+-- testSelectorEngine()
+
+
+return {
+    Selector=Selector,
+    SelectorEngine=SelectorEngine
+}
