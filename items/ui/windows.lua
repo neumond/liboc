@@ -84,7 +84,7 @@ function Element:iterTokens()
 end
 
 
-function smartElementIter2(iter)
+function removeGlueAddWordLengths(iter)
     -- splitting point of words
     -- Flow.string not preceded by Flow.glue
     -- i.e. Flow.glue makes next Flow.string non word-breaking
@@ -159,6 +159,24 @@ local Div = utils.makeClass(Element, function(super, ...)
 end)
 
 
+function Div:iterTokens()
+    local iter = Element.iterTokens(self)
+    local stage = 0
+    return function()
+        if stage == 0 then
+            stage = 1
+            return Flow.newLine
+        elseif stage == 1 then
+            local cmd, val = iter()
+            if cmd ~= nil then return cmd, val end
+            stage = 2
+            return Flow.newLine
+        end
+        return nil
+    end
+end
+
+
 -- function Div:render(context)
 --     context:block()
 --     assert(false, "Not implemented")
@@ -200,7 +218,7 @@ end
 
 function testPrimitives()
     local p = makeTestDiv()
-    for cmd, value in smartElementIter2(p:iterTokens()) do
+    for cmd, value in removeGlueAddWordLengths(p:iterTokens()) do
         print(FlowNames[cmd], value)
     end
 end
