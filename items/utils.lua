@@ -27,6 +27,18 @@ function M.removeFromArray(a, val)
 end
 
 
+function M.strlen(s)
+    -- TODO: intended to be replaced by unicode version
+    return #s
+end
+
+
+function M.strsub(s, from, to)
+    -- TODO: intended to be replaced by unicode version
+    return string.sub(s, from, to)
+end
+
+
 function M.bufferingIterator(createIter)
     local buf = {}
     local front = 0
@@ -46,22 +58,20 @@ function M.bufferingIterator(createIter)
         return back
     end
 
+    function flushedAll() return flushUntil < back end
+
     local iter = createIter(append, prepend)
     return function()
-        if flushUntil <= back then
+        if flushedAll() then
             if finish then return nil end
             finish, flushUntil = iter()
             if flushUntil == nil then flushUntil = front end
+            if flushedAll() then return nil end
         end
-        -- print("PUT", "back=", back, "front=", front, "flushUntil=", flushUntil)
-        -- for k, v in pairs(buf) do
-        --     print(k, v)
-        -- end
-        -- print("===")
         local value = buf[back]
         buf[back] = nil
         back = back + 1
-        return unpack(value)
+        return table.unpack(value)
     end
 end
 

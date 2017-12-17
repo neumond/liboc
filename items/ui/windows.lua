@@ -89,11 +89,11 @@ function removeGlueAddWordLengths(iter)
     -- Flow.string not preceded by Flow.glue
     -- i.e. Flow.glue makes next Flow.string non word-breaking
     return utils.bufferingIterator(function(append, prepend)
-        local prevGlue = true
+        local glued = true
         local accuLength = 0
 
         function appendString(s)
-            accuLength = accuLength + #s
+            accuLength = accuLength + utils.strlen(s)
             return append(Flow.string, s)
         end
 
@@ -108,16 +108,16 @@ function removeGlueAddWordLengths(iter)
                 local cmd, val = iter()
                 if cmd == nil then
                     flushWord()
-                    return true, nil
+                    return true, nil  -- finish and output everything in buffer
                 elseif cmd == Flow.glue then
-                    prevGlue = true  -- setting flag and skipping this command
+                    glued = true  -- setting flag and skipping this command
                 elseif cmd == Flow.string then
-                    if not prevGlue then  -- non-glued word boundary detected
+                    if not glued then  -- non-glued word boundary detected
                         flushWord()
                         local idx = appendString(val)
                         return false, idx - 1  -- output everything except last string
                     else  -- glued case
-                        prevGlue = false  -- reset flag
+                        glued = false  -- reset flag
                         appendString(val)
                     end
                 elseif cmd == Flow.newLine then
@@ -245,13 +245,81 @@ function makeTestDiv()
 end
 
 
-function testPrimitives()
+function iterPrimitives()
     local p = makeTestDiv()
-    for cmd, value in squashNewLines(removeGlueAddWordLengths(p:iterTokens())) do
+    return squashNewLines(removeGlueAddWordLengths(p:iterTokens()))
+    -- return removeGlueAddWordLengths(p:iterTokens())
+    -- return p:iterTokens()
+end
+
+
+function testPrimitives()
+    for cmd, value in iterPrimitives() do
         print(FlowNames[cmd], value)
     end
 end
 
 
+function renderPrimitives(gpu)
+    local screenWidth, screenHeight = gpu.getResolution()
+
+    local currentLine = 1
+    local currentX = 1
+    local needPreSpace = false
+
+    function startNewLine()
+        currentLine = currentLine + 1
+        needPreSpace = false
+    end
+
+    function fitWidth(len)
+        local v = math.min(len, screenWidth - currentX)
+        return v == len, v
+    end
+
+    function outputString(s)
+        if currentX >= screenWidth then return end
+        local fits, len = fitWidth(utils.strlen(s))
+        if not fits then
+            s = utils.strsub(s, 1, len - 1) + "…"
+        end
+        gpu.set(currentX, currentLine, s)
+        currentX = currentX + len
+    end
+
+    for cmd, value in iterPrimitives() do
+        -- TODO: Flow.pushClass
+        -- TODO: Flow.popClass
+        if cmd == Flow.newLine then
+            startNewLine()
+        elseif cmd == Flow.string then
+            outputString(value)
+        elseif cmd == Flow.wordSize then
+            local fits = fitWidth(value + (needPreSpace and 1 or 0))
+            if not fits then
+                startNewLine()
+            else
+                if needPreSpace then
+                    gpu.set(currentX, currentLine, " ")
+                    currentX = currentX + 1
+                end
+                needPreSpace = true
+            end
+        end
+    end
+end
+
+
 -- outputText()
-testPrimitives()
+-- testPrimitives()
+renderPrimitives(require("component").gpu)
+-- renderPrimitives({
+--     getResolution=function()
+--         return 30, 30
+--     end,
+--     set=function(x, y, s)
+--         print("OUTPUT", x, y, s)
+--     end
+-- })
+
+return renderPrimitives
