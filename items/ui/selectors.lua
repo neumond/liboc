@@ -1,10 +1,106 @@
 local utils = require("utils")
 
 
+local DEFAULT_STYLES = {
+    color=0xFFFFFF,
+    background=0x000000,
+    align="left"
+}
+
+
+-- Selector
+
+
 local Selector = utils.makeClass(function(self, classChain, styleTable)
     self.classChain = classChain
     self.styleTable = styleTable
 end)
+
+
+-- StyleStack
+
+
+local StyleStack = utils.makeClass(function(self, changedStyleCallback)
+    self.changedStyleCallback = changedStyleCallback
+
+    self.activeStyleSets = {
+        [-1]=utils.copyTable(DEFAULT_STYLES)
+    }
+    -- this must use selector indices as priorities
+    -- bigger index = higher priority of this styleset
+    -- indices must be unique
+
+    self.minIndex = -1
+    self.maxIndex = -1
+
+    self.currentStyles = utils.copyTable(DEFAULT_STYLES)  -- style values
+    self.currentStyleIndices = {}  -- top priorities for every style
+end)
+
+
+function StyleStack:setCurrentStyle(name, value, selectorIndex)
+    if self.currentStyles[name] ~= value then
+        self.changedStyleCallback(name, value)
+    end
+    self.currentStyles[name] = value
+    self.currentStyleIndices[name] = selectorIndex
+end
+
+
+function StyleStack:insertStyle(name, value, selectorIndex)
+    -- fast-return if higher prio style already engaged
+    if (self.currentStyleIndices[name] or self.minIndex) >= selectorIndex then return end
+    self:setCurrentStyle(name, value, selectorIndex)
+end
+
+
+function StyleStack:recalcStyle(name)
+    for i=self.maxIndex,self.minIndex,-1 do
+        if self.activeStyleSets[i] ~= nil then
+            if self.activeStyleSets[i][name] ~= nil then
+                self:setCurrentStyle(name, self.activeStyleSets[i][name], i)
+                return
+            end
+        end
+    end
+    self:setCurrentStyle(name, nil, nil)
+end
+
+
+function StyleStack:recalcMaxIndex()
+    for i=self.maxIndex,self.minIndex,-1 do
+        if self.activeStyleSets[i] ~= nil then
+            self.maxIndex = i
+            break
+        end
+    end
+end
+
+
+function StyleStack:activate(styleSet, selectorIndex)
+    for k, v in pairs(styleSet) do
+        self:insertStyle(k, v, selectorIndex)
+    end
+
+    assert(self.activeStyleSets[selectorIndex] == nil)
+    self.activeStyleSets[selectorIndex] = styleSet
+    self.maxIndex = math.max(self.maxIndex, selectorIndex)
+end
+
+
+function StyleStack:deactivate(selectorIndex)
+    local styleSet = self.activeStyleSets[selectorIndex]
+    self.activeStyleSets[selectorIndex] = nil
+    if self.maxIndex == selectorIndex then
+        self:recalcMaxIndex()
+    end
+
+    for k, v in pairs(styleSet) do
+        if self.currentStyleIndices[k] == selectorIndex then
+            self:recalcStyle(k)
+        end
+    end
+end
 
 
 -- SelectorState
@@ -47,15 +143,18 @@ end
 -- SelectorEngine
 
 
-local SelectorEngine = utils.makeClass(function(self, selectorTable)
+local SelectorEngine = utils.makeClass(function(self, selectorTable, changedStyleCallback)
     self.selectorTable = {}
+    self.styleSets = {}
     for selectorIndex, sel in ipairs(selectorTable) do
         self.selectorTable[selectorIndex] = SelectorState(sel)
+        self.styleSets[selectorIndex] = sel.styleTable
     end
 
     self.expected = {}
     self.downward = {}
     self.stackPtr = 1
+    self.styleStack = StyleStack(changedStyleCallback)
 
     for selectorIndex, ss in ipairs(self.selectorTable) do
         self:addExpectation(ss:getExpectedClassName(), selectorIndex)
@@ -92,25 +191,16 @@ end
 function SelectorEngine:push(className)
     local t = self.expected[className]
     if t ~= nil then
-        local triggered = {}
         for selectorIndex, _ in pairs(t) do
             local ss = self.selectorTable[selectorIndex]
             self:removeExpectation(className, selectorIndex)
             self:addDownward(selectorIndex)
             if ss:push() then
-                table.insert(triggered, selectorIndex)
+                self.styleStack:activate(self.styleSets[selectorIndex], selectorIndex)
             else
                 self:addExpectation(ss:getExpectedClassName(), selectorIndex)
             end
         end
-        for _, v in ipairs(triggered) do
-            print("TRIGGERED", v)
-        end
-        -- TODO: sort `triggered`, then consequently
-        -- push to style stack ss.styles
-        -- NOTE: this algorithm is wrong, sorting wouldn't help
-        -- you can have selector 5 triggered, then selector 3
-        -- if triggered must not be on top of 5
     end
 
     self.stackPtr = self.stackPtr + 1
@@ -122,7 +212,6 @@ function SelectorEngine:pop()
 
     local t = self.downward[self.stackPtr]
     if t ~= nil then
-        local untriggered = {}
         for selectorIndex, _ in pairs(t) do
             local ss = self.selectorTable[selectorIndex]
             self:removeDownward(selectorIndex)
@@ -130,24 +219,24 @@ function SelectorEngine:pop()
                 self:removeExpectation(ss:getExpectedClassName(), selectorIndex)
             end
             if ss:pop() then
-                table.insert(untriggered, selectorIndex)
+                self.styleStack:deactivate(selectorIndex)
             end
             self:addExpectation(ss:getExpectedClassName(), selectorIndex)
-        end
-        -- TODO: handle `untriggered`
-        for _, v in ipairs(untriggered) do
-            print("UNTRIGGERED", v)
         end
     end
 end
 
 
 function testSelectorEngine()
-    local engine = SelectorEngine{
+    function changedStyleCallback(k, v)
+        print(k, v)
+    end
+
+    local engine = SelectorEngine({
         Selector({"quote", "em"}, {border=1, align="center"}),
-        Selector({"quote", "lol"}, {}),
+        Selector({"quote", "lol"}, {color=0xFF0000}),
         Selector({"p"}, {}),
-    }
+    }, changedStyleCallback)
 
     engine:push("lol")
     engine:pop()
