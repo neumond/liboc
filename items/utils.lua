@@ -27,6 +27,36 @@ function M.removeFromArray(a, val)
 end
 
 
+function M.bufferingIterator(createIter)
+    local buf = {}
+    local front = 1
+    local back = 1
+    local finish = false
+
+    function append(...)
+        buf[front] = {...}
+        front = front + 1
+    end
+
+    function prepend(...)
+        back = back - 1
+        buf[back] = {...}
+    end
+
+    local iter = createIter(append, prepend)
+    return function()
+        if front == back then
+            if finish then return nil end
+            finish = finish or iter()
+        end
+        local value = buf[back]
+        buf[back] = nil
+        back = back + 1
+        return unpack(value)
+    end
+end
+
+
 M.stock = {}
 
 

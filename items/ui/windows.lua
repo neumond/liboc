@@ -84,41 +84,11 @@ function Element:iterTokens()
 end
 
 
-function bufferingIterator(createIter)
-    local buf = {}
-    local front = 1
-    local back = 1
-    local finish = false
-
-    function append(...)
-        buf[front] = {...}
-        front = front + 1
-    end
-
-    function prepend(...)
-        back = back - 1
-        buf[back] = {...}
-    end
-
-    local iter = createIter(append, prepend)
-    return function()
-        if front == back then
-            if finish then return nil end
-            finish = finish or iter()
-        end
-        local value = buf[back]
-        buf[back] = nil
-        back = back + 1
-        return unpack(value)
-    end
-end
-
-
 function smartElementIter2(iter)
     -- splitting point of words
     -- Flow.string not preceded by Flow.glue
     -- i.e. Flow.glue makes next Flow.string non word-breaking
-    return bufferingIterator(function(append, prepend)
+    return utils.bufferingIterator(function(append, prepend)
         local prevGlue = true
         local overflow = nil
         local accuLength = 0
