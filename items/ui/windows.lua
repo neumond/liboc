@@ -74,6 +74,69 @@ function Element:iterTokens()
 end
 
 
+function smartElementIter(elm)
+    local iter = elm:iterTokens()
+
+    local prevGlue = true
+    local buf = {}
+    local bi = 0
+    local flui = 0
+    local accuLen = 0
+    local flushing = false
+    local overDelay = nil
+
+    function flush()
+        if accuLen > 0 then  -- word length first
+            local a = accuLen
+            accuLen = 0
+            return Flow.wordSize, a
+        end
+        if flui < bi then
+            flui = flui + 2
+            return buf[flui], buf[flui - 1]
+        end
+        buf = {}
+        flushing = false
+        delay(overDelay.cmd, overDelay.val)
+    end
+
+    function delay(cmd, value)
+        buf[bi + 1] = value
+        buf[bi + 2] = cmd
+        bi = bi + 2
+        if cmd == Flow.string then
+            accuLen = accuLen + #value
+        end
+    end
+
+    return function()
+        while true do
+            if flushing then
+                local cmd, val = flush()
+                if cmd ~= nil then return cmd, val end
+            else
+                local cmd, val = iter()
+                if cmd == nil then return end
+                if cmd == Flow.glue then
+                    prevGlue = true
+                else
+                    if not prevGlue then  -- if outside of glued mode
+                        flushing = true  -- flush everything
+                        flui = 0
+                        overDelay = {cmd=cmd, val=val}
+                    else
+                        delay(cmd, val)
+                    end
+                    if cmd == Flow.string then
+                        prevGlue = false
+                    end
+                end
+            end
+        end
+    end
+end
+
+
 --
 
 
@@ -139,7 +202,7 @@ end
 
 function testPrimitives()
     local p = makeTestDiv()
-    for cmd, value in p:iterTokens() do
+    for cmd, value in smartElementIter(p) do
         print("OUTPUT", cmd, value)
     end
 end
@@ -161,48 +224,5 @@ function outputText()
 end
 
 
-function wordSizeWrap()
-    local p = makeTestDiv()
-
-    local buf = {}
-    local prevGlue = true
-    local accuLen = 0
-
-    function flushAccumulatedWord()
-        if accuLen > 0 then
-            print(Flow.wordSize, accuLen)
-        end
-        for i, v in ipairs(buf) do
-            print(v.cmd, v.value)
-        end
-        buf = {}
-        accuLen = 0
-    end
-
-    function delay(cmd, value)
-        table.insert(buf, {cmd=cmd, value=value})
-        if cmd == Flow.string then
-            accuLen = accuLen + #value
-        end
-    end
-
-    for cmd, value in p:iterTokens() do
-        if cmd == Flow.glue then
-            prevGlue = true
-        else
-            if not prevGlue then
-                flushAccumulatedWord()
-            end
-            delay(cmd, value)
-            if cmd == Flow.string then
-                prevGlue = false
-            end
-        end
-    end
-
-    flushAccumulatedWord()
-end
-
-
 -- outputText()
-wordSizeWrap()
+testPrimitives()
