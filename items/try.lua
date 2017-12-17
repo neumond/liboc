@@ -88,9 +88,24 @@ function returnFromDoBlock()
 end
 
 
+function coros()
+    function f()
+        for i=1,10 do
+            coroutine.yield(i)
+        end
+    end
+    local co = coroutine.create(f)
+    repeat
+        local _, val = coroutine.resume(co)
+        print(val)
+    until val == nil
+end
+
+
 -- craftPlanning()
 -- errtest()
 -- variableHiding()
 -- variadic()
 -- keycodes()
-returnFromDoBlock()
+-- returnFromDoBlock()
+coros()
