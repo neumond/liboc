@@ -4,7 +4,7 @@ local utils = require("utils")
 -- ItemTip
 
 
-local ItemTip = makeClass(function(self)
+local ItemTip = utils.makeClass(function(self)
     self.slot = nil
 end)
 
@@ -28,7 +28,7 @@ end
 -- ItemToSlotIndex
 
 
-local ItemToSlotIndex = makeClass(function(self)
+local ItemToSlotIndex = utils.makeClass(function(self)
     self.data = {}
 end)
 
@@ -37,8 +37,8 @@ function ItemToSlotIndex.getItem(self, itemId, autocreate)
     if autocreate and self.data[itemId] == nil then
         self.data[itemId] = {
             slots={},
-            half=ItemTip.new(),
-            full=ItemTip.new()
+            half=ItemTip(),
+            full=ItemTip()
         }
     end
     return self.data[itemId]
@@ -128,11 +128,11 @@ end
 -- EmptySlotIndex
 
 
-local EmptySlotIndex = makeClass(function(self)
+local EmptySlotIndex = utils.makeClass(function(self)
     -- by default all slots are busy
     -- you have to explicitly .empty for every discovered empty slot
     self.data = {}
-    self.tip = ItemTip.new()
+    self.tip = ItemTip()
 end)
 
 
@@ -172,7 +172,7 @@ end
 -- SlotIndex
 
 
-local SlotIndex = makeClass(function(self)
+local SlotIndex = utils.makeClass(function(self)
     self.data = {}
     self.stock = {}
 end)
@@ -233,10 +233,10 @@ end
 -- IntegratedIndex
 
 
-local IntegratedIndex = makeClass(function(self)
-    self.itemToSlot = ItemToSlotIndex.new()
-    self.emptyIndex = EmptySlotIndex.new()
-    self.slots = SlotIndex.new()
+local IntegratedIndex = utils.makeClass(function(self)
+    self.itemToSlot = ItemToSlotIndex()
+    self.emptyIndex = EmptySlotIndex()
+    self.slots = SlotIndex()
 end)
 
 
@@ -281,238 +281,14 @@ function IntegratedIndex.findOutputSlot(self, itemId)
 end
 
 
--- Tests
-
-
-function testItemToSlotIndex_simple()
-    local x = ItemToSlotIndex.new()
-    -- x:refill(itemId, slotId, halfFilled)
-    -- x:empty(itemId, slotId)
-    -- x:findForInput(itemId)
-    -- x:findForOutput(itemId)
-
-    assert(x:findForInput("stone") == nil)
-    assert(x:findForOutput("stone") == nil)
-
-    x:refill("stone", 4, true)
-    x:refill("stone", 3, false)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == 4)
-
-    x:empty("stone", 4)
-
-    assert(x:findForInput("stone") == 3)  -- still can take from full slot
-    assert(x:findForOutput("stone") == nil)  -- need new empty slot for output
-
-    x:empty("stone", 3)
-
-    assert(x:findForInput("stone") == nil)
-    assert(x:findForOutput("stone") == nil)
-end
-
-
-function testItemToSlotIndex_halfToFull()
-    local x = ItemToSlotIndex.new()
-
-    x:refill("stone", 4, true)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == 4)
-
-    x:refill("stone", 4, false)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == nil)
-
-    x:refill("stone", 4, true)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == 4)
-end
-
-
-function testItemToSlotIndex_betterSlots()
-    local x = ItemToSlotIndex.new()
-
-    x:refill("stone", 18, false)
-    x:refill("stone", 19, false)
-    x:refill("stone", 20, true)
-
-    assert(x:findForInput("stone") == 20)
-    assert(x:findForOutput("stone") == 20)
-
-    x:refill("stone", 19, true)
-
-    assert(x:findForInput("stone") == 19)
-    assert(x:findForOutput("stone") == 19)
-
-    x:refill("stone", 19, false)
-
-    assert(x:findForInput("stone") == 20)
-    assert(x:findForOutput("stone") == 20)
-
-    x:empty("stone", 20)
-
-    assert(x:findForInput("stone") == 18)
-    assert(x:findForOutput("stone") == nil)
-
-    x:empty("stone", 18)
-
-    assert(x:findForInput("stone") == 19)
-    assert(x:findForOutput("stone") == nil)
-end
-
-
-function testItemToSlotIndex_idemp()
-    local x = ItemToSlotIndex.new()
-
-    x:refill("stone", 4, true)
-    x:refill("stone", 4, true)
-    x:refill("stone", 4, true)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == 4)
-
-    x:refill("stone", 4, false)
-    x:refill("stone", 4, false)
-    x:refill("stone", 4, false)
-
-    assert(x:findForInput("stone") == 4)
-    assert(x:findForOutput("stone") == nil)
-
-    x:empty("stone", 4)
-    x:empty("stone", 4)
-    x:empty("stone", 4)
-
-    assert(x:findForInput("stone") == nil)
-    assert(x:findForOutput("stone") == nil)
-end
-
-
-function testEmptySlotIndex()
-    local x = EmptySlotIndex.new()
-    -- x:fill(slotId)
-    -- x:empty(slotId)
-    -- x:find()
-
-    assert(x:find() == nil)
-
-    x:empty(19)
-
-    assert(x:find() == 19)
-
-    x:fill(19)
-
-    assert(x:find() == nil)
-
-    x:empty(19)
-    x:empty(25)
-    x:empty(14)
-    x:empty(14)
-    x:empty(14)
-    x:empty(48)
-
-    assert(x:find() == 14)
-
-    x:fill(14)
-
-    assert(x:find() == 19)
-
-    x:fill(25)
-    x:fill(25)
-    x:fill(25)
-    x:fill(19)
-
-    assert(x:find() == 48)
-
-    x:fill(48)
-
-    assert(x:find() == nil)
-end
-
-
-function testSlotIndex()
-    local x = SlotIndex.new()
-    -- x:registerSlot(address)
-    -- x:fill(slotId, itemId, amount)
-    -- x:empty(slotId)
-    -- x:get(slotId)
-
-    local slotA = x:registerSlot(nil)
-    local slotB = x:registerSlot(nil)
-
-    x:fill(slotA, "stone", 10)
-
-    assert(x.stock["stone"] == 10)
-
-    x:fill(slotB, "stone", 10)
-
-    assert(x.stock["stone"] == 20)
-
-    x:fill(slotB, "stone", 40)
-
-    assert(x.stock["stone"] == 50)
-
-    x:empty(slotB)
-
-    assert(x.stock["stone"] == 10)
-end
-
-
-function testRealBug1()
-    local initialItems = {}
-    for i=239,247 do
-        initialItems[i] = {"cobblestone", 64, 64}
-    end
-    for i=347,349 do
-        initialItems[i] = {"redstone", 64, 64}
-    end
-    for i=401,410 do
-        initialItems[i] = {"iron_ingot", 64, 64}
-    end
-    initialItems[509] = {"wood", 64, 64}
-    initialItems[563] = {"wood", 64, 64}
-    initialItems[564] = {"wood", 64, 64}
-
-    local x = IntegratedIndex.new()
-    for i=1,670 do
-        x:registerSlot(nil)
-        if initialItems[i] ~= nil then
-            x:refill(i, unpack(initialItems[i]))
-        else
-            x:empty(i)
-        end
-    end
-
-    x:refill(509, "wood", 48, 64)
-    x:refill(1, "planks", 64, 64)
-    x:refill(509, "wood", 32, 64)
-    x:refill(2, "planks", 64, 64)
-    x:refill(509, "wood", 16, 64)
-    x:refill(3, "planks", 64, 64)
-    x:refill(509, "wood", 11, 64)
-    x:refill(4, "planks", 20, 64)
-    x:empty(4)
-
-    local slotId = x:findInputSlot("planks")
-    assert(slotId == 1)
-end
-
-
-function runTests()
-    testItemToSlotIndex_simple()
-    testItemToSlotIndex_halfToFull()
-    testItemToSlotIndex_betterSlots()
-    testItemToSlotIndex_idemp()
-    testEmptySlotIndex()
-    testSlotIndex()
-    testRealBug1()
-end
-
-
 -- Module export
 
 
--- runTests()
-return IntegratedIndex
+return {
+    -- main
+    IntegratedIndex=IntegratedIndex,
+    -- testing
+    ItemToSlotIndex=ItemToSlotIndex,
+    EmptySlotIndex=EmptySlotIndex,
+    SlotIndex=SlotIndex
+}
