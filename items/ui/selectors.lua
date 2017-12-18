@@ -3,7 +3,8 @@ local utils = require("utils")
 
 local DEFAULT_STYLES = {
     color=0xFFFFFF,
-    background=0x000000
+    background=0x000000,
+    align="left"
 }
 
 

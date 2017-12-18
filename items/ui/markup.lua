@@ -200,46 +200,97 @@ end
 -- Renderer
 
 
-function markupToGpuCommands(markup, styles, screenWidth)
-    screenWidth = screenWidth + 1  -- for 1-based indexing
+local GpuLine = utils.makeClass(function(self)
+    self.width = 0
+    self.spaceCount = 0
+    self.commands = {}
+end)
 
-    local currentLine = 1
-    local currentX = 1
-    local needPreSpace = false
-    local result = {{}}
 
-    function perform(...)
-        table.insert(result[currentLine], {...})
+function GpuLine:token(s)
+    self.width = self.width + utils.strlen(s)
+    table.insert(self.commands, {"token", s})
+end
+
+
+function GpuLine:space()
+    self.width = self.width + 1
+    self.spaceCount = self.spaceCount + 1
+    table.insert(self.commands, {"space"})
+end
+
+
+function GpuLine:color(value)
+    table.insert(self.commands, {"setForeground", value})
+end
+
+
+function GpuLine:background(value)
+    table.insert(self.commands, {"setBackground", value})
+end
+
+
+function GpuLine:finalize(align, screenWidth)
+    -- TODO: "justify" align
+
+    local pad = screenWidth - self.width
+    local x = 0
+    local centerPad
+    if align == "right" then
+        x = pad
+    elseif align == "center" then
+        centerPad = math.floor(pad / 2)
+        x = centerPad
     end
 
-    function startNewLine()
-        perform("fillpad", currentX - 1)
-        currentLine = currentLine + 1
-        result[currentLine] = {}
-        currentX = 1
-    end
-
-    function fitWidth(len)
-        local v = math.min(len, screenWidth - currentX)
-        return v == len, v
-    end
-
-    function outputString(s)
-        if currentX >= screenWidth then return end
-        local fits, len = fitWidth(utils.strlen(s))
-        if not fits then
-            s = utils.strsub(s, 1, len - 1) .. "…"
+    local cmds = {}
+    for _, c in ipairs(self.commands) do
+        if c[1] == "token" then
+            table.insert(cmds, {"set", x + 1, c[2]})
+            x = x + utils.strlen(c[2])
+        elseif c[1] == "space" then
+            table.insert(cmds, {"set", x + 1, " "})
+            x = x + 1
+        else
+            table.insert(cmds, c)
         end
-        perform("token", s, currentX)
-        currentX = currentX + len
     end
+
+    if pad > 0 then
+        if align == "left" then
+            table.insert(cmds, {"fill", x + 1, pad, " "})
+        elseif align == "right" then
+            table.insert(cmds, {"fill", 1, pad, " "})
+        elseif align == "center" then
+            if centerPad > 0 then
+                table.insert(cmds, {"fill", 1, centerPad, " "})
+            end
+            centerPad = pad - centerPad
+            if centerPad > 0 then
+                table.insert(cmds, {"fill", x + 1, centerPad, " "})
+            end
+        end
+    end
+
+    return cmds
+end
+
+
+function markupToGpuCommands(markup, styles, screenWidth)
+    local currentLine = GpuLine()
+    local result = {}
+    local currentBlock = {currentLine}
+    local currentAlign
 
     local styleSwitch = {
         ["color"] = function(value)
-            perform("color", value)
+            currentLine:color(value)
         end,
         ["background"] = function(value)
-            perform("background", value)
+            currentLine:background(value)
+        end,
+        ["align"] = function(value)
+            currentAlign = value
         end
     }
 
@@ -247,26 +298,53 @@ function markupToGpuCommands(markup, styles, screenWidth)
         styleSwitch[k](v)
     end)
 
+    function finalizeCurrentBlock()
+        for i, line in ipairs(currentBlock) do
+            table.insert(result, line:finalize(currentAlign, screenWidth))
+        end
+        currentBlock = {}
+    end
+
+    function startNewLine(realignBlock)
+        if realignBlock then finalizeCurrentBlock() end
+
+        currentLine = GpuLine()
+        table.insert(currentBlock, currentLine)
+    end
+
+    function fitWidth(len)
+        local v = math.min(len, screenWidth - currentLine.width)
+        return v == len, v
+    end
+
+    function outputToken(s)
+        if currentLine.width >= screenWidth then return end
+        local fits, len = fitWidth(utils.strlen(s))
+        if not fits then
+            s = utils.strsub(s, 1, len - 1) .. "…"
+        end
+        currentLine:token(s)
+    end
+
+    local needPreSpace = false
     local cmdSwitch = {
         [Flow.newLine] = function()
-            startNewLine()
+            startNewLine(true)
             needPreSpace = false
         end,
         [Flow.string] = function(value)
-            outputString(value)
+            outputToken(value)
         end,
         [Flow.wordSize] = function(value)
             local fits = fitWidth(value + (needPreSpace and 1 or 0))
             if not fits then
-                startNewLine()
+                startNewLine(false)
             else
-                if needPreSpace then
-                    perform("space", currentX)
-                    currentX = currentX + 1
-                end
+                if needPreSpace then currentLine:space() end
             end
             needPreSpace = true
         end,
+        -- [Flow.br] = function()  TODO
         [Flow.pushClass] = function(value)
             selectorEngine:push(value)
         end,
@@ -278,6 +356,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
     for cmd, value in squashNewLines(removeGlueAddWordLengths(markup:iterTokens())) do
         cmdSwitch[cmd](value)
     end
+    finalizeCurrentBlock()
 
     return result
 end
@@ -286,13 +365,13 @@ end
 function execGpuCommands(gpu, commands)
     for Y, lineCmds in ipairs(commands) do
         for _, cmd in ipairs(lineCmds) do
-            if cmd[1] == "token" then
-                gpu.set(cmd[3], Y, cmd[2])
-            elseif cmd[1] == "space" then
-                gpu.set(cmd[2], Y, " ")
-            elseif cmd[1] == "color" then
+            if cmd[1] == "set" then
+                gpu.set(cmd[2], Y, cmd[3])
+            elseif cmd[1] == "fill" then
+                gpu.fill(cmd[2], Y, cmd[3], 1, cmd[4])
+            elseif cmd[1] == "setForeground" then
                 gpu.setForeground(cmd[2])
-            elseif cmd[1] == "background" then
+            elseif cmd[1] == "setBackground" then
                 gpu.setBackground(cmd[2])
             end
         end

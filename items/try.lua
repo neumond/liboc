@@ -140,9 +140,7 @@ local fakeGpu = {
 }
 
 
-function renderingMarkup()
-    local m = require("ui.markup")
-
+function mu1(m)
     local lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras feugiat mattis augue condimentum finibus. Quisque vestibulum justo ut nisl interdum suscipit. Sed sed nunc vitae orci scelerisque viverra at ultricies metus. Nullam quam mauris, consectetur eu nunc sed, posuere ullamcorper quam. Phasellus eu turpis sed ipsum suscipit egestas viverra id odio. Duis hendrerit facilisis finibus. Maecenas consequat quis lorem ut mattis. Proin ultrices lectus ut felis tincidunt, eu porta quam mattis. Cras sagittis erat consectetur condimentum rhoncus. Curabitur convallis convallis mauris sed convallis. Curabitur a quam ac nisl sodales bibendum. Nunc ut sem eleifend leo viverra blandit vitae ac augue. Etiam faucibus ligula ac sem tempus ultrices. Donec suscipit ullamcorper nibh eu aliquam."
 
     lipsumTable = {}
@@ -159,6 +157,49 @@ function renderingMarkup()
         m.Selector({"quote"}, {color=0x8080FF}),
         m.Selector({"highlight"}, {color=0xFF0000})
     }
+
+    return text, styles
+end
+
+
+function mu2(m)
+    local text = m.Div(
+        "Lorem", "ipsum",  -- TODO: this still aligned right
+        m.Div(
+            "dolor", "sit", "amet"
+        ):class("right")
+    ):class("left")
+
+    local styles = {
+        m.Selector({"left"}, {align="left"}),
+        m.Selector({"right"}, {align="right"})
+    }
+
+    return text, styles
+end
+
+
+function mu3(m)
+    local text = m.Div(
+        m.Div(
+            m.Div("Lorem", "ipsum"):class("right")  -- TODO: this still aligned center
+        ):class("center")
+    ):class("left")
+
+    local styles = {
+        m.Selector({"left"}, {align="left"}),
+        m.Selector({"right"}, {align="right"}),
+        m.Selector({"center"}, {align="center"})
+    }
+
+    return text, styles
+end
+
+
+function renderingMarkup()
+    local m = require("ui.markup")
+
+    local text, styles = mu3(m)
 
     local result = m.markupToGpuCommands(text, styles, 50)
 
