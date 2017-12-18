@@ -358,6 +358,8 @@ function markupToGpuCommands(markup, styles, screenWidth)
     end
     finalizeCurrentBlock()
 
+    -- TODO: remove last empty line
+
     return result
 end
 
