@@ -1,4 +1,5 @@
 local utils = require("utils")
+local IntegratedIndex = require("roomBot.storageIndex").IntegratedIndex
 
 
 -- CraftingTable
@@ -25,7 +26,7 @@ do
 end
 
 
-function CraftingTable.iterNonTableSlots(self)
+function CraftingTable:iterNonTableSlots()
     local i = 0
     return function()
         repeat
@@ -37,7 +38,7 @@ function CraftingTable.iterNonTableSlots(self)
 end
 
 
-function CraftingTable.tableSlotToRealSlot(self, tableSlot)
+function CraftingTable:tableSlotToRealSlot(tableSlot)
     if tableSlot == "output" then
         return CraftingTable.tableOutputSlot
     end
@@ -54,19 +55,19 @@ end
 -- TODO: return values for suck/drop
 
 
-local InternalSlot = makeClass(function(self, robot, inventoryController, slot)
+local InternalSlot = utils.makeClass(function(self, robot, inventoryController, slot)
     self.robot = robot
     self.inventoryController = inventoryController
     self.slot = slot
 end)
 
 
-function InternalSlot.getStack(self)
+function InternalSlot:getStack()
     return self.inventoryController.getStackInInternalSlot(self.slot)
 end
 
 
-function InternalSlot.suck(self, amount)
+function InternalSlot:suck(amount)
     local target = self.robot.select()
     self.robot.select(self.slot)
     local success = self.robot.transferTo(target, amount)
@@ -75,13 +76,13 @@ function InternalSlot.suck(self, amount)
 end
 
 
-function InternalSlot.drop(self, amount)
+function InternalSlot:drop(amount)
     local success = self.robot.transferTo(self.slot, amount)
     assert(success, "Can't drop items into internal slot")
 end
 
 
-local ChestSlot = makeClass(function(self, nav, inventoryController, chest, slot)
+local ChestSlot = utils.makeClass(function(self, nav, inventoryController, chest, slot)
     self.nav = nav
     self.inventoryController = inventoryController
     self.chest = chest
@@ -89,20 +90,20 @@ local ChestSlot = makeClass(function(self, nav, inventoryController, chest, slot
 end)
 
 
-function ChestSlot.getStack(self)
+function ChestSlot:getStack()
     local side = self.nav:gotoChest(self.chest)
     return self.inventoryController.getStackInSlot(side, self.slot)
 end
 
 
-function ChestSlot.suck(self, amount)
+function ChestSlot:suck(amount)
     local side = self.nav:gotoChest(self.chest)
     local success, msg = self.inventoryController.suckFromSlot(side, self.slot, amount)
     assert(success, msg)
 end
 
 
-function ChestSlot.drop(self, amount)
+function ChestSlot:drop(amount)
     local side = self.nav:gotoChest(self.chest)
     local success, msg = self.inventoryController.dropIntoSlot(side, self.slot, amount)
     assert(success, msg)
@@ -112,12 +113,12 @@ end
 -- CrafterStorage
 
 
-local CrafterStorage = makeClass(function(self, robot, inventoryController, nav)
+local CrafterStorage = utils.makeClass(function(self, robot, inventoryController, nav)
     self.robot = robot
     self.inventoryController = inventoryController
     self.nav = nav
-    self.index = IntegratedIndex.new()
-    self.table = CraftingTable.new(self.robot.inventorySize())
+    self.index = IntegratedIndex()
+    self.table = CraftingTable(self.robot.inventorySize())
 
     function addSlot(address)
         local slotId = self.index:registerSlot(address)
@@ -126,17 +127,17 @@ local CrafterStorage = makeClass(function(self, robot, inventoryController, nav)
     end
 
     for k in self.table:iterNonTableSlots() do
-        addSlot(InternalSlot.new(self.robot, self.inventoryController, k))
+        addSlot(InternalSlot(self.robot, self.inventoryController, k))
     end
     for side in self.nav:walkAllChests() do
         for k=1,self.inventoryController.getInventorySize(side) do
-            addSlot(ChestSlot.new(self.nav, self.inventoryController, i, k))
+            addSlot(ChestSlot(self.nav, self.inventoryController, i, k))
         end
     end
 end)
 
 
-function CrafterStorage.updateSlotIndex(self, slotId)
+function CrafterStorage:updateSlotIndex(slotId)
     local accessor = self.index:getAddress(slotId)
     local itemData = accessor:getStack()
     if itemData == nil then
@@ -149,12 +150,12 @@ function CrafterStorage.updateSlotIndex(self, slotId)
 end
 
 
-function CrafterStorage.getInternalStack(self, localSlotId)
+function CrafterStorage:getInternalStack(localSlotId)
     return self.inventoryController.getStackInInternalSlot(localSlotId)
 end
 
 
-function CrafterStorage.cleanTableSlot(self, tableSlot)
+function CrafterStorage:cleanTableSlot(tableSlot)
     local localSlotId = self.table:tableSlotToRealSlot(tableSlot)
     local itemData = self:getInternalStack(localSlotId)
     if itemData == nil then return end  -- already empty
@@ -172,7 +173,7 @@ function CrafterStorage.cleanTableSlot(self, tableSlot)
 end
 
 
-function CrafterStorage.fillTableSlot(self, tableSlot, itemId, amount)
+function CrafterStorage:fillTableSlot(tableSlot, itemId, amount)
     -- NOTE: MUST be emptied (cleanTableSlot) before filling
     -- this is done to avoid extra checks, for some additional speed
 
@@ -192,7 +193,7 @@ function CrafterStorage.fillTableSlot(self, tableSlot, itemId, amount)
 end
 
 
-function CrafterStorage.cleanTable(self)
+function CrafterStorage:cleanTable()
     for i=1,9 do
         self:cleanTableSlot(i)
     end
@@ -200,15 +201,17 @@ function CrafterStorage.cleanTable(self)
 end
 
 
-function CrafterStorage.selectOutput(self)
+function CrafterStorage:selectOutput()
     self.robot.select(self.table:tableSlotToRealSlot("output"))
 end
 
 
-function CrafterStorage.getStock(self)
+function CrafterStorage:getStock()
     -- NOTE: don't modify returned table!
     return self.index.slots.stock
 end
 
 
-return CrafterStorage
+return {
+    CrafterStorage=CrafterStorage
+}

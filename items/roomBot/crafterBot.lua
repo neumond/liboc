@@ -98,72 +98,75 @@ do
 end
 
 
-local CrafterBot = makeClass(function(self, crafterStorage, craftingComponent)
+local CrafterBot = utils.makeClass(function(self, crafterStorage, craftingComponent)
     self.crafterStorage = crafterStorage
     self.craftingComponent = craftingComponent
     self.crafterStorage:cleanTable()
 end)
 
 
-do
-    function assembleRecipe(self, itemId, neededAmount)
-        assert(neededAmount > 0)
-        local output = db.getRecipeOutput(itemId)
-        local maxCrafts = math.floor(db.getItemStack(itemId) / output)
-        assert(maxCrafts > 0)
+function CrafterBot:assembleRecipe(itemId, neededAmount)
+    assert(neededAmount > 0)
+    local output = db.getRecipeOutput(itemId)
+    local maxCrafts = math.floor(db.getItemStack(itemId) / output)
+    assert(maxCrafts > 0)
 
-        self.crafterStorage:cleanTable()
-        repeat
-            local nCrafts = math.min(
-                math.floor(neededAmount / output),
-                maxCrafts
-            )
-            local amountToCraft = nCrafts * output
-            neededAmount = neededAmount - amountToCraft
+    self.crafterStorage:cleanTable()
+    repeat
+        local nCrafts = math.min(
+            math.floor(neededAmount / output),
+            maxCrafts
+        )
+        local amountToCraft = nCrafts * output
+        neededAmount = neededAmount - amountToCraft
 
-            local recipe = db.getRecipe(itemId)
-            for i=1,9 do
-                local itemId = recipe[i]
-                if itemId ~= nil then
-                    self.crafterStorage:fillTableSlot(i, itemId, nCrafts)
-                end
+        local recipe = db.getRecipe(itemId)
+        for i=1,9 do
+            local itemId = recipe[i]
+            if itemId ~= nil then
+                self.crafterStorage:fillTableSlot(i, itemId, nCrafts)
             end
-
-            self.crafterStorage:selectOutput()
-
-            local success, n = self.craftingComponent.craft(amountToCraft)
-            assert(success, "Crafting has failed")
-            assert(n > 0, "Nothing has been crafted")
-            assert(n == amountToCraft, "Crafted unexpected amount")
-            if neededAmount > 0 then
-                self.crafterStorage:cleanTableSlot("output")
-            end
-        until neededAmount <= 0
-    end
-
-
-    function CrafterBot.assemble(self, itemId, amount, logger)
-        if logger == nil then logger = print end
-        if amount == nil then amount = 1 end
-
-        local success, clog = planCrafting(self.crafterStorage:getStock(), itemId, amount)
-        if not success then
-            logger("Not enough items")
-            for k, v in pairs(clog) do
-                logger(string.format("%s: %i", db.getItemName(k), v))
-            end
-            return false
         end
 
-        for i, v in ipairs(clog) do
-            local q = v.times * db.getRecipeOutput(v.item)
-            logger(string.format("Assembling %i of %s", q, db.getItemName(v.item)))
-            assembleRecipe(self, v.item, q)
+        self.crafterStorage:selectOutput()
+
+        local success, n = self.craftingComponent.craft(amountToCraft)
+        assert(success, "Crafting has failed")
+        assert(n > 0, "Nothing has been crafted")
+        assert(n == amountToCraft, "Crafted unexpected amount")
+        if neededAmount > 0 then
+            self.crafterStorage:cleanTableSlot("output")
         end
-        logger("Finished successfully.")
-        return true
-    end
+    until neededAmount <= 0
 end
 
 
-return CrafterBot, planCrafting
+function CrafterBot:assemble(itemId, amount, logger)
+    if logger == nil then logger = print end
+    if amount == nil then amount = 1 end
+
+    local success, clog = planCrafting(self.crafterStorage:getStock(), itemId, amount)
+    if not success then
+        logger("Not enough items")
+        for k, v in pairs(clog) do
+            logger(string.format("%s: %i", db.getItemName(k), v))
+        end
+        return false
+    end
+
+    for i, v in ipairs(clog) do
+        local q = v.times * db.getRecipeOutput(v.item)
+        logger(string.format("Assembling %i of %s", q, db.getItemName(v.item)))
+        self:assembleRecipe(self, v.item, q)
+    end
+    logger("Finished successfully.")
+    return true
+end
+
+
+return {
+    CrafterBot=CrafterBot,
+    testing={
+        planCrafting=planCrafting
+    }
+}

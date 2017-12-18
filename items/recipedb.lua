@@ -1762,7 +1762,7 @@ end
 function M.getRecipeOutput(itemId)
     -- M.getRecipeOutput("iron_nugget")
     -- =9
-    local output = M.items[item_id].output
+    local output = M.items[itemId].output
     if output == nil then output = 1 end
     return output
 end

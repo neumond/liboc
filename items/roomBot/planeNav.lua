@@ -85,4 +85,6 @@ function PlaneNav.gotoPosition(self, x, z)
 end
 
 
-return PlaneNav
+return {
+    PlaneNav=PlaneNav
+}

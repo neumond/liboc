@@ -1,10 +1,10 @@
 local makeClass = require("utils").makeClass
 local sides = require("sides")
-local PlaneNav = require("room.planeNav")
+local PlaneNav = require("roomBot.planeNav").PlaneNav
 
 
 local CrafterNav = makeClass(function(self, robot, chestCascades)
-    self.nav = PlaneNav.new(robot)
+    self.nav = PlaneNav(robot)
     self.maxChests = chestCascades * 4
 end)
 
@@ -56,4 +56,6 @@ function CrafterNav.walkAllChests(self)
 end
 
 
-return CrafterNav
+return {
+    CrafterNav=CrafterNav
+}
