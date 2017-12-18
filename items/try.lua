@@ -115,6 +115,31 @@ function multiParams()
 end
 
 
+local fakeGpu = {
+    getResolution=function()
+        return 50, 50
+    end,
+    fill=function(x, y, w, h, char)
+        print("FILL", x, y, w, h, char)
+    end,
+    set=function(x, y, s)
+        print("SET", x, y, s)
+    end,
+    getForeground=function()
+        return 0xFFFFFF
+    end,
+    setForeground=function(v)
+        print("COLOR", v)
+    end,
+    getBackground=function()
+        return 0x000000
+    end,
+    setBackground=function(v)
+        print("BACKGROUND", v)
+    end
+}
+
+
 function renderingMarkup()
     local m = require("ui.markup")
 
@@ -126,33 +151,6 @@ function renderingMarkup()
     end
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
-
-    -- local gpu = {
-    --     getResolution=function()
-    --         return 50, 50
-    --     end,
-    --     fill=function(x, y, w, h, char)
-    --         print("FILL", x, y, w, h, char)
-    --     end,
-    --     set=function(x, y, s)
-    --         print("SET", x, y, s)
-    --     end,
-    --     getForeground=function()
-    --         return 0xFFFFFF
-    --     end,
-    --     setForeground=function(v)
-    --         print("COLOR", v)
-    --     end,
-    --     getBackground=function()
-    --         return 0x000000
-    --     end,
-    --     setBackground=function(v)
-    --         print("BACKGROUND", v)
-    --     end
-    -- }
-    local gpu = require("component").gpu
-
-
     local text = m.Div(
         m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
         m.Div(table.unpack(lipsumTable))
@@ -162,9 +160,13 @@ function renderingMarkup()
         m.Selector({"highlight"}, {color=0xFF0000})
     }
 
-
-    m.render(text, styles, gpu)
-
+    local result = m.markupToGpuCommands(text, styles, 50)
+    for i, line in ipairs(result) do
+        print('==============')
+        for j, cmd in ipairs(line) do
+            print(table.unpack(cmd))
+        end
+    end
 
     function waitForKey()
         local event = require("event")
@@ -173,7 +175,19 @@ function renderingMarkup()
         until key == 28
     end
 
-    waitForKey()
+    function execGpu()
+        local gpu = require("component").gpu
+
+        local oldForeground = gpu.getForeground()
+        local oldBackground = gpu.getBackground()
+        m.execGpuCommands(gpu, result)
+        gpu.setForeground(oldForeground)
+        gpu.setBackground(oldBackground)
+
+        waitForKey()
+    end
+
+    -- execGpu()
 end
 
 

@@ -59,10 +59,20 @@ function Element:class(s)
 end
 
 
+function Element:preIterTokensCoro()
+end
+
+
+function Element:postIterTokensCoro()
+end
+
+
 function Element:iterTokensCoro()
     if self.className ~= nil then
         coroutine.yield(Flow.pushClass, self.className)
     end
+
+    self:preIterTokensCoro()
 
     for _, child in ipairs(self.children) do
         if child._isElement then
@@ -73,6 +83,8 @@ function Element:iterTokensCoro()
             coroutine.yield(Flow.string, child)
         end
     end
+
+    self:postIterTokensCoro()
 
     if self.className ~= nil then
         coroutine.yield(Flow.popClass)
@@ -175,9 +187,12 @@ local Div = utils.makeClass(Element, function(super, ...)
 end)
 
 
-function Div:iterTokensCoro()
+function Div:preIterTokensCoro()
     coroutine.yield(Flow.newLine)
-    Element.iterTokensCoro(self)
+end
+
+
+function Div:postIterTokensCoro()
     coroutine.yield(Flow.newLine)
 end
 
@@ -185,21 +200,24 @@ end
 -- Renderer
 
 
-function renderInner(tokenIter, selectorEngine, gpu)
-    local screenWidth, screenHeight = gpu.getResolution()
-
+function markupToGpuCommands(markup, styles, screenWidth)
     screenWidth = screenWidth + 1  -- for 1-based indexing
 
     local currentLine = 1
     local currentX = 1
     local needPreSpace = false
+    local result = {{}}
+
+    function perform(...)
+        table.insert(result[currentLine], {...})
+    end
 
     function startNewLine()
-        gpu.fill(currentX, currentLine, screenWidth - currentX, 1, " ")
+        perform("fillpad", currentX - 1)
         currentLine = currentLine + 1
+        result[currentLine] = {}
         currentX = 1
         needPreSpace = false
-        return currentLine > screenHeight
     end
 
     function fitWidth(len)
@@ -213,65 +231,72 @@ function renderInner(tokenIter, selectorEngine, gpu)
         if not fits then
             s = utils.strsub(s, 1, len - 1) .. "…"
         end
-        gpu.set(currentX, currentLine, s)
+        perform("token", s, currentX)
         currentX = currentX + len
     end
 
-    for cmd, value in tokenIter do
-        if cmd == Flow.newLine then
-            if startNewLine() then return end
-        elseif cmd == Flow.string then
+    local styleSwitch = {
+        ["color"] = function(value)
+            perform("color", value)
+        end,
+        ["background"] = function(value)
+            perform("background", value)
+        end
+    }
+
+    local selectorEngine = selectorModule.SelectorEngine(styles, function(k, v)
+        styleSwitch[k](v)
+    end)
+
+    local cmdSwitch = {
+        [Flow.newLine] = function()
+            startNewLine()
+        end,
+        [Flow.string] = function(value)
             outputString(value)
-        elseif cmd == Flow.wordSize then
+        end,
+        [Flow.wordSize] = function(value)
             local fits = fitWidth(value + (needPreSpace and 1 or 0))
             if not fits then
-                if startNewLine() then return end
+                startNewLine()
             else
                 if needPreSpace then
-                    gpu.set(currentX, currentLine, " ")
+                    perform("space", currentX)
                     currentX = currentX + 1
                 end
                 needPreSpace = true
             end
-        elseif cmd == Flow.pushClass then
+        end,
+        [Flow.pushClass] = function(value)
             selectorEngine:push(value)
-        elseif cmd == Flow.popClass then
+        end,
+        [Flow.popClass] = function(value)
             selectorEngine:pop()
         end
+    }
+
+    for cmd, value in squashNewLines(removeGlueAddWordLengths(markup:iterTokens())) do
+        cmdSwitch[cmd](value)
     end
+
+    return result
 end
 
 
-function render(markup, styles, gpu)
-    -- gpu must provide methods
-    --   getResolution
-    --   fill
-    --   set
-    --   getForeground
-    --   setForeground
-    --   getBackground
-    --   setBackground
-    -- it can be a proxy object to render into constrained parts of screen
-
-    local oldForeground = gpu.getForeground()
-    local oldBackground = gpu.getBackground()
-
-    function changedStyleCallback(k, v)
-        if k == "color" then
-            gpu.setForeground(v)
-        elseif k == "background" then
-            gpu.setBackground(v)
+function execGpuCommands(gpu, commands)
+    for Y, lineCmds in ipairs(commands) do
+        for _, cmd in ipairs(lineCmds) do
+            if cmd[1] == "token" then
+                gpu.set(cmd[3], Y, cmd[2])
+            elseif cmd[1] == "space" then
+                gpu.set(cmd[2], Y, " ")
+            elseif cmd[1] == "color" then
+                gpu.setForeground(cmd[2])
+            elseif cmd[1] == "background" then
+                gpu.setBackground(cmd[2])
+            end
         end
     end
-
-    local r = renderInner(
-        squashNewLines(removeGlueAddWordLengths(markup:iterTokens())),
-        selectorModule.SelectorEngine(styles, changedStyleCallback),
-        gpu)
-
-    gpu.setForeground(oldForeground)
-    gpu.setBackground(oldBackground)
-    return r
 end
 
 
@@ -287,5 +312,6 @@ return {
     Div=Div,
     NBR=NBR,
     Selector=selectorModule.Selector,
-    render=render
+    markupToGpuCommands=markupToGpuCommands,
+    execGpuCommands=execGpuCommands
 }
