@@ -208,11 +208,6 @@ function Div:iterTokensCoro()
 end
 
 
-local HorizontalRule = utils.makeClass(Div, function(super, char)
-    if char == nil then char = "─" end
-end)
-
-
 -- Renderer
 
 

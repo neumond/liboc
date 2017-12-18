@@ -72,3 +72,21 @@ Markup module works with very simplified HTML.
 | `color` | Text color | Hexadecimal 24 bit number | block, inline |
 | `background` | Background color | Hexadecimal 24 bit number | block, inline |
 | `align` | Text alignment | `left`, `center`, `right` | block |
+| `fill` | Filler character | | block |
+| `fillcolor` | Color of filler characters | Hexadecimal 24 bit number | block |
+
+### Making horizontal rules
+
+Full line filled with character:
+
+```lua
+local hr = m.Div(""):class("hr1")
+local s = m.Selector({"hr1"}, {fill="─"})
+```
+
+Centered piece of text:
+
+```lua
+local hr = m.Div("* * *"):class("hr2")
+local s = m.Selector({"hr2"}, {align="center"})
+```

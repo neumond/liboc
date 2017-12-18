@@ -250,15 +250,19 @@ function mu5(m)
 
     local text = m.Div(
         m.Div(table.unpack(out)),
+        m.Div(""):class("hr"),
         m.Div(
             "Highlighting", "here", "applied", "to", "whole", "block.",
             "You", "can", "see", "block", "paddings", "filled", "in", "red."
-        ):class("h")
+        ):class("h"),
+        m.Div("* * *"):class("hr2")
     ):class("main")
 
     local styles = {
         m.Selector({"main"}, {align="right"}),
-        m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000, fill="+", fillcolor=0xFFFF00})
+        m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000, fill="+", fillcolor=0xFFFF00}),
+        m.Selector({"hr"}, {fill="─"}),
+        m.Selector({"hr2"}, {align="center"})
     }
 
     return text, styles
