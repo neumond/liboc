@@ -164,7 +164,7 @@ end
 
 function mu2(m)
     local text = m.Div(
-        "Lorem", "ipsum",  -- TODO: this still aligned right
+        "Lorem", "ipsum",
         m.Div(
             "dolor", "sit", "amet"
         ):class("right")
@@ -182,14 +182,14 @@ end
 function mu3(m)
     local text = m.Div(
         m.Div(
-            m.Div("Lorem", "ipsum"):class("right")  -- TODO: this still aligned center
+            m.Div("Lorem", "ipsum"):class("right")
         ):class("center")
     ):class("left")
 
     local styles = {
         m.Selector({"left"}, {align="left"}),
-        m.Selector({"right"}, {align="right"}),
-        m.Selector({"center"}, {align="center"})
+        m.Selector({"center"}, {align="center"}),
+        m.Selector({"right"}, {align="right"})
     }
 
     return text, styles

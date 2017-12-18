@@ -59,21 +59,21 @@ function Element:class(s)
 end
 
 
-function Element:preIterTokensCoro()
-end
-
-
-function Element:postIterTokensCoro()
-end
-
-
-function Element:iterTokensCoro()
+function Element:iterTokensPushClass()
     if self.className ~= nil then
         coroutine.yield(Flow.pushClass, self.className)
     end
+end
 
-    self:preIterTokensCoro()
 
+function Element:iterTokensPopClass()
+    if self.className ~= nil then
+        coroutine.yield(Flow.popClass)
+    end
+end
+
+
+function Element:iterTokensChildren()
     for _, child in ipairs(self.children) do
         if child._isElement then
             child:iterTokensCoro()
@@ -83,12 +83,13 @@ function Element:iterTokensCoro()
             coroutine.yield(Flow.string, child)
         end
     end
+end
 
-    self:postIterTokensCoro()
 
-    if self.className ~= nil then
-        coroutine.yield(Flow.popClass)
-    end
+function Element:iterTokensCoro()
+    self:iterTokensPushClass()
+    self:iterTokensChildren()
+    self:iterTokensPopClass()
 end
 
 
@@ -187,13 +188,12 @@ local Div = utils.makeClass(Element, function(super, ...)
 end)
 
 
-function Div:preIterTokensCoro()
+function Div:iterTokensCoro()
     coroutine.yield(Flow.newLine)
-end
-
-
-function Div:postIterTokensCoro()
+    self:iterTokensPushClass()
+    self:iterTokensChildren()
     coroutine.yield(Flow.newLine)
+    self:iterTokensPopClass()
 end
 
 
