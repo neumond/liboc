@@ -9,14 +9,14 @@ local ItemTip = utils.makeClass(function(self)
 end)
 
 
-function ItemTip.maybeBetter(self, slotId)
+function ItemTip:maybeBetter(slotId)
     if (self.slot == nil) or (slotId < self.slot) then
         self.slot = slotId
     end
 end
 
 
-function ItemTip.clear(self, slotId)
+function ItemTip:clear(slotId)
     if slotId == self.slot then
         self.slot = nil
         return true
@@ -33,7 +33,7 @@ local ItemToSlotIndex = utils.makeClass(function(self)
 end)
 
 
-function ItemToSlotIndex.getItem(self, itemId, autocreate)
+function ItemToSlotIndex:getItem(itemId, autocreate)
     if autocreate and self.data[itemId] == nil then
         self.data[itemId] = {
             slots={},
@@ -45,7 +45,7 @@ function ItemToSlotIndex.getItem(self, itemId, autocreate)
 end
 
 
-function ItemToSlotIndex.refill(self, itemId, slotId, halfFilled)
+function ItemToSlotIndex:refill(itemId, slotId, halfFilled)
     -- item appears in a slot
     assert(halfFilled ~= nil)
     local item = self:getItem(itemId, true)
@@ -62,6 +62,7 @@ function ItemToSlotIndex.refill(self, itemId, slotId, halfFilled)
 end
 
 
+-- class method
 function ItemToSlotIndex.assignNewTip(item, tip, halfFilled)
     for slotId, hf in pairs(item.slots) do
         if halfFilled == hf then
@@ -71,7 +72,7 @@ function ItemToSlotIndex.assignNewTip(item, tip, halfFilled)
 end
 
 
-function ItemToSlotIndex.autoCleanItem(self, itemId)
+function ItemToSlotIndex:autoCleanItem(itemId)
     if utils.isTableEmpty(self.data[itemId].slots) then
         -- no more items of this type
         self.data[itemId] = nil
@@ -81,21 +82,21 @@ function ItemToSlotIndex.autoCleanItem(self, itemId)
 end
 
 
-function ItemToSlotIndex.clearFull(self, item, slotId)
+function ItemToSlotIndex:clearFull(item, slotId)
     if item.full:clear(slotId) then
         self.assignNewTip(item, item.full, false)
     end
 end
 
 
-function ItemToSlotIndex.clearHalf(self, item, slotId)
+function ItemToSlotIndex:clearHalf(item, slotId)
     if item.half:clear(slotId) then
         self.assignNewTip(item, item.half, true)
     end
 end
 
 
-function ItemToSlotIndex.empty(self, itemId, slotId)
+function ItemToSlotIndex:empty(itemId, slotId)
     -- item disappears from a slot
     local item = self:getItem(itemId, false)
     if item == nil then return end
@@ -108,7 +109,7 @@ function ItemToSlotIndex.empty(self, itemId, slotId)
 end
 
 
-function ItemToSlotIndex.findForInput(self, itemId)
+function ItemToSlotIndex:findForInput(itemId)
     local item = self:getItem(itemId, false)
     if item == nil then return nil end
     if item.half.slot ~= nil then
@@ -118,7 +119,7 @@ function ItemToSlotIndex.findForInput(self, itemId)
 end
 
 
-function ItemToSlotIndex.findForOutput(self, itemId)
+function ItemToSlotIndex:findForOutput(itemId)
     local item = self:getItem(itemId)
     if item == nil then return nil end
     return item.half.slot
@@ -136,14 +137,14 @@ local EmptySlotIndex = utils.makeClass(function(self)
 end)
 
 
-function EmptySlotIndex.assignNewTip(self)
+function EmptySlotIndex:assignNewTip()
     for slotId, _ in pairs(self.data) do
         self.tip:maybeBetter(slotId)
     end
 end
 
 
-function EmptySlotIndex.fill(self, slotId)
+function EmptySlotIndex:fill(slotId)
     -- slot becomes busy
     if self.data[slotId] == nil then return end
 
@@ -154,7 +155,7 @@ function EmptySlotIndex.fill(self, slotId)
 end
 
 
-function EmptySlotIndex.empty(self, slotId)
+function EmptySlotIndex:empty(slotId)
     -- slot becomes empty
     if self.data[slotId] then return end
 
@@ -163,7 +164,7 @@ function EmptySlotIndex.empty(self, slotId)
 end
 
 
-function EmptySlotIndex.find(self)
+function EmptySlotIndex:find()
     -- find an empty slot
     return self.tip.slot
 end
@@ -178,7 +179,7 @@ local SlotIndex = utils.makeClass(function(self)
 end)
 
 
-function SlotIndex.registerSlot(self, address)
+function SlotIndex:registerSlot(address)
     -- register slot at initialization
     -- by default slot is empty
     -- you have to explicitly call .fill for every slot with contents
@@ -191,13 +192,13 @@ function SlotIndex.registerSlot(self, address)
 end
 
 
-function SlotIndex.innerEmpty(self, slotId, c)
+function SlotIndex:innerEmpty(slotId, c)
     utils.stock.take(self.stock, c.item, c.amount)
     self.data[slotId].content = nil
 end
 
 
-function SlotIndex.fill(self, slotId, itemId, amount)
+function SlotIndex:fill(slotId, itemId, amount)
     -- item appears in a slot
     local c = self.data[slotId].content
     if c ~= nil then
@@ -208,7 +209,7 @@ function SlotIndex.fill(self, slotId, itemId, amount)
 end
 
 
-function SlotIndex.empty(self, slotId)
+function SlotIndex:empty(slotId)
     -- slot becomes empty
     local c = self.data[slotId].content
     if c == nil then return end
@@ -216,7 +217,7 @@ function SlotIndex.empty(self, slotId)
 end
 
 
-function SlotIndex.get(self, slotId)
+function SlotIndex:get(slotId)
     local c = self.data[slotId].content
     if c == nil then
         return nil, 0
@@ -225,7 +226,7 @@ function SlotIndex.get(self, slotId)
 end
 
 
-function SlotIndex.getAddress(self, slotId)
+function SlotIndex:getAddress(slotId)
     return self.data[slotId].address
 end
 
@@ -240,21 +241,21 @@ local IntegratedIndex = utils.makeClass(function(self)
 end)
 
 
-function IntegratedIndex.registerSlot(self, address)
+function IntegratedIndex:registerSlot(address)
     local slotId = self.slots:registerSlot(address)
     self:empty(slotId)
     return slotId
 end
 
 
-function IntegratedIndex.refill(self, slotId, itemId, size, maxSize)
+function IntegratedIndex:refill(slotId, itemId, size, maxSize)
     self.itemToSlot:refill(itemId, slotId, size < maxSize)
     self.emptyIndex:fill(slotId)
     self.slots:fill(slotId, itemId, size)
 end
 
 
-function IntegratedIndex.empty(self, slotId)
+function IntegratedIndex:empty(slotId)
     local existingItem = self.slots:get(slotId)
     self.itemToSlot:empty(existingItem, slotId)
     self.emptyIndex:empty(slotId)
@@ -262,17 +263,17 @@ function IntegratedIndex.empty(self, slotId)
 end
 
 
-function IntegratedIndex.getAddress(self, slotId)
+function IntegratedIndex:getAddress(slotId)
     return self.slots:getAddress(slotId)
 end
 
 
-function IntegratedIndex.findInputSlot(self, itemId)
+function IntegratedIndex:findInputSlot(itemId)
     return self.itemToSlot:findForInput(itemId)
 end
 
 
-function IntegratedIndex.findOutputSlot(self, itemId)
+function IntegratedIndex:findOutputSlot(itemId)
     local slotId = self.itemToSlot:findForOutput(itemId)
     if slotId == nil then
         slotId = self.emptyIndex:find()

@@ -24,28 +24,28 @@ function getChestPosition(n)
 end
 
 
-function CrafterNav.gotoInput(self)
+function CrafterNav:gotoInput()
     self.nav:gotoPosition(-1, -1)
     self.nav:rotate("Z-")
     return sides.front
 end
 
 
-function CrafterNav.gotoOutput(self)
+function CrafterNav:gotoOutput()
     self.nav:gotoPosition(1, -1)
     self.nav:rotate("Z-")
     return sides.front
 end
 
 
-function CrafterNav.gotoChest(self, n)
+function CrafterNav:gotoChest(n)
     local x, z, side = getChestPosition(n)
     self.nav:gotoPosition(x, z)
     return side
 end
 
 
-function CrafterNav.walkAllChests(self)
+function CrafterNav:walkAllChests()
     local i = 1
     return (function()
         if i > self.maxChests then return end

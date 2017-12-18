@@ -15,7 +15,7 @@ local PlaneNav = makeClass(function(self, robot)
 end)
 
 
-function PlaneNav.planRotation(self, from, to)
+function PlaneNav:planRotation(from, to)
     from = self.currentRotation
     if from == to then return nil end
 
@@ -40,7 +40,7 @@ function PlaneNav.planRotation(self, from, to)
 end
 
 
-function PlaneNav.rotate(self, to)
+function PlaneNav:rotate(to)
     local r = self:planRotation(self.currentRotation, to)
     if r == "around" then
         self.robot.turnAround()
@@ -53,7 +53,7 @@ function PlaneNav.rotate(self, to)
 end
 
 
-function PlaneNav.gotoPosition(self, x, z)
+function PlaneNav:gotoPosition(x, z)
     function isCoAxial(to)
         return string.sub(self.currentRotation, 1, 1) == to
     end
