@@ -217,7 +217,6 @@ function markupToGpuCommands(markup, styles, screenWidth)
         currentLine = currentLine + 1
         result[currentLine] = {}
         currentX = 1
-        needPreSpace = false
     end
 
     function fitWidth(len)
@@ -251,6 +250,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
     local cmdSwitch = {
         [Flow.newLine] = function()
             startNewLine()
+            needPreSpace = false
         end,
         [Flow.string] = function(value)
             outputString(value)
@@ -264,8 +264,8 @@ function markupToGpuCommands(markup, styles, screenWidth)
                     perform("space", currentX)
                     currentX = currentX + 1
                 end
-                needPreSpace = true
             end
+            needPreSpace = true
         end,
         [Flow.pushClass] = function(value)
             selectorEngine:push(value)

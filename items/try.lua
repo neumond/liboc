@@ -161,10 +161,13 @@ function renderingMarkup()
     }
 
     local result = m.markupToGpuCommands(text, styles, 50)
-    for i, line in ipairs(result) do
-        print('==============')
-        for j, cmd in ipairs(line) do
-            print(table.unpack(cmd))
+
+    function outsideOC()
+        for i, line in ipairs(result) do
+            print('==============')
+            for j, cmd in ipairs(line) do
+                print(table.unpack(cmd))
+            end
         end
     end
 
@@ -187,7 +190,8 @@ function renderingMarkup()
         waitForKey()
     end
 
-    -- execGpu()
+    -- outsideOC()
+    execGpu()
 end
 
 
