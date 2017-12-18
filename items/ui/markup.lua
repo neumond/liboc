@@ -208,6 +208,11 @@ function Div:iterTokensCoro()
 end
 
 
+local HorizontalRule = utils.makeClass(Div, function(super, char)
+    if char == nil then char = "─" end
+end)
+
+
 -- Renderer
 
 
@@ -252,7 +257,7 @@ function GpuLine:isEmpty()
 end
 
 
-function GpuLine:finalize(screenWidth, align, fillBackground)
+function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColor)
     -- TODO: "justify" align
 
     local pad = screenWidth - self.width
@@ -280,17 +285,18 @@ function GpuLine:finalize(screenWidth, align, fillBackground)
 
     if pad > 0 then
         table.insert(cmds, {"setBackground", fillBackground})
+        table.insert(cmds, {"setForeground", fillColor})
         if align == "left" then
-            table.insert(cmds, {"fill", x + 1, pad, " "})
+            table.insert(cmds, {"fill", x + 1, pad, fillChar})
         elseif align == "right" then
-            table.insert(cmds, {"fill", 1, pad, " "})
+            table.insert(cmds, {"fill", 1, pad, fillChar})
         elseif align == "center" then
             if centerPad > 0 then
-                table.insert(cmds, {"fill", 1, centerPad, " "})
+                table.insert(cmds, {"fill", 1, centerPad, fillChar})
             end
             centerPad = pad - centerPad
             if centerPad > 0 then
-                table.insert(cmds, {"fill", x + 1, centerPad, " "})
+                table.insert(cmds, {"fill", x + 1, centerPad, fillChar})
             end
         end
     end
@@ -324,7 +330,9 @@ function markupToGpuCommands(markup, styles, screenWidth)
                 table.insert(result, line:finalize(
                     screenWidth,
                     selectorEngine:getCurrentStyle("align"),
-                    selectorEngine:getCurrentStyle("background")
+                    selectorEngine:getCurrentStyle("background"),
+                    selectorEngine:getCurrentStyle("fill"),
+                    selectorEngine:getCurrentStyle("fillcolor")
                 ))
             end
         end

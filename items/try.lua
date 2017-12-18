@@ -258,7 +258,7 @@ function mu5(m)
 
     local styles = {
         m.Selector({"main"}, {align="right"}),
-        m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000})
+        m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000, fill="+", fillcolor=0xFFFF00})
     }
 
     return text, styles
