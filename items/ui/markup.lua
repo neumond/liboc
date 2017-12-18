@@ -1,7 +1,5 @@
 local utils = require("utils")
 local selectorModule = require("ui.selectors")
-
-
 local Flow = {
     string=1,
     glue=2,
@@ -10,18 +8,7 @@ local Flow = {
     blockBound=5,
     wordSize=6
 }
-
-
-local Glue = {}  -- No Break
-
-
-local Styles = utils.makeClass(function(self)  -- TODO: need?
-end)
-
-
--- local s = Styles()
--- s.add("highlight", {color=0x00ff00})
--- s.add("quote", {align="right", indent=3, marginLeft=4, marginRight=4})
+local Glue = {}
 
 
 -- Element
@@ -359,8 +346,6 @@ function markupToGpuCommands(markup, styles, screenWidth)
         cmdSwitch[cmd](value)
     end
     finalizeCurrentBlock()
-
-    -- TODO: remove last empty line
 
     return result
 end

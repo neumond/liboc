@@ -217,10 +217,23 @@ function mu4(m)
 end
 
 
+function mu5(m)
+    local text = m.Div(
+        "Lorem", "ipsum", m.Span("dolor"):class("h"), "sit", "amet"
+    ):class("left")
+
+    local styles = {
+        m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000})
+    }
+
+    return text, styles
+end
+
+
 function renderingMarkup()
     local m = require("ui.markup")
 
-    local text, styles = mu4(m)
+    local text, styles = mu5(m)
 
     local result = m.markupToGpuCommands(text, styles, 50)
 
@@ -252,8 +265,8 @@ function renderingMarkup()
         waitForKey()
     end
 
-    -- outsideOC()
-    execGpu()
+    outsideOC()
+    -- execGpu()
 end
 
 
