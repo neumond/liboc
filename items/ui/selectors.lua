@@ -42,6 +42,11 @@ local StyleStack = utils.makeClass(function(self, changedStyleCallback)
 end)
 
 
+function StyleStack:getCurrentStyle(name)
+    return self.currentStyles[name]
+end
+
+
 function StyleStack:setCurrentStyle(name, value, selectorIndex)
     if self.currentStyles[name] ~= value then
         self.changedStyleCallback(name, value)
@@ -228,6 +233,11 @@ function SelectorEngine:pop()
             self:addExpectation(ss:getExpectedClassName(), selectorIndex)
         end
     end
+end
+
+
+function SelectorEngine:getCurrentStyle(name)
+    return self.styleStack:getCurrentStyle(name)
 end
 
 

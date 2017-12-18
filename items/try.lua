@@ -218,11 +218,46 @@ end
 
 
 function mu5(m)
+    local lipsum = getLipsum()
+    local out = {}
+    for i=1,2 do
+        table.insert(out, lipsum[i])
+    end
+    table.insert(out, m.Span(lipsum[3]):class("h"))
+    for i=4,5 do
+        table.insert(out, lipsum[i])
+    end
+    do
+        local span = {}
+        for i=6,8 do
+            table.insert(span, lipsum[i])
+        end
+        table.insert(out, m.Span(table.unpack(span)):class("h"))
+    end
+    for i=9,20 do
+        table.insert(out, lipsum[i])
+    end
+    do
+        local span = {}
+        for i=20,35 do
+            table.insert(span, lipsum[i])
+        end
+        table.insert(out, m.Span(table.unpack(span)):class("h"))
+    end
+    for i=35,#lipsum do
+        table.insert(out, lipsum[i])
+    end
+
     local text = m.Div(
-        "Lorem", "ipsum", m.Span("dolor"):class("h"), "sit", "amet"
-    ):class("left")
+        m.Div(table.unpack(out)),
+        m.Div(
+            "Highlighting", "here", "applied", "to", "whole", "block.",
+            "You", "can", "see", "block", "paddings", "filled", "in", "red."
+        ):class("h")
+    ):class("main")
 
     local styles = {
+        m.Selector({"main"}, {align="right"}),
         m.Selector({"h"}, {color=0xFFFFFF, background=0xFF0000})
     }
 
@@ -265,8 +300,9 @@ function renderingMarkup()
         waitForKey()
     end
 
-    outsideOC()
-    -- execGpu()
+    -- tokenDebug(text)
+    -- outsideOC()
+    execGpu()
 end
 
 

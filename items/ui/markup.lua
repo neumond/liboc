@@ -83,12 +83,12 @@ function removeGlueAddWordLengths(iter)
         local glued = true
         local accuLength = 0
 
-        function appendString(s)
+        local function appendString(s)
             accuLength = accuLength + utils.strlen(s)
             return append(Flow.string, s)
         end
 
-        function flushWord()
+        local function prependWordSize()
             if accuLength == 0 then return end  -- no word have accumulated
             prepend(Flow.wordSize, accuLength)
             accuLength = 0
@@ -98,13 +98,13 @@ function removeGlueAddWordLengths(iter)
             while true do
                 local cmd, val = iter()
                 if cmd == nil then
-                    flushWord()
+                    prependWordSize()
                     return true, nil  -- finish and output everything in buffer
                 elseif cmd == Flow.glue then
                     glued = true  -- setting flag and skipping this command
                 elseif cmd == Flow.string then
                     if not glued then  -- non-glued word boundary detected
-                        flushWord()
+                        prependWordSize()
                         local idx = appendString(val)
                         return false, idx - 1  -- output everything except last string
                     else  -- glued case
@@ -112,7 +112,7 @@ function removeGlueAddWordLengths(iter)
                         appendString(val)
                     end
                 elseif cmd == Flow.blockBound then
-                    flushWord()
+                    prependWordSize()
                     append(cmd, val)
                     return false, nil
                 else
@@ -145,6 +145,40 @@ function squashBlockBounds(iter)
         end
     end
 end
+
+
+function pushclassAfterWordsize(iter)
+    return utils.bufferingIterator(function(append, prepend)
+        return function()
+            while true do
+                local cmd, val = iter()
+                if cmd == nil then
+                    return true, nil
+                elseif cmd == Flow.pushClass then
+                    append(cmd, val)
+                elseif cmd == Flow.wordSize then
+                    prepend(cmd, val)
+                    return false, nil
+                else
+                    append(cmd, val)
+                    return false, nil
+                end
+            end
+        end
+    end)
+end
+
+
+function iterMarkupTokens(markup)
+    return pushclassAfterWordsize(
+        squashBlockBounds(
+            removeGlueAddWordLengths(
+                markup:iterTokens()
+            )
+        )
+    )
+end
+
 
 
 -- Span takes as much horizontal space as needed for content
@@ -218,7 +252,7 @@ function GpuLine:isEmpty()
 end
 
 
-function GpuLine:finalize(align, screenWidth)
+function GpuLine:finalize(screenWidth, align, fillBackground)
     -- TODO: "justify" align
 
     local pad = screenWidth - self.width
@@ -245,6 +279,7 @@ function GpuLine:finalize(align, screenWidth)
     end
 
     if pad > 0 then
+        table.insert(cmds, {"setBackground", fillBackground})
         if align == "left" then
             table.insert(cmds, {"fill", x + 1, pad, " "})
         elseif align == "right" then
@@ -268,7 +303,6 @@ function markupToGpuCommands(markup, styles, screenWidth)
     local currentLine = GpuLine()
     local result = {}
     local currentBlock = {currentLine}
-    local currentAlign
 
     local styleSwitch = {
         ["color"] = function(value)
@@ -276,38 +310,42 @@ function markupToGpuCommands(markup, styles, screenWidth)
         end,
         ["background"] = function(value)
             currentLine:background(value)
-        end,
-        ["align"] = function(value)
-            currentAlign = value
         end
     }
 
     local selectorEngine = selectorModule.SelectorEngine(styles, function(k, v)
-        styleSwitch[k](v)
+        local cb = styleSwitch[k]
+        if cb ~= nil then cb(v) end
     end)
 
-    function finalizeCurrentBlock()
+    local function finalizeCurrentBlock()
         for i, line in ipairs(currentBlock) do
             if not line:isEmpty() then
-                table.insert(result, line:finalize(currentAlign, screenWidth))
+                table.insert(result, line:finalize(
+                    screenWidth,
+                    selectorEngine:getCurrentStyle("align"),
+                    selectorEngine:getCurrentStyle("background")
+                ))
             end
         end
         currentBlock = {}
     end
 
-    function startNewLine(realignBlock)
+    local function startNewLine(realignBlock)
         if realignBlock then finalizeCurrentBlock() end
 
         currentLine = GpuLine()
+        currentLine:color(selectorEngine:getCurrentStyle("color"))
+        currentLine:background(selectorEngine:getCurrentStyle("background"))
         table.insert(currentBlock, currentLine)
     end
 
-    function fitWidth(len)
+    local function fitWidth(len)
         local v = math.min(len, screenWidth - currentLine.width)
         return v == len, v
     end
 
-    function outputToken(s)
+    local function outputToken(s)
         if currentLine.width >= screenWidth then return end
         local fits, len = fitWidth(utils.strlen(s))
         if not fits then
@@ -342,7 +380,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
         end
     }
 
-    for cmd, value in squashBlockBounds(removeGlueAddWordLengths(markup:iterTokens())) do
+    for cmd, value in iterMarkupTokens(markup) do
         cmdSwitch[cmd](value)
     end
     finalizeCurrentBlock()
@@ -368,11 +406,24 @@ function execGpuCommands(gpu, commands)
 end
 
 
+function tokenDebug(markup)
+    local RevFlow = {}
+    for k, v in pairs(Flow) do
+        RevFlow[v] = k
+    end
+
+    for cmd, value in iterMarkupTokens(markup) do
+        print(RevFlow[cmd], value)
+    end
+end
+
+
 return {
     Span=Span,
     Div=Div,
     Glue=Glue,
     Selector=selectorModule.Selector,
     markupToGpuCommands=markupToGpuCommands,
-    execGpuCommands=execGpuCommands
+    execGpuCommands=execGpuCommands,
+    tokenDebug=tokenDebug
 }

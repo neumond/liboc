@@ -46,19 +46,19 @@ function M.bufferingIterator(createIter)
     local flushUntil = front
     local finish = false
 
-    function append(...)
+    local function append(...)
         front = front + 1
         buf[front] = {...}
         return front
     end
 
-    function prepend(...)
+    local function prepend(...)
         back = back - 1
         buf[back] = {...}
         return back
     end
 
-    function flushedAll() return flushUntil < back end
+    local function flushedAll() return flushUntil < back end
 
     local iter = createIter(append, prepend)
     return function()
