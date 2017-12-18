@@ -140,13 +140,19 @@ local fakeGpu = {
 }
 
 
-function mu1(m)
+function getLipsum()
     local lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras feugiat mattis augue condimentum finibus. Quisque vestibulum justo ut nisl interdum suscipit. Sed sed nunc vitae orci scelerisque viverra at ultricies metus. Nullam quam mauris, consectetur eu nunc sed, posuere ullamcorper quam. Phasellus eu turpis sed ipsum suscipit egestas viverra id odio. Duis hendrerit facilisis finibus. Maecenas consequat quis lorem ut mattis. Proin ultrices lectus ut felis tincidunt, eu porta quam mattis. Cras sagittis erat consectetur condimentum rhoncus. Curabitur convallis convallis mauris sed convallis. Curabitur a quam ac nisl sodales bibendum. Nunc ut sem eleifend leo viverra blandit vitae ac augue. Etiam faucibus ligula ac sem tempus ultrices. Donec suscipit ullamcorper nibh eu aliquam."
 
-    lipsumTable = {}
+    local lipsumTable = {}
     for w in lipsum:gmatch("%S+") do
         table.insert(lipsumTable, w)
     end
+    return lipsumTable
+end
+
+
+function mu1(m)
+    local lipsumTable = getLipsum()
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
     local text = m.Div(
@@ -196,10 +202,25 @@ function mu3(m)
 end
 
 
+function mu4(m)
+    local lipsumTable = getLipsum()
+    local text = m.Div(
+        m.Span(table.unpack(lipsumTable)):class("left")
+    ):class("right")
+
+    local styles = {
+        m.Selector({"right"}, {align="right"}),
+        m.Selector({"right", "left"}, {align="left", color=0x00FF00})
+    }
+
+    return text, styles
+end
+
+
 function renderingMarkup()
     local m = require("ui.markup")
 
-    local text, styles = mu3(m)
+    local text, styles = mu4(m)
 
     local result = m.markupToGpuCommands(text, styles, 50)
 
