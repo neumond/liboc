@@ -285,10 +285,10 @@ end
 
 
 return {
-    -- main
     IntegratedIndex=IntegratedIndex,
-    -- testing
-    ItemToSlotIndex=ItemToSlotIndex,
-    EmptySlotIndex=EmptySlotIndex,
-    SlotIndex=SlotIndex
+    testing={
+        ItemToSlotIndex=ItemToSlotIndex,
+        EmptySlotIndex=EmptySlotIndex,
+        SlotIndex=SlotIndex
+    }
 }

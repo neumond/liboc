@@ -425,5 +425,7 @@ return {
     Selector=selectorModule.Selector,
     markupToGpuCommands=markupToGpuCommands,
     execGpuCommands=execGpuCommands,
-    tokenDebug=tokenDebug
+    testing={
+        tokenDebug=tokenDebug
+    }
 }

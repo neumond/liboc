@@ -1,11 +1,11 @@
 require("busted.runner")()
-local tmod = require("roomBot.storageIndex")
+local mod = require("roomBot.storageIndex")
 
 
 describe("Storage Index module intended for tracking set of slots in inventories/chests", function()
     describe("ItemToSlotIndex", function()
         it("works in simple cases", function()
-            local x = tmod.ItemToSlotIndex()
+            local x = mod.testing.ItemToSlotIndex()
             -- x:refill(itemId, slotId, halfFilled)
             -- x:empty(itemId, slotId)
             -- x:findForInput(itemId)
@@ -31,7 +31,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
             assert(x:findForOutput("stone") == nil)
         end)
         it("converts half filled slots directly into full", function()
-            local x = tmod.ItemToSlotIndex()
+            local x = mod.testing.ItemToSlotIndex()
 
             x:refill("stone", 4, true)
 
@@ -49,7 +49,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
             assert(x:findForOutput("stone") == 4)
         end)
         it("successfully finds better slots", function()
-            local x = tmod.ItemToSlotIndex()
+            local x = mod.testing.ItemToSlotIndex()
 
             x:refill("stone", 18, false)
             x:refill("stone", 19, false)
@@ -79,7 +79,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
             assert(x:findForOutput("stone") == nil)
         end)
         it("calls are idempotent", function()
-            local x = tmod.ItemToSlotIndex()
+            local x = mod.testing.ItemToSlotIndex()
 
             x:refill("stone", 4, true)
             x:refill("stone", 4, true)
@@ -105,7 +105,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
     end)
     describe("EmptySlotIndex", function()
         it("works in simple cases", function()
-            local x = tmod.EmptySlotIndex()
+            local x = mod.testing.EmptySlotIndex()
             -- x:fill(slotId)
             -- x:empty(slotId)
             -- x:find()
@@ -147,7 +147,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
     end)
     describe("SlotIndex", function()
         it("works in simple cases", function()
-            local x = tmod.SlotIndex()
+            local x = mod.testing.SlotIndex()
             -- x:registerSlot(address)
             -- x:fill(slotId, itemId, amount)
             -- x:empty(slotId)
@@ -189,7 +189,7 @@ describe("Storage Index module intended for tracking set of slots in inventories
             initialItems[563] = {"wood", 64, 64}
             initialItems[564] = {"wood", 64, 64}
 
-            local x = tmod.IntegratedIndex()
+            local x = mod.IntegratedIndex()
             for i=1,670 do
                 x:registerSlot(nil)
                 if initialItems[i] ~= nil then

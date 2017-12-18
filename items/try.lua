@@ -300,9 +300,9 @@ function renderingMarkup()
         waitForKey()
     end
 
-    -- tokenDebug(text)
-    -- outsideOC()
-    execGpu()
+    -- m.testing.tokenDebug(text)
+    outsideOC()
+    -- execGpu()
 end
 
 
