@@ -7,22 +7,12 @@ local Flow = {
     glue=2,
     pushClass=3,
     popClass=4,
-    newLine=5,
+    blockBound=5,
     wordSize=6
 }
 
 
-local FlowNames = {  -- TODO: remove
-    [1]="string",
-    [2]="glue",
-    [3]="push",
-    [4]="pop",
-    [5]="newline",
-    [6]="word"
-}
-
-
-local NBR = {_isGlue=true}
+local Glue = {}  -- No Break
 
 
 local Styles = utils.makeClass(function(self)  -- TODO: need?
@@ -77,7 +67,7 @@ function Element:iterTokensChildren()
     for _, child in ipairs(self.children) do
         if child._isElement then
             child:iterTokensCoro()
-        elseif child._isGlue then
+        elseif child == Glue then
             coroutine.yield(Flow.glue)
         else
             coroutine.yield(Flow.string, child)
@@ -134,7 +124,7 @@ function removeGlueAddWordLengths(iter)
                         glued = false  -- reset flag
                         appendString(val)
                     end
-                elseif cmd == Flow.newLine then
+                elseif cmd == Flow.blockBound then
                     flushWord()
                     append(cmd, val)
                     return false, nil
@@ -147,14 +137,14 @@ function removeGlueAddWordLengths(iter)
 end
 
 
-function squashNewLines(iter)
+function squashBlockBounds(iter)
     local prevNewLine = true  -- true to omit first newLine
     return function()
         while true do
             local cmd, val = iter()
             if cmd == nil then
                 return nil
-            elseif cmd ~= Flow.newLine then
+            elseif cmd ~= Flow.blockBound then
                 if cmd == Flow.string then
                     prevNewLine = false  -- has some content, don't omit newLine
                 end
@@ -189,10 +179,10 @@ end)
 
 
 function Div:iterTokensCoro()
-    coroutine.yield(Flow.newLine)
+    coroutine.yield(Flow.blockBound)
     self:iterTokensPushClass()
     self:iterTokensChildren()
-    coroutine.yield(Flow.newLine)
+    coroutine.yield(Flow.blockBound)
     self:iterTokensPopClass()
 end
 
@@ -204,6 +194,7 @@ local GpuLine = utils.makeClass(function(self)
     self.width = 0
     self.spaceCount = 0
     self.commands = {}
+    self.nonEmpty = false
 end)
 
 
@@ -227,6 +218,16 @@ end
 
 function GpuLine:background(value)
     table.insert(self.commands, {"setBackground", value})
+end
+
+
+function GpuLine:makeNonEmpty()
+    self.nonEmpty = true
+end
+
+
+function GpuLine:isEmpty()
+    return not (self.nonEmpty or (#self.commands > 0))
 end
 
 
@@ -300,7 +301,9 @@ function markupToGpuCommands(markup, styles, screenWidth)
 
     function finalizeCurrentBlock()
         for i, line in ipairs(currentBlock) do
-            table.insert(result, line:finalize(currentAlign, screenWidth))
+            if not line:isEmpty() then
+                table.insert(result, line:finalize(currentAlign, screenWidth))
+            end
         end
         currentBlock = {}
     end
@@ -328,7 +331,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
 
     local needPreSpace = false
     local cmdSwitch = {
-        [Flow.newLine] = function()
+        [Flow.blockBound] = function()
             startNewLine(true)
             needPreSpace = false
         end,
@@ -344,7 +347,6 @@ function markupToGpuCommands(markup, styles, screenWidth)
             end
             needPreSpace = true
         end,
-        -- [Flow.br] = function()  TODO
         [Flow.pushClass] = function(value)
             selectorEngine:push(value)
         end,
@@ -353,7 +355,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
         end
     }
 
-    for cmd, value in squashNewLines(removeGlueAddWordLengths(markup:iterTokens())) do
+    for cmd, value in squashBlockBounds(removeGlueAddWordLengths(markup:iterTokens())) do
         cmdSwitch[cmd](value)
     end
     finalizeCurrentBlock()
@@ -381,17 +383,10 @@ function execGpuCommands(gpu, commands)
 end
 
 
--- Example markup
---
--- <div class="quote">Some nonbr<span class="highlight">eaking</span> word</div>
---
--- Div("Some", "nonbr", NBR, Span("eaking"):class("highlight"), "words"):class("quote")
-
-
 return {
     Span=Span,
     Div=Div,
-    NBR=NBR,
+    Glue=Glue,
     Selector=selectorModule.Selector,
     markupToGpuCommands=markupToGpuCommands,
     execGpuCommands=execGpuCommands

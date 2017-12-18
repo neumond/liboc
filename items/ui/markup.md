@@ -2,7 +2,7 @@ Markup module works with very simplified HTML.
 
 ### Limitations
 
-1. Module contain no parsing code. You have to supply tokens (usually separate words) as array of strings.
+1. Module contains no parsing code. You have to supply tokens (usually separate words) as array of strings.
     ```lua
     local m = require("ui.markup")
     local text = m.Div(
@@ -59,7 +59,7 @@ Markup module works with very simplified HTML.
     ```lua
     local text = m.Span(
         "consectetur",
-        "adip", m.NBR, m.Span("isc"):class("h"), m.NBR, "ing",
+        "adip", m.Glue, m.Span("isc"):class("h"), m.Glue, "ing",
         "elit."
     )
     ```

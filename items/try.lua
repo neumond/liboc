@@ -156,7 +156,7 @@ function mu1(m)
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
     local text = m.Div(
-        m.Div("Some", "nonbr", m.NBR, m.Span("eaking"):class("highlight"), "words"):class("quote"),
+        m.Div("Some", "nonbr", m.Glue, m.Span("eaking"):class("highlight"), "words"):class("quote"),
         m.Div(table.unpack(lipsumTable))
     )
     local styles = {
