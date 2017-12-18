@@ -1,6 +1,6 @@
 Markup module works with very simplified HTML.
 
-Limitations:
+### Limitations
 
 1. Module contain no parsing code. You have to supply tokens (usually separate words) as array of strings.
     ```lua
@@ -65,10 +65,10 @@ Limitations:
     ```
     `adipiscing` wouldn't be broken into three words.
 
-Styles:
+### Styles
 
 | Name | Meaning | Possible values | Applied to |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `color` | Text color | Hexadecimal 24 bit number | block, inline |
 | `background` | Background color | Hexadecimal 24 bit number | block, inline |
 | `align` | Text alignment | `left`, `center`, `right` | block |
