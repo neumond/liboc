@@ -18,12 +18,9 @@ end
 -- RegionGpu
 
 
-function RegionGpu(gpu, winX, winY, winWidth, winHeight, scrollX, scrollY)
-    -- TODO: remove scrollX, scrollY
+function RegionGpu(gpu, winX, winY, winWidth, winHeight)
     return {
         set = function(x, y, text)
-            x = x - scrollX
-            y = y - scrollY
             local w = utils.strlen(text)
             local ox, ow = intersectionWH(1, winWidth, x, w)
             if ox == nil then return false end
@@ -36,8 +33,6 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight, scrollX, scrollY)
             return gpu.set(ox + winX - 1, oy + winY - 1, text)
         end,
         fill = function(x, y, w, h, fillchar)
-            x = x - scrollX
-            y = y - scrollY
             local ox, ow = intersectionWH(1, winWidth, x, w)
             if ox == nil then return false end
             local oy, oh = intersectionWH(1, winHeight, y, h)
@@ -263,7 +258,7 @@ function BaseSplitFrame:render(gpu)
         self:renderWarning(gpu, "No content available")
     else
         for frame, x, y, w, h in self:iterFramePositions() do
-            frame:render(RegionGpu(gpu, x, y, w, h, 0, 0))
+            frame:render(RegionGpu(gpu, x, y, w, h))
         end
     end
 end
