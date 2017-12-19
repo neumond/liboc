@@ -278,17 +278,20 @@ function renderingMarkup()
     local result = m.markupToGpuCommands(text, styles, 50)
 
     function renderFrames(gpu)
-        function makeHSplit()
-            local c = w.HSplitFrame()
-            c:insert(w.MarkupFrame(text, styles))
-            c:insert(w.MarkupFrame(text, styles), nil, 2)
-            c:insert(w.MarkupFrame(text, styles))
-            c:insert(w.MarkupFrame(text, styles))
-            return c
-        end
-        local c = w.VSplitFrame()
-        c:insert(makeHSplit())
-        c:insert(makeHSplit())
+        local h1 = w.HSplitFrame(2)
+        h1:insert(w.MarkupFrame(text, styles))
+        h1:insert(w.MarkupFrame(text, styles), nil, 2)
+        h1:insert(w.MarkupFrame(text, styles))
+        h1:insert(w.MarkupFrame(text, styles))
+
+        local h2 = w.HSplitFrame(2)
+        h2:insert(w.MarkupFrame(text, styles), nil, 3)
+        h2:insert(w.MarkupFrame(text, styles))
+        h2:insert(w.MarkupFrame(text, styles), nil, 2)
+
+        local c = w.VSplitFrame(2)
+        c:insert(h1)
+        c:insert(h2)
         c:resize(gpu.getResolution())
         c:render(gpu)
     end

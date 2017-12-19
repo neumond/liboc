@@ -149,6 +149,16 @@ function ContainerFrame:getCount()
 end
 
 
+function ContainerFrame:iterFrames()
+    local iter, iterTable, iterKey = pairs(self.frameIds)
+    return function()
+        iterKey, frameId = iter(iterTable, iterKey)
+        if iterKey == nil then return end
+        return self.frames[frameId], frameId
+    end
+end
+
+
 function ContainerFrame:renderWarning(gpu, text)
     gpu.setForeground(0x808080)
     gpu.setBackground(0x000000)
@@ -210,7 +220,6 @@ end
 local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super, border)
     local self = super()
     self.border = border ~= nil and border or 0
-    assert(self.border >= 0)
     self.frameGrowFactors = {}
     self.growFactorSum = 0
 end)
@@ -235,12 +244,13 @@ end
 
 
 function BaseSplitFrame:reflowLengths(mainAxisLength)
-    local iter, iterTable, iterKey = pairs(self.frameIds)
+    mainAxisLength = mainAxisLength - self.border * (self:getCount() - 1)
+    local iter = self:iterFrames()
     return function()
-        iterKey, frameId = iter(iterTable, iterKey)
-        if iterKey == nil then return end
+        frame, frameId = iter()
+        if frame == nil then return end
         -- TODO: sum of yielded lengths must be EXACTLY equal to mainAxisLength
-        return self.frames[frameId], math.floor(
+        return frame, math.floor(
             mainAxisLength * self.frameGrowFactors[frameId] / self.growFactorSum
         )
     end
@@ -252,35 +262,58 @@ function BaseSplitFrame:iterFramePositions()
 end
 
 
+function BaseSplitFrame:drawFrameBorder(gpu, x, y, w, h)
+    error("Not implemented")
+end
+
+
 function BaseSplitFrame:render(gpu)
-    print("BaseSplitFrame:render")
     if self:isEmpty() then
         self:renderWarning(gpu, "No content available")
     else
+        local first = true
         for frame, x, y, w, h in self:iterFramePositions() do
+            if not first then
+                self:drawFrameBorder(gpu, x, y, w, h)
+            end
             frame:render(RegionGpu(gpu, x, y, w, h))
+            if self.border > 0 then first = false end
         end
     end
 end
 
 
--- HSplitFrame
+-- HSplitFrame, VSplitFrame
 
 
 local HSplitFrame = utils.makeClass(BaseSplitFrame, function(super, ...)
+    local self = super(...)
+end)
+local VSplitFrame = utils.makeClass(BaseSplitFrame, function(super, ...)
     local self = super(...)
 end)
 
 
 function HSplitFrame:iterFramePositions()
     local x = 1
-    local iter = self:reflowLengths(self.width)
+    local iter = self:iterFrames()
     return function()
-        local frame, fsize = iter()
+        local frame = iter()
         if frame == nil then return end
         local prevX = x
-        x = x + frame.width
-        return frame, prevX, 1, frame.width, self.height
+        x = x + frame.width + self.border
+        return frame, prevX, 1, frame.width, frame.height
+    end
+end
+function VSplitFrame:iterFramePositions()
+    local y = 1
+    local iter = self:iterFrames()
+    return function()
+        local frame = iter()
+        if frame == nil then return end
+        local prevY = y
+        y = y + frame.height + self.border
+        return frame, 1, prevY, frame.width, frame.height
     end
 end
 
@@ -293,29 +326,6 @@ function HSplitFrame:resize(width, height)
         end
     end
 end
-
-
--- VSplitFrame
-
-
-local VSplitFrame = utils.makeClass(BaseSplitFrame, function(super, ...)
-    local self = super(...)
-end)
-
-
-function VSplitFrame:iterFramePositions()
-    local y = 1
-    local iter = self:reflowLengths(self.width)
-    return function()
-        local frame, fsize = iter()
-        if frame == nil then return end
-        local prevY = y
-        y = y + frame.height
-        return frame, 1, prevY, self.width, frame.height
-    end
-end
-
-
 function VSplitFrame:resize(width, height)
     local wc, hc = VSplitFrame.__super.resize(self, width, height)
     if (wc or hc) then
@@ -323,6 +333,18 @@ function VSplitFrame:resize(width, height)
             frame:resize(width, fsize)
         end
     end
+end
+
+
+function HSplitFrame:drawFrameBorder(gpu, x, y, w, h)
+    gpu.setBackground(0x000000)
+    gpu.setForeground(0xFFFFFF)
+    gpu.fill(x - self.border, y, self.border, h, "│")
+end
+function VSplitFrame:drawFrameBorder(gpu, x, y, w, h)
+    gpu.setBackground(0x000000)
+    gpu.setForeground(0xFFFFFF)
+    gpu.fill(x, y - self.border, w, self.border, "─")
 end
 
 
