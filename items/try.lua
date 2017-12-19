@@ -294,10 +294,20 @@ function renderingMarkup()
 
     function execGpu()
         local gpu = require("component").gpu
+        local w = require("ui.windows")
 
         local oldForeground = gpu.getForeground()
         local oldBackground = gpu.getBackground()
-        m.execGpuCommands(gpu, result)
+        gpu.setBackground(0x808080)
+        gpu.fill(1, 1, 200, 100, " ")
+        gpu.setBackground(0xFF00FF)
+        gpu.fill(10, 10, 50, 20, " ")
+        m.execGpuCommands(
+            w.RegionGpu(
+                gpu, 10, 10, 50, 20, -1, -1
+            ),
+            result
+        )
         gpu.setForeground(oldForeground)
         gpu.setBackground(oldBackground)
 
@@ -305,8 +315,8 @@ function renderingMarkup()
     end
 
     -- m.testing.tokenDebug(text)
-    outsideOC()
-    -- execGpu()
+    -- outsideOC()
+    execGpu()
 end
 
 
