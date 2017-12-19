@@ -271,18 +271,53 @@ end
 
 function renderingMarkup()
     local m = require("ui.markup")
+    local w = require("ui.windows")
 
     local text, styles = mu5(m)
 
     local result = m.markupToGpuCommands(text, styles, 50)
 
-    function outsideOC()
-        for i, line in ipairs(result) do
-            print('==============')
-            for j, cmd in ipairs(line) do
-                print(table.unpack(cmd))
-            end
+    function renderFrames(gpu)
+        function makeHSplit()
+            local c = w.HSplitFrame()
+            c:insert(w.MarkupFrame(text, styles))
+            c:insert(w.MarkupFrame(text, styles), nil, 2)
+            c:insert(w.MarkupFrame(text, styles))
+            c:insert(w.MarkupFrame(text, styles))
+            return c
         end
+        local c = w.VSplitFrame()
+        c:insert(makeHSplit())
+        c:insert(makeHSplit())
+        c:resize(gpu.getResolution())
+        c:render(gpu)
+    end
+
+    function outsideOC()
+        -- for i, line in ipairs(result) do
+        --     print('==============')
+        --     for j, cmd in ipairs(line) do
+        --         print(table.unpack(cmd))
+        --     end
+        -- end
+        renderFrames({
+            set = function(x, y, text)
+                print("set", x, y, text)
+            end,
+            fill = function(x, y, w, h, fillchar)
+                print("fill", x, y, w, h, fillchar)
+            end,
+            setForeground = function(color)
+                print("setForeground", color)
+            end,
+            setBackground = function(color)
+                print("setBackground", color)
+            end,
+            getResolution = function()
+                print("getResolution")
+                return 50, 50
+            end
+        })
     end
 
     function waitForKey()
@@ -298,16 +333,11 @@ function renderingMarkup()
 
         local oldForeground = gpu.getForeground()
         local oldBackground = gpu.getBackground()
-        gpu.setBackground(0x808080)
+        gpu.setBackground(0x202020)
         gpu.fill(1, 1, 200, 100, " ")
-        gpu.setBackground(0xFF00FF)
-        gpu.fill(10, 10, 50, 20, " ")
-        m.execGpuCommands(
-            w.RegionGpu(
-                gpu, 10, 10, 50, 20, -1, -1
-            ),
-            result
-        )
+
+        renderFrames(gpu)
+
         gpu.setForeground(oldForeground)
         gpu.setBackground(oldBackground)
 

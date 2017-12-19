@@ -136,34 +136,34 @@ function M.makeClass(a, b)
         __newindex = prototype
     }
 
+    local preparedConstructor = constructor
     if isSubclass then
-        classMeta.__call = function(_, ...)
-            local self = {}
-            setmetatable(self, meta)
-            function super(...)
+        preparedConstructor = function(self, ...)
+            constructor(function(...)
                 _callConstructor(parentConstructor, self, ...)
                 return self
-            end
-            _callConstructor(constructor, super, ...)
-            return self
+            end, ...)
         end
-    else
-        classMeta.__call = function(_, ...)
-            local self = {}
-            setmetatable(self, meta)
-            _callConstructor(constructor, self, ...)
-            return self
-        end
+    end
+
+    classMeta.__call = function(_, ...)
+        local self = {}
+        setmetatable(self, meta)
+        _callConstructor(preparedConstructor, self, ...)
+        return self
     end
 
     local cls = {
         __getMetaForSubclass = function()
-            return meta, constructor
+            return meta, preparedConstructor
         end,
         registerMetaMethod = function(k, v)
             meta[k] = v
         end
     }
+    if isSubclass then
+        cls.__super = a  -- TODO: improve this
+    end
     setmetatable(cls, classMeta)
     return cls
 end
