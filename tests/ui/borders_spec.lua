@@ -236,39 +236,30 @@ describe("Border renderer", function()
     end)
     it("works in reallife case", function()
         local br = mod.BorderRenderer()
+        local Y = 25
         br:vertical(32, 1, 24, 1)
         br:vertical(95, 1, 24, 1)
         br:vertical(127, 1, 24, 1)
-        br:horizontal(1, 25, 160.0, 1)
+        br:horizontal(1, Y, 160.0, 1)
         br:vertical(80, 26, 24, 1)
         br:vertical(107, 26, 24, 1)
         br:applyJoints()
-        br:render({fill=function(x, y, w, h, char) end})
+        local s = spy.new(function(x, y, w, h, char) end)
+        br:render({fill=s})
 
-        -- 1..31 --
-        -- 32..32 T up
-        -- 33
-
-        -- function fill()
-        --
-        -- for rowIndex, row in pairs(br.rows) do
-        --     print("ROW", rowIndex)
-        --     -- for k, v in pairs(row) do
-        --     --     print(k, v)
-        --     -- end
-        --     -- umlDebug(row)
-        --     for index, from, to in traverseBorder(row) do
-        --         print("Horizontal", row[index], from, to)
-        --         -- gpu.fill(from, rowIndex, to - from + 1, 1, row[index])
-        --     end
-        -- end
-        -- for colIndex, col in pairs(br.cols) do
-        --     print("COL", colIndex)
-        --     -- printDebug(col)
-        --     -- for index, from, to in traverseBorder(col) do
-        --     --     -- print("Vertical", col[index], from, to)
-        --     --     gpu.fill(colIndex, from, 1, to - from + 1, col[index])
-        --     -- end
-        -- end
+        local splitPoints = {
+            {32, "┴"},
+            {80, "┬"},
+            {95, "┴"},
+            {107, "┬"},
+            {127, "┴"}
+        }
+        local X = 1
+        for _, split in ipairs(splitPoints) do
+            local split, char = table.unpack(split)
+            assert.spy(s).was_called_with(X, Y, split - X, 1, "─")
+            assert.spy(s).was_called_with(split, Y, 1, 1, char)
+            X = split + 1
+        end
     end)
 end)
