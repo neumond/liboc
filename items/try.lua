@@ -117,25 +117,27 @@ end
 
 local fakeGpu = {
     getResolution=function()
-        return 50, 50
+        return 160, 50
     end,
     fill=function(x, y, w, h, char)
-        print("FILL", x, y, w, h, char)
+        -- print("FILL", x, y, w, h, char)
     end,
     set=function(x, y, s)
-        print("SET", x, y, s)
+        -- print("SET", x, y, s)
     end,
     getForeground=function()
         return 0xFFFFFF
     end,
     setForeground=function(v)
-        print("COLOR", v)
+        -- print("COLOR", v)
+        return 0xFFFFFF
     end,
     getBackground=function()
         return 0x000000
     end,
     setBackground=function(v)
-        print("BACKGROUND", v)
+        -- print("BACKGROUND", v)
+        return 0x000000
     end
 }
 
@@ -219,33 +221,39 @@ end
 
 function mu5(m)
     local lipsum = getLipsum()
+    local lipsumPtr = 0
+    function lipsumNext()
+        lipsumPtr = lipsumPtr + 1
+        return lipsum[lipsumPtr]
+    end
+
     local out = {}
     for i=1,2 do
-        table.insert(out, lipsum[i])
+        table.insert(out, lipsumNext())
     end
-    table.insert(out, m.Span(lipsum[3]):class("h"))
-    for i=4,5 do
-        table.insert(out, lipsum[i])
-    end
-    do
-        local span = {}
-        for i=6,8 do
-            table.insert(span, lipsum[i])
-        end
-        table.insert(out, m.Span(table.unpack(span)):class("h"))
-    end
-    for i=9,20 do
-        table.insert(out, lipsum[i])
+    table.insert(out, m.Span(lipsumNext()):class("h"))
+    for i=1,2 do
+        table.insert(out, lipsumNext())
     end
     do
         local span = {}
-        for i=20,35 do
-            table.insert(span, lipsum[i])
+        for i=1,3 do
+            table.insert(span, lipsumNext())
         end
         table.insert(out, m.Span(table.unpack(span)):class("h"))
     end
-    for i=35,#lipsum do
-        table.insert(out, lipsum[i])
+    for i=1,11 do
+        table.insert(out, lipsumNext())
+    end
+    do
+        local span = {}
+        for i=1,15 do
+            table.insert(span, lipsumNext())
+        end
+        table.insert(out, m.Span(table.unpack(span)):class("h"))
+    end
+    for w in lipsumNext do
+        table.insert(out, w)
     end
 
     local text = m.Div(
@@ -275,29 +283,48 @@ function createUI()
 
     local text, styles = mu5(m)
 
+    function makeMarkupFrame(scrollX, scrollY)
+        local f = w.MarkupFrame(text, styles)
+        f:scrollTo(scrollX, scrollY)
+    end
+
+    local mfs = {}
+    for i=1,8 do
+        table.insert(mfs, w.MarkupFrame(text, styles))
+    end
+    for i=9,16 do
+        table.insert(mfs, w.MarkupFrame(text, styles, 40))
+    end
+
     local h1 = w.HSplitFrame(1)
-    h1:insert(w.MarkupFrame(text, styles))
-    h1:insert(w.MarkupFrame(text, styles), nil, 2)
-    h1:insert(w.MarkupFrame(text, styles))
-    h1:insert(w.MarkupFrame(text, styles))
+    for i=1,8 do
+        h1:insert(mfs[i])
+    end
 
     local h2 = w.HSplitFrame(1)
-    h2:insert(w.MarkupFrame(text, styles), nil, 3)
-    h2:insert(w.MarkupFrame(text, styles))
-    h2:insert(w.MarkupFrame(text, styles), nil, 2)
+    for i=9,16 do
+        h2:insert(mfs[i])
+    end
 
     local c = w.VSplitFrame(1)
     c:insert(h1)
     c:insert(h2)
 
-    return c
+    return c, mfs
 end
 
 
-function renderUI(c, gpu)
+function renderUI(gpu, c, mfs)
     local BorderRenderer = require("ui.borders").BorderRenderer
 
     c:resize(gpu.getResolution())
+
+    for i=1,8 do
+        mfs[i]:scrollTo(1, i)
+    end
+    for i=9,16 do
+        mfs[i]:scrollTo(i - 8, 1)
+    end
 
     local br = BorderRenderer()
     c:render(gpu, br)
@@ -318,10 +345,9 @@ end
 
 
 function renderingMarkup()
-
-
     function renderFrames(gpu)
-        renderUI(createUI(), gpu)
+        local c, mfs = createUI()
+        renderUI(gpu, c, mfs)
         -- renderMarkup(gpu)
     end
 
@@ -332,24 +358,7 @@ function renderingMarkup()
         --         print(table.unpack(cmd))
         --     end
         -- end
-        renderFrames({
-            set = function(x, y, text)
-                print("set", x, y, text)
-            end,
-            fill = function(x, y, w, h, fillchar)
-                print("fill", x, y, w, h, fillchar)
-            end,
-            setForeground = function(color)
-                print("setForeground", color)
-            end,
-            setBackground = function(color)
-                print("setBackground", color)
-            end,
-            getResolution = function()
-                print("getResolution")
-                return 50, 50
-            end
-        })
+        renderFrames(fakeGpu)
     end
 
     function waitForKey()
@@ -376,8 +385,8 @@ function renderingMarkup()
     end
 
     -- m.testing.tokenDebug(text)
-    outsideOC()
-    -- execGpu()
+    -- outsideOC()
+    execGpu()
 end
 
 

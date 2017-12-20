@@ -392,17 +392,22 @@ function markupToGpuCommands(markup, styles, screenWidth)
 end
 
 
-function execGpuCommands(gpu, commands)
+function execGpuCommands(gpu, commands, shiftX, shiftY)
+    if shiftX == nil then shiftX = 0 end
+    if shiftY == nil then shiftY = 0 end
+
     for Y, lineCmds in ipairs(commands) do
+        Y = Y - shiftY
         for _, cmd in ipairs(lineCmds) do
-            if cmd[1] == "set" then
-                gpu.set(cmd[2], Y, cmd[3])
-            elseif cmd[1] == "fill" then
-                gpu.fill(cmd[2], Y, cmd[3], 1, cmd[4])
-            elseif cmd[1] == "setForeground" then
-                gpu.setForeground(cmd[2])
-            elseif cmd[1] == "setBackground" then
-                gpu.setBackground(cmd[2])
+            cmd, a, b, c = table.unpack(cmd)
+            if cmd == "set" then
+                gpu.set(a - shiftX, Y, b)
+            elseif cmd == "fill" then
+                gpu.fill(a - shiftX, Y, b, 1, c)
+            elseif cmd == "setForeground" then
+                gpu.setForeground(a)
+            elseif cmd == "setBackground" then
+                gpu.setBackground(a)
             end
         end
     end

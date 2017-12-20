@@ -3,6 +3,11 @@ local markupModule = require("ui.markup")
 local bordersModule = require("ui.borders")
 
 
+function forceRange(value, a, b)
+    return math.min(math.max(value, a), b)
+end
+
+
 function intersection(a1, a2, b1, b2)
     if (b1 > a2) or (b2 < a1) then return end
     return math.max(a1, b1), math.min(a2, b2)
@@ -87,25 +92,70 @@ local MarkupFrame = utils.makeClass(BaseFrame, function(super, markup, styles, m
     self.minWidth = minWidth ~= nil and minWidth or 1
     assert(self.minWidth >= 1)
     self.commands = {}
-    -- self.scrollX = 0  TODO
-    -- self.scrollY = 0  TODO
+    self.reflown = false
+
+    self.scrollX = 1
+    self.scrollY = 1
+    self.scrollMaxX = 1
+    self.scrollMaxY = 1
 end)
 
 
+function MarkupFrame:getContentWidth()
+    return math.max(self.minWidth, self.width)
+end
+
+
+function MarkupFrame:getMaxScroll()
+    return self.scrollMaxX, self.scrollMaxY
+end
+
+
+function MarkupFrame:scrollTo(x, y)
+    x = forceRange(x, 1, self.scrollMaxX)
+    y = forceRange(y, 1, self.scrollMaxY)
+    self.scrollX = x
+    self.scrollY = y
+end
+
+
+function MarkupFrame:relativeScroll(dx, dy)
+    return self:scrollTo(self.scrollX + dx, self.scrollY + dy)
+end
+
+
+function MarkupFrame:reflowMarkup(width)
+    self.commands = markupModule.markupToGpuCommands(
+        self.markup, self.styles, width
+    )
+    self.scrollMaxX = math.max(1, width - self.width + 1)
+    self.scrollMaxY = math.max(1, #self.commands - self.height + 1)
+    self:scrollTo(self.scrollX, self.scrollY)
+    self.reflown = true
+end
+
+
 function MarkupFrame:resize(width, height)
+    local oldWidth = self:getContentWidth()
     local wc, _ = MarkupFrame.__super.resize(self, width, height)
     if wc then
-        self.commands = markupModule.markupToGpuCommands(
-            self.markup, self.styles,
-            math.max(self.minWidth, self.width)
-        )
+        local newWidth = self:getContentWidth()
+        if (oldWidth ~= newWidth) or (not self.reflown) then
+            self:reflowMarkup(newWidth)
+        end
     end
 end
 
 
 function MarkupFrame:render(gpu, br)
-    -- TODO: render only relevant lines
-    markupModule.execGpuCommands(gpu, self.commands)
+    local cmds = {}
+    for i=1,self.height do
+        cmds[i] = self.commands[i + (self.scrollY - 1)]
+    end
+    markupModule.execGpuCommands(
+        gpu, cmds,
+        self.scrollX - 1, 0
+    )
 end
 
 
