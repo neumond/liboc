@@ -253,13 +253,21 @@ end
 function BaseSplitFrame:reflowLengths(mainAxisLength)
     mainAxisLength = mainAxisLength - self.borderWidth * (self:getCount() - 1)
     local iter = self:iterFrames()
+    local restCount = self:getCount()
+    local restSpace = mainAxisLength
     return function()
         frame, frameId = iter()
         if frame == nil then return end
-        -- TODO: sum of yielded lengths must be EXACTLY equal to mainAxisLength
-        return frame, math.floor(
+        local length = math.floor(
             mainAxisLength * self.frameGrowFactors[frameId] / self.growFactorSum
         )
+        if restCount == 1 then
+            length = restSpace
+        else
+            restCount = restCount - 1
+            restSpace = restSpace - length
+        end
+        return frame, length
     end
 end
 
