@@ -52,6 +52,130 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
 end
 
 
+-- BorderJointRenderer
+
+
+local BorderRenderer = utils.makeClass(function(self)
+    self.rows = {}
+    self.cols = {}
+    self.joints = {}
+end)
+
+
+local corners = {
+    "┌┐ ╔╗ ╓╖ ╒╕",
+    "└┘ ╚╝ ╙╜ ╘╛"
+}
+local lines = "─═│║"
+local corners2 = {
+    "┌┬┐ ╔╦╗ ╓╥╖ ╒╤╕",
+    "├┼┤ ╠╬╣ ╟╫╢ ╞╪╡",
+    "└┴┘ ╚╩╝ ╙╨╜ ╘╧╛"
+}
+
+
+BorderRenderer.jointTable = {
+    -- up, right, down, left
+    -- 1, 2, v2, h2
+    [" 111"]="┬ ╦ ╥ ╤",
+
+    ["1 11"]="┤ ╣ ╢ ╡",
+
+    ["11 1"]="┴ ╩ ╨ ╧",
+
+    ["111 "]="├ ╠ ╟ ╞",
+
+    ["1111"]="┼ ╬ ╫ ╪",
+}
+
+
+function nextBinTreeIndex(current, isRight)
+    return current * 2 + (isRight and 1 or 0)
+end
+
+
+function addBorder(tree, from, to, value)
+    local i = 1
+    while tree[i] ~= nil do
+        assert(type(tree[i]) == "number")
+        assert((from >= tree[i]) == (to >= tree[i]))
+        i = nextBinTreeIndex(i, from >= tree[i])
+    end
+    tree[i] = to + 1
+    i = nextBinTreeIndex(i, false)
+    tree[i] = from
+    i = nextBinTreeIndex(i, true)
+    tree[i] = value
+end
+
+
+function getBorderChar(tree, position)
+    local i = 1
+    while tree[i] ~= nil do
+        if type(tree[i]) == "string" then return tree[i] end
+        i = nextBinTreeIndex(i, position >= tree[i])
+    end
+end
+
+
+function splitBorder(tree, position, value)
+    local i = 1
+    local from, to
+    while tree[i] ~= nil do
+        if type(tree[i]) == "string" then break end
+        if position >= tree[i] then
+            from = tree[i]
+        else
+            to = tree[i] - 1
+        end
+        i = nextBinTreeIndex(i, position >= tree[i])
+    end
+    local brd = tree[i]
+    if (brd == nil) or (from == nil) or (to == nil) then return end
+    if from == to then
+        tree[i] = value
+    else
+        tree[i] = position
+        if position > from then
+            tree[nextBinTreeIndex(i, false)] = brd
+            i = nextBinTreeIndex(i, true)
+        end
+        if position < to then
+            tree[i] = position + 1
+            tree[nextBinTreeIndex(i, false)] = value
+            tree[nextBinTreeIndex(i, true)] = brd
+        else
+            tree[i] = value
+        end
+    end
+end
+
+
+function BorderRenderer:horizontal(x, y, length, char)
+    if self.rows[y] == nil then
+        self.rows[y] = {}
+    end
+    addBorder(self.rows[y], x, x + length - 1, char)
+    self:addJoint(x - 1, y, char, "right")
+    self:addJoint(x + length, y, char, "left")
+end
+
+
+function BorderRenderer:vertical(x, y, length, char)
+    if self.cols[x] == nil then
+        self.cols[x] = {}
+    end
+    addBorder(self.cols[x], y, y + length - 1, char)
+    self:addJoint(x, y - 1, char, "down")
+    self:addJoint(x, y + length, char, "up")
+end
+
+
+function BorderRenderer:addJoint(x, y, char, side)
+    table.insert(self.joints, {x, y, char, side})
+end
+
+
 -- BaseFrame
 -- Represents constrained part of screen
 -- Can contain other frames
@@ -358,6 +482,10 @@ return {
     HSplitFrame=HSplitFrame,
     VSplitFrame=VSplitFrame,
     testing={
-        intersection=intersection
+        intersection=intersection,
+        nextBinTreeIndex=nextBinTreeIndex,
+        addBorder=addBorder,
+        getBorderChar=getBorderChar,
+        splitBorder=splitBorder
     }
 }
