@@ -365,6 +365,10 @@ function renderingMarkup()
         local event = require("event")
         repeat
             local _, _, _, key = event.pull("key_down")
+            -- 200 up
+            -- 208 down
+            -- 203 left
+            -- 205 right
         until key == 28
     end
 
