@@ -58,35 +58,57 @@ end
 local BorderRenderer = utils.makeClass(function(self)
     self.rows = {}
     self.cols = {}
-    self.joints = {}
+    self.Hjoints = {}
+    self.Vjoints = {}
 end)
 
 
-local corners = {
-    "┌┐ ╔╗ ╓╖ ╒╕",
-    "└┘ ╚╝ ╙╜ ╘╛"
-}
-local lines = "─═│║"
-local corners2 = {
+BorderRenderer.lineTable = "─═│║"
+BorderRenderer.cornerTable = {
     "┌┬┐ ╔╦╗ ╓╥╖ ╒╤╕",
     "├┼┤ ╠╬╣ ╟╫╢ ╞╪╡",
     "└┴┘ ╚╩╝ ╙╨╜ ╘╧╛"
 }
-
-
 BorderRenderer.jointTable = {
-    -- up, right, down, left
-    -- 1, 2, v2, h2
-    [" 111"]="┬ ╦ ╥ ╤",
+    ["│"]={
+        ["─"]={left="┤", right="├"},
+        ["═"]={left="╡", right="╞"}
+    },
+    ["║"]={
+        ["─"]={left="╢", right="╟"},
+        ["═"]={left="╣", right="╠"}
+    },
+    ["┤"]={["─"]={right="┼"}},
+    ["├"]={["─"]={left="┼"}},
+    ["╡"]={["═"]={right="╪"}},
+    ["╞"]={["═"]={left="╪"}},
+    ["╢"]={["─"]={right="╫"}},
+    ["╟"]={["─"]={left="╫"}},
+    ["╣"]={["═"]={right="╬"}},
+    ["╠"]={["═"]={left="╬"}},
 
-    ["1 11"]="┤ ╣ ╢ ╡",
-
-    ["11 1"]="┴ ╩ ╨ ╧",
-
-    ["111 "]="├ ╠ ╟ ╞",
-
-    ["1111"]="┼ ╬ ╫ ╪",
+    ["─"]={
+        ["│"]={up="┴", down="┬"},
+        ["║"]={up="╨", down="╥"}
+    },
+    ["═"]={
+        ["│"]={up="╧", down="╤"},
+        ["║"]={up="╩", down="╦"}
+    },
+    ["┴"]={["│"]={down="┼"}},
+    ["┬"]={["│"]={up="┼"}},
+    ["╨"]={["║"]={down="╫"}},
+    ["╥"]={["║"]={up="╫"}},
+    ["╧"]={["│"]={down="╪"}},
+    ["╤"]={["│"]={up="╪"}},
+    ["╩"]={["║"]={down="╬"}},
+    ["╦"]={["║"]={up="╬"}}
 }
+
+
+function isNumber(v)
+    return type(v) == "number"
+end
 
 
 function nextBinTreeIndex(current, isRight)
@@ -94,10 +116,15 @@ function nextBinTreeIndex(current, isRight)
 end
 
 
+function parentBinTreeIndex(current)
+    return current // 2
+end
+
+
 function addBorder(tree, from, to, value)
     local i = 1
     while tree[i] ~= nil do
-        assert(type(tree[i]) == "number")
+        assert(isNumber(tree[i]))
         assert((from >= tree[i]) == (to >= tree[i]))
         i = nextBinTreeIndex(i, from >= tree[i])
     end
@@ -112,17 +139,17 @@ end
 function getBorderChar(tree, position)
     local i = 1
     while tree[i] ~= nil do
-        if type(tree[i]) == "string" then return tree[i] end
+        if not isNumber(tree[i]) then return tree[i] end
         i = nextBinTreeIndex(i, position >= tree[i])
     end
 end
 
 
-function splitBorder(tree, position, value)
+function splitBorder(tree, position, valueFunc)
     local i = 1
     local from, to
     while tree[i] ~= nil do
-        if type(tree[i]) == "string" then break end
+        if not isNumber(tree[i]) then break end
         if position >= tree[i] then
             from = tree[i]
         else
@@ -132,6 +159,7 @@ function splitBorder(tree, position, value)
     end
     local brd = tree[i]
     if (brd == nil) or (from == nil) or (to == nil) then return end
+    local value = valueFunc(brd)
     if from == to then
         tree[i] = value
     else
@@ -151,13 +179,61 @@ function splitBorder(tree, position, value)
 end
 
 
+function traverseBorder(tree)
+    local indexStack = {1}  -- top of this stack = state of current index
+    local stackPtr = 1
+    local index = nil
+
+    function digDown(dir)
+        stackPtr = stackPtr + 1
+        indexStack[stackPtr] = 1
+        index = nextBinTreeIndex(index, dir)
+    end
+
+    function goUp()
+        if index == 1 then return true end
+        indexStack[stackPtr] = nil
+        stackPtr = stackPtr - 1
+        indexStack[stackPtr] = indexStack[stackPtr] + 1
+        index = parentBinTreeIndex(index)
+        return false
+    end
+
+    function goNext()
+        if index == nil then
+            index = 1
+            return false
+        end
+        if not isNumber(tree[index]) then
+            return goUp()
+        end
+        local state = indexStack[stackPtr]
+        if state == 1 then
+            digDown(false)
+        elseif state == 2 then
+            digDown(true)
+        else
+            return goUp()
+        end
+        return false
+    end
+
+    return function()
+        repeat
+            if goNext() then return nil end
+        until (tree[index] ~= nil) and (not isNumber(tree[index]))
+        return index
+    end
+end
+
+
 function BorderRenderer:horizontal(x, y, length, char)
     if self.rows[y] == nil then
         self.rows[y] = {}
     end
     addBorder(self.rows[y], x, x + length - 1, char)
-    self:addJoint(x - 1, y, char, "right")
-    self:addJoint(x + length, y, char, "left")
+    self:addJoint(x - 1, y, char, "right", false)
+    self:addJoint(x + length, y, char, "left", false)
 end
 
 
@@ -166,13 +242,41 @@ function BorderRenderer:vertical(x, y, length, char)
         self.cols[x] = {}
     end
     addBorder(self.cols[x], y, y + length - 1, char)
-    self:addJoint(x, y - 1, char, "down")
-    self:addJoint(x, y + length, char, "up")
+    self:addJoint(x, y - 1, char, "down", true)
+    self:addJoint(x, y + length, char, "up", true)
 end
 
 
-function BorderRenderer:addJoint(x, y, char, side)
-    table.insert(self.joints, {x, y, char, side})
+function BorderRenderer:addJoint(x, y, char, side, vertical)
+    -- TODO: inline this function?
+    local t = vertical and self.Vjoints or self.Hjoints
+    table.insert(t, {x, y, char, side})
+end
+
+
+function BorderRenderer:applyJoints()
+    function charFunc(jointChar, side)
+        return function(borderChar)
+            local r = self.jointTable[borderChar]
+            if r == nil then return end
+            r = r[jointChar]
+            if r == nil then return end
+            return r[side]
+        end
+    end
+
+    for _, joint in ipairs(self.Vjoints) do
+        x, y, jointChar, side = table.unpack(joint)
+        if self.rows[y] ~= nil then
+            splitBorder(self.rows[y], x, charFunc(jointChar, side))
+        end
+    end
+    for _, joint in ipairs(self.Hjoints) do
+        x, y, jointChar, side = table.unpack(joint)
+        if self.cols[x] ~= nil then
+            splitBorder(self.cols[x], y, charFunc(jointChar, side))
+        end
+    end
 end
 
 
@@ -484,8 +588,10 @@ return {
     testing={
         intersection=intersection,
         nextBinTreeIndex=nextBinTreeIndex,
+        parentBinTreeIndex=parentBinTreeIndex,
         addBorder=addBorder,
         getBorderChar=getBorderChar,
-        splitBorder=splitBorder
+        splitBorder=splitBorder,
+        traverseBorder=traverseBorder
     }
 }

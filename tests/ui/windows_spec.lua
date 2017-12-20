@@ -97,9 +97,17 @@ describe("windows framework", function()
     end)
     describe("binary tree index for border joint rendering", function()
         local nextBinTreeIndex = mod.testing.nextBinTreeIndex
+        local parentBinTreeIndex = mod.testing.parentBinTreeIndex
         local addBorder = mod.testing.addBorder
         local getBorderChar = mod.testing.getBorderChar
         local splitBorder = mod.testing.splitBorder
+        local traverseBorder = mod.testing.traverseBorder
+
+        function hardSplitBorder(tree, position, value)
+            return splitBorder(tree, position, function()
+                return value
+            end)
+        end
 
         function printDebug(tree)
             local rows = {}
@@ -173,6 +181,36 @@ describe("windows framework", function()
             assert.is_equal(10, f(5, false))
             assert.is_equal(11, f(5, true))
         end)
+        it("has corrent binary tree parent indexing", function()
+            local f = parentBinTreeIndex
+
+            assert.is_equal(1, f(2))
+            assert.is_equal(1, f(3))
+
+            assert.is_equal(2, f(4))
+            assert.is_equal(2, f(5))
+
+            assert.is_equal(3, f(6))
+            assert.is_equal(3, f(7))
+
+            assert.is_equal(5, f(10))
+            assert.is_equal(5, f(11))
+        end)
+        it("traverses tree correctly", function()
+            local tree = {}
+            local addBorder = bind(addBorder, tree)
+
+            addBorder(1, 5, "x")
+            addBorder(6, 8, "y")
+            addBorder(10, 10, "!")
+            addBorder(12, 15, "z")
+
+            local result = {}
+            for index in traverseBorder(tree) do
+                table.insert(result, tree[index])
+            end
+            assert.are.same(result, {"x", "y", "!", "z"})
+        end)
         it("inserts border gaps properly", function()
             local tree = {}
             local addBorder = bind(addBorder, tree)
@@ -203,7 +241,7 @@ describe("windows framework", function()
             local tree = {}
             local addBorder = bind(addBorder, tree)
             local getBorderChar = bind(getBorderChar, tree)
-            local splitBorder = bind(splitBorder, tree)
+            local splitBorder = bind(hardSplitBorder, tree)
 
             addBorder(1, 5, "x")
             -- printDebug(tree)
@@ -217,7 +255,7 @@ describe("windows framework", function()
             local tree = {}
             local addBorder = bind(addBorder, tree)
             local getBorderChar = bind(getBorderChar, tree)
-            local splitBorder = bind(splitBorder, tree)
+            local splitBorder = bind(hardSplitBorder, tree)
 
             addBorder(1, 5, "x")
             -- printDebug(tree)
@@ -231,7 +269,7 @@ describe("windows framework", function()
             local tree = {}
             local addBorder = bind(addBorder, tree)
             local getBorderChar = bind(getBorderChar, tree)
-            local splitBorder = bind(splitBorder, tree)
+            local splitBorder = bind(hardSplitBorder, tree)
 
             addBorder(1, 5, "x")
             -- printDebug(tree)
