@@ -352,10 +352,12 @@ end
 
 
 function HSplitFrame:drawFrameBorder(br, x, y, w, h)
-    br:vertical(x - 1, y, h, self.borderType)
+    br:setBorderType(self.borderType)
+    br:vertical(x - 1, y, h)
 end
 function VSplitFrame:drawFrameBorder(br, x, y, w, h)
-    br:horizontal(x, y - 1, w, self.borderType)
+    br:setBorderType(self.borderType)
+    br:horizontal(x, y - 1, w)
 end
 
 

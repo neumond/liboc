@@ -22,12 +22,6 @@ function getBorderWidth(borderType)
 end
 
 
-function getBorderFillChar(borderType, vertical)
-    local bt = getBorderType(borderType)
-    return vertical and bt.v or bt.h
-end
-
-
 -- BRProxy
 
 
@@ -38,13 +32,18 @@ local BRProxy = utils.makeClass(function(self, br, x, y)
 end)
 
 
-function BRProxy:horizontal(x, y, length, borderType)
-    self.br:horizontal(x + self.x, y + self.y, length, borderType)
+function BRProxy:setBorderType(borderType)
+    self.br:setBorderType(borderType)
 end
 
 
-function BRProxy:vertical(x, y, length, borderType)
-    self.br:vertical(x + self.x, y + self.y, length, borderType)
+function BRProxy:horizontal(x, y, length)
+    self.br:horizontal(x + self.x, y + self.y, length)
+end
+
+
+function BRProxy:vertical(x, y, length)
+    self.br:vertical(x + self.x, y + self.y, length)
 end
 
 
@@ -61,6 +60,7 @@ local BorderRenderer = utils.makeClass(function(self)
     self.cols = {}
     self.Hjoints = {}
     self.Vjoints = {}
+    self:setBorderType(0)
 end)
 
 
@@ -275,24 +275,32 @@ function traverseBorder(tree)
 end
 
 
-function BorderRenderer:horizontal(x, y, length, borderType)
-    if getBorderWidth(borderType) <= 0 then return end
+function BorderRenderer:setBorderType(borderType)
+    local bt = getBorderType(borderType)
+    self.borderWidth = bt.width
+    self.HBorderChar = bt.h
+    self.VBorderChar = bt.v
+end
+
+
+function BorderRenderer:horizontal(x, y, length)
+    if self.borderWidth <= 0 then return end
     if self.rows[y] == nil then
         self.rows[y] = {}
     end
-    local char = getBorderFillChar(borderType, false)
+    local char = self.HBorderChar
     addBorder(self.rows[y], x, x + length - 1, char)
     table.insert(self.Hjoints, {x - 1, y, char, "right"})
     table.insert(self.Hjoints, {x + length, y, char, "left"})
 end
 
 
-function BorderRenderer:vertical(x, y, length, borderType)
-    if getBorderWidth(borderType) <= 0 then return end
+function BorderRenderer:vertical(x, y, length)
+    if self.borderWidth <= 0 then return end
     if self.cols[x] == nil then
         self.cols[x] = {}
     end
-    local char = getBorderFillChar(borderType, true)
+    local char = self.VBorderChar
     addBorder(self.cols[x], y, y + length - 1, char)
     table.insert(self.Vjoints, {x, y - 1, char, "down"})
     table.insert(self.Vjoints, {x, y + length, char, "up"})
@@ -349,7 +357,6 @@ end
 
 return {
     getBorderWidth=getBorderWidth,
-    getBorderFillChar=getBorderFillChar,
     BorderRenderer=BorderRenderer,
     testing={
         nextBinTreeIndex=nextBinTreeIndex,
