@@ -55,7 +55,6 @@ end
 
 -- BaseFrame
 -- Represents constrained part of screen
--- Can contain other frames
 
 
 local BaseFrame = utils.makeClass(function(self)

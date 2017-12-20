@@ -269,39 +269,60 @@ function mu5(m)
 end
 
 
-function renderingMarkup()
+function createUI()
     local m = require("ui.markup")
     local w = require("ui.windows")
-    local BorderRenderer = require("ui.borders").BorderRenderer
 
     local text, styles = mu5(m)
 
-    local result = m.markupToGpuCommands(text, styles, 50)
+    local h1 = w.HSplitFrame(1)
+    h1:insert(w.MarkupFrame(text, styles))
+    h1:insert(w.MarkupFrame(text, styles), nil, 2)
+    h1:insert(w.MarkupFrame(text, styles))
+    h1:insert(w.MarkupFrame(text, styles))
+
+    local h2 = w.HSplitFrame(1)
+    h2:insert(w.MarkupFrame(text, styles), nil, 3)
+    h2:insert(w.MarkupFrame(text, styles))
+    h2:insert(w.MarkupFrame(text, styles), nil, 2)
+
+    local c = w.VSplitFrame(1)
+    c:insert(h1)
+    c:insert(h2)
+
+    return c
+end
+
+
+function renderUI(c, gpu)
+    local BorderRenderer = require("ui.borders").BorderRenderer
+
+    c:resize(gpu.getResolution())
+
+    local br = BorderRenderer()
+    c:render(gpu, br)
+
+    gpu.setBackground(0x000000)
+    gpu.setForeground(0x00FF00)
+    br:applyJoints()
+    br:render(gpu)
+end
+
+
+function renderMarkup(gpu)
+    local m = require("ui.markup")
+    local text, styles = mu5(m)
+    local commands = m.markupToGpuCommands(text, styles, 50)
+    m.execGpuCommands(gpu, commands)
+end
+
+
+function renderingMarkup()
+
 
     function renderFrames(gpu)
-        local h1 = w.HSplitFrame(1)
-        h1:insert(w.MarkupFrame(text, styles))
-        h1:insert(w.MarkupFrame(text, styles), nil, 2)
-        h1:insert(w.MarkupFrame(text, styles))
-        h1:insert(w.MarkupFrame(text, styles))
-
-        local h2 = w.HSplitFrame(1)
-        h2:insert(w.MarkupFrame(text, styles), nil, 3)
-        h2:insert(w.MarkupFrame(text, styles))
-        h2:insert(w.MarkupFrame(text, styles), nil, 2)
-
-        local c = w.VSplitFrame(1)
-        c:insert(h1)
-        c:insert(h2)
-        c:resize(gpu.getResolution())
-
-        local br = BorderRenderer()
-        c:render(gpu, br)
-
-        gpu.setBackground(0x000000)
-        gpu.setForeground(0x00FF00)
-        br:applyJoints()
-        br:render(gpu)
+        renderUI(createUI(), gpu)
+        -- renderMarkup(gpu)
     end
 
     function outsideOC()
@@ -340,7 +361,6 @@ function renderingMarkup()
 
     function execGpu()
         local gpu = require("component").gpu
-        local w = require("ui.windows")
 
         local oldForeground = gpu.getForeground()
         local oldBackground = gpu.getBackground()
@@ -356,8 +376,8 @@ function renderingMarkup()
     end
 
     -- m.testing.tokenDebug(text)
-    -- outsideOC()
-    execGpu()
+    outsideOC()
+    -- execGpu()
 end
 
 

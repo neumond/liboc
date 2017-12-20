@@ -9,6 +9,10 @@ local DEFAULT_STYLES = {
     fillcolor=0xFFFFFF
 }
 
+-- TODO:
+-- marginLeft, marginRight, marginTop, marginBottom
+-- paddingLeft, paddingRight, paddingTop, paddingBottom
+
 
 -- Selector
 
