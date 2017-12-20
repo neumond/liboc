@@ -272,28 +272,36 @@ end
 function renderingMarkup()
     local m = require("ui.markup")
     local w = require("ui.windows")
+    local BorderRenderer = require("ui.borders").BorderRenderer
 
     local text, styles = mu5(m)
 
     local result = m.markupToGpuCommands(text, styles, 50)
 
     function renderFrames(gpu)
-        local h1 = w.HSplitFrame(2)
+        local h1 = w.HSplitFrame(1)
         h1:insert(w.MarkupFrame(text, styles))
         h1:insert(w.MarkupFrame(text, styles), nil, 2)
         h1:insert(w.MarkupFrame(text, styles))
         h1:insert(w.MarkupFrame(text, styles))
 
-        local h2 = w.HSplitFrame(2)
+        local h2 = w.HSplitFrame(1)
         h2:insert(w.MarkupFrame(text, styles), nil, 3)
         h2:insert(w.MarkupFrame(text, styles))
         h2:insert(w.MarkupFrame(text, styles), nil, 2)
 
-        local c = w.VSplitFrame(2)
+        local c = w.VSplitFrame(1)
         c:insert(h1)
         c:insert(h2)
         c:resize(gpu.getResolution())
-        c:render(gpu)
+
+        local br = BorderRenderer()
+        c:render(gpu, br)
+
+        gpu.setBackground(0x000000)
+        gpu.setForeground(0x00FF00)
+        br:applyJoints()
+        br:render(gpu)
     end
 
     function outsideOC()

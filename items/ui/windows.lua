@@ -73,7 +73,7 @@ function BaseFrame:resize(width, height)
 end
 
 
-function BaseFrame:render(gpu)
+function BaseFrame:render(gpu, br)
     error("Not implemented")
 end
 
@@ -104,7 +104,7 @@ function MarkupFrame:resize(width, height)
 end
 
 
-function MarkupFrame:render(gpu)
+function MarkupFrame:render(gpu, br)
     -- TODO: render only relevant lines
     markupModule.execGpuCommands(gpu, self.commands)
 end
@@ -206,11 +206,11 @@ function SwitcherFrame:resize(width, height)
 end
 
 
-function SwitcherFrame:render(gpu)
+function SwitcherFrame:render(gpu, br)
     if self.activeFrameId == nil then
         self:renderWarning(gpu, "No active frame available")
     else
-        self:getActiveFrame():render(gpu)
+        self:getActiveFrame():render(gpu, br)
     end
 end
 
@@ -218,16 +218,16 @@ end
 -- BaseSplitFrame
 
 
-local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super, border)
+local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super, borderType)
     local self = super()
-    self:setBorder(border)
+    self:setBorder(borderType)
     self.frameGrowFactors = {}
     self.growFactorSum = 0
 end)
 
 
 function BaseSplitFrame:setBorder(borderType)
-    self.border = borderType
+    self.borderType = borderType
     self.borderWidth = bordersModule.getBorderWidth(borderType)
 end
 
@@ -274,16 +274,16 @@ function BaseSplitFrame:drawFrameBorder(gpu, x, y, w, h)
 end
 
 
-function BaseSplitFrame:render(gpu)
+function BaseSplitFrame:render(gpu, br)
     if self:isEmpty() then
         self:renderWarning(gpu, "No content available")
     else
         local first = true
         for frame, x, y, w, h in self:iterFramePositions() do
             if not first then
-                self:drawFrameBorder(gpu, x, y, w, h)
+                self:drawFrameBorder(br, x, y, w, h)
             end
-            frame:render(RegionGpu(gpu, x, y, w, h))
+            frame:render(RegionGpu(gpu, x, y, w, h), br:enterWindow(x, y))
             if self.borderWidth > 0 then first = false end
         end
     end
@@ -343,21 +343,11 @@ function VSplitFrame:resize(width, height)
 end
 
 
-function HSplitFrame:drawFrameBorder(gpu, x, y, w, h)
-    gpu.setBackground(0x000000)
-    gpu.setForeground(0xFFFFFF)
-    gpu.fill(
-        x - self.borderWidth, y, self.borderWidth, h,
-        bordersModule.getBorderFillChar(self.border, true)
-    )
+function HSplitFrame:drawFrameBorder(br, x, y, w, h)
+    br:vertical(x - 1, y, h, self.borderType)
 end
-function VSplitFrame:drawFrameBorder(gpu, x, y, w, h)
-    gpu.setBackground(0x000000)
-    gpu.setForeground(0xFFFFFF)
-    gpu.fill(
-        x, y - self.borderWidth, w, self.borderWidth,
-        bordersModule.getBorderFillChar(self.border, false)
-    )
+function VSplitFrame:drawFrameBorder(br, x, y, w, h)
+    br:horizontal(x, y - 1, w, self.borderType)
 end
 
 

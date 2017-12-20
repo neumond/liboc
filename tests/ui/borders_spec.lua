@@ -1,10 +1,89 @@
 require("busted.runner")()
 local mod = require("ui.borders")
+local nextBinTreeIndex = mod.testing.nextBinTreeIndex
+
+
+function printDebug(tree, lowestLen)
+    local rows = {}
+    if lowestLen == nil then lowestLen = 3 end
+    local nbt = nextBinTreeIndex
+
+    function lpad(s, l, c)
+        local res = string.rep(c or ' ', l - #s) .. s
+        return res, res ~= s
+    end
+
+    local function ensureLayer(i)
+        if rows[i] ~= nil then return end
+        rows[i] = {}
+        for k=1,1<<(i-1) do
+            rows[i][k] = "."
+        end
+    end
+
+    local function traverse(i, layer, layerBase)
+        if tree[i] == nil then return end
+        ensureLayer(layer)
+        rows[layer][i - layerBase + 1] = tree[i]
+        traverse(nbt(i, false), layer + 1, nbt(layerBase, false))
+        traverse(nbt(i, true), layer + 1, nbt(layerBase, false))
+    end
+
+    traverse(1, 1, 1)
+
+    function itemLenForLayer(layer)
+        return (1<<(#rows - layer)) * lowestLen
+    end
+
+    print()
+    for layer, row in ipairs(rows) do
+        local line = ""
+        for i, item in ipairs(row) do
+            local len = itemLenForLayer(layer)
+            if i == 1 then
+                len = len // 2
+            end
+            line = line .. lpad(string.format(item), len)
+        end
+        print(line)
+    end
+end
+
+
+function umlDebug(tree)
+    local nbt = nextBinTreeIndex
+
+    local function traverse(i)
+        if tree[i] == nil then return end
+        print("p" .. i .. " : " .. tree[i])
+        local left = nbt(i, false)
+        local right = nbt(i, true)
+        if tree[left] ~= nil then
+            print("p" .. i .. " --> p" .. left)
+        end
+        if tree[right] ~= nil then
+            print("p" .. i .. " --> p" .. right)
+        end
+        traverse(left)
+        traverse(right)
+    end
+
+    print("@startuml")
+    print("state p1")
+    traverse(1)
+    print("@enduml")
+end
+
+
+function bind(f, arg)
+    return function(...)
+        return f(arg, ...)
+    end
+end
 
 
 describe("Border renderer", function()
     describe("binary tree index for border joint rendering", function()
-        local nextBinTreeIndex = mod.testing.nextBinTreeIndex
         local parentBinTreeIndex = mod.testing.parentBinTreeIndex
         local addBorder = mod.testing.addBorder
         local getBorderChar = mod.testing.getBorderChar
@@ -15,58 +94,6 @@ describe("Border renderer", function()
             return splitBorder(tree, position, function()
                 return value
             end)
-        end
-
-        function printDebug(tree)
-            local rows = {}
-            local lowestLen = 3
-            local nbt = nextBinTreeIndex
-
-            function lpad(s, l, c)
-                local res = string.rep(c or ' ', l - #s) .. s
-                return res, res ~= s
-            end
-
-            local function ensureLayer(i)
-                if rows[i] ~= nil then return end
-                rows[i] = {}
-                for k=1,1<<(i-1) do
-                    rows[i][k] = "."
-                end
-            end
-
-            local function traverse(i, layer, layerBase)
-                if tree[i] == nil then return end
-                ensureLayer(layer)
-                rows[layer][i - layerBase + 1] = tree[i]
-                traverse(nbt(i, false), layer + 1, nbt(layerBase, false))
-                traverse(nbt(i, true), layer + 1, nbt(layerBase, false))
-            end
-
-            traverse(1, 1, 1)
-
-            function itemLenForLayer(layer)
-                return (1<<(#rows - layer)) * lowestLen
-            end
-
-            print()
-            for layer, row in ipairs(rows) do
-                local line = ""
-                for i, item in ipairs(row) do
-                    local len = itemLenForLayer(layer)
-                    if i == 1 then
-                        len = len // 2
-                    end
-                    line = line .. lpad(string.format(item), len)
-                end
-                print(line)
-            end
-        end
-
-        function bind(f, arg)
-            return function(...)
-                return f(arg, ...)
-            end
         end
 
         it("has correct binary tree indexing", function()
@@ -104,7 +131,7 @@ describe("Border renderer", function()
             assert.is_equal(5, f(10))
             assert.is_equal(5, f(11))
         end)
-        it("traverses tree correctly", function()
+        it("traverses tree correctly #traverse", function()
             local tree = {}
             local addBorder = bind(addBorder, tree)
 
@@ -113,16 +140,18 @@ describe("Border renderer", function()
             addBorder(10, 10, "!")
             addBorder(12, 15, "z")
 
+            -- printDebug(tree)
+
             local result = {}
             for index, from, to in traverseBorder(tree) do
                 table.insert(result, {tree[index], from, to})
             end
-            assert.are.same(result, {
+            assert.are.same({
                 {"x", 1, 5},
                 {"y", 6, 8},
                 {"!", 10, 10},
                 {"z", 12, 15}
-            })
+            }, result)
         end)
         it("inserts border gaps properly", function()
             local tree = {}
@@ -192,5 +221,54 @@ describe("Border renderer", function()
             assert.is_nil(getBorderChar(6))
             -- printDebug(tree)
         end)
+    end)
+    it("doesn't crash", function()
+        local br = mod.BorderRenderer()
+
+        br:horizontal(1, 1, 10, 2)
+        br:horizontal(1, 10, 10, 2)
+
+        br:vertical(2, 2, 8, 2)
+        br:vertical(9, 2, 8, 2)
+
+        br:applyJoints()
+        br:render({fill=function() end})
+    end)
+    it("works in reallife case", function()
+        local br = mod.BorderRenderer()
+        br:vertical(32, 1, 24, 1)
+        br:vertical(95, 1, 24, 1)
+        br:vertical(127, 1, 24, 1)
+        br:horizontal(1, 25, 160.0, 1)
+        br:vertical(80, 26, 24, 1)
+        br:vertical(107, 26, 24, 1)
+        br:applyJoints()
+        br:render({fill=function(x, y, w, h, char) end})
+
+        -- 1..31 --
+        -- 32..32 T up
+        -- 33
+
+        -- function fill()
+        --
+        -- for rowIndex, row in pairs(br.rows) do
+        --     print("ROW", rowIndex)
+        --     -- for k, v in pairs(row) do
+        --     --     print(k, v)
+        --     -- end
+        --     -- umlDebug(row)
+        --     for index, from, to in traverseBorder(row) do
+        --         print("Horizontal", row[index], from, to)
+        --         -- gpu.fill(from, rowIndex, to - from + 1, 1, row[index])
+        --     end
+        -- end
+        -- for colIndex, col in pairs(br.cols) do
+        --     print("COL", colIndex)
+        --     -- printDebug(col)
+        --     -- for index, from, to in traverseBorder(col) do
+        --     --     -- print("Vertical", col[index], from, to)
+        --     --     gpu.fill(colIndex, from, 1, to - from + 1, col[index])
+        --     -- end
+        -- end
     end)
 end)

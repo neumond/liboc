@@ -28,6 +28,31 @@ function getBorderFillChar(borderType, vertical)
 end
 
 
+-- BRProxy
+
+
+local BRProxy = utils.makeClass(function(self, br, x, y)
+    self.br = br
+    self.x = x - 1
+    self.y = y - 1
+end)
+
+
+function BRProxy:horizontal(x, y, length, borderType)
+    self.br:horizontal(x + self.x, y + self.y, length, borderType)
+end
+
+
+function BRProxy:vertical(x, y, length, borderType)
+    self.br:vertical(x + self.x, y + self.y, length, borderType)
+end
+
+
+function BRProxy:enterWindow(x, y)
+    return BRProxy(self.br, self.x + x, self.y + y)
+end
+
+
 -- BorderRenderer
 
 
@@ -156,22 +181,104 @@ end
 
 
 function traverseBorder(tree)
+    -- every node of the tree is a point on coordinate axis
+    -- -----o------o-o---o--------o----------o-o-o---
+    --                 from  x    to
+    --               current position
+    -- iteration can keep just one "from" point
+    -- and stack of "to" points
+    -- going over a point (goUp) switches latest "to" point into "from"
+
     local indexStack = {1}  -- top of this stack = state of current index
     local stackPtr = 1
     local index = nil
-    local from, to
+
+    local toStack = {math.huge}
+    local toStackPtr = 1
+    local fromStack = {-math.huge}
+    local fromStackPtr = 1
+
+    function xdebug()
+        line = ""
+        for i=1,fromStackPtr do
+            value = fromStack[i]
+            if value == nil then
+                value = "nil"
+            end
+            line = line .. value .. " "
+        end
+        line = line .. "| "
+        for i=toStackPtr,1,-1 do
+            value = toStack[i]
+            if value == nil then
+                value = "nil"
+            end
+            line = line .. value .. " "
+        end
+        print(line)
+    end
+
+    function pushTo(value)
+        toStackPtr = toStackPtr + 1
+        toStack[toStackPtr] = value
+        -- print("PUSH TO", value)
+        -- xdebug()
+    end
+
+    function popTo()
+        local value = toStack[toStackPtr]
+        toStackPtr = toStackPtr - 1
+        -- print("POP TO", value)
+        -- xdebug()
+        return value
+    end
+
+    function pushFrom(value)
+        fromStackPtr = fromStackPtr + 1
+        fromStack[fromStackPtr] = value
+        -- print("PUSH FROM", value)
+        -- xdebug()
+    end
+
+    function popFrom()
+        local value = fromStack[fromStackPtr]
+        fromStackPtr = fromStackPtr - 1
+        -- print("POP FROM", value)
+        -- xdebug()
+        return value
+    end
+
+    function tipTo()
+        return toStack[toStackPtr]
+    end
+
+    function tipFrom()
+        return fromStack[fromStackPtr]
+    end
+
+    function preTipFrom()
+        return fromStack[fromStackPtr - 1]
+    end
+
+    function transferTo()
+        pushTo(popFrom())
+    end
+
+    function transferFrom()
+        pushFrom(popTo())
+    end
 
     function digDown(dir)
         stackPtr = stackPtr + 1
         indexStack[stackPtr] = 1
         index = nextBinTreeIndex(index, dir)
-        if isNumber(tree[index]) then
-            if dir then
-                to = tree[index]
-            else
-                from = tree[index]
-            end
+
+        -- if isNumber(tree[index]) then
+        if not dir then
+            transferTo()
         end
+        pushFrom(tree[index])
+        -- end
     end
 
     function goUp()
@@ -179,6 +286,10 @@ function traverseBorder(tree)
         indexStack[stackPtr] = nil
         stackPtr = stackPtr - 1
         indexStack[stackPtr] = indexStack[stackPtr] + 1
+        popFrom()
+        if indexStack[stackPtr] == 2 then
+            transferFrom()
+        end
         index = parentBinTreeIndex(index)
         return false
     end
@@ -186,7 +297,7 @@ function traverseBorder(tree)
     function goNext()
         if index == nil then
             index = 1
-            to = tree[index]
+            pushFrom(tree[index])
             return false
         end
         if not isNumber(tree[index]) then
@@ -207,15 +318,26 @@ function traverseBorder(tree)
         repeat
             if goNext() then return nil end
         until (tree[index] ~= nil) and (not isNumber(tree[index]))
-        return index, from, to - 1
+        -- print("YIELD", index, preTipFrom(), tipTo() - 1)
+        return index, preTipFrom(), tipTo() - 1
     end
 end
 
 
+function log(text)
+    local f = assert(io.open("log.txt", "a"))
+    local t = f:write(text .. "\n")
+    f:close()
+end
+
+
 function BorderRenderer:horizontal(x, y, length, borderType)
+    -- log("br:horizontal("..x..", "..y..", "..length..", "..borderType)
+    if getBorderWidth(borderType) <= 0 then return end
     if self.rows[y] == nil then
         self.rows[y] = {}
     end
+    local char = getBorderFillChar(borderType, false)
     addBorder(self.rows[y], x, x + length - 1, char)
     self:addJoint(x - 1, y, char, "right", false)
     self:addJoint(x + length, y, char, "left", false)
@@ -223,9 +345,12 @@ end
 
 
 function BorderRenderer:vertical(x, y, length, borderType)
+    -- log("br:vertical("..x..", "..y..", "..length..", "..borderType)
+    if getBorderWidth(borderType) <= 0 then return end
     if self.cols[x] == nil then
         self.cols[x] = {}
     end
+    local char = getBorderFillChar(borderType, true)
     addBorder(self.cols[x], y, y + length - 1, char)
     self:addJoint(x, y - 1, char, "down", true)
     self:addJoint(x, y + length, char, "up", true)
@@ -262,6 +387,27 @@ function BorderRenderer:applyJoints()
             splitBorder(self.cols[x], y, charFunc(jointChar, side))
         end
     end
+end
+
+
+function BorderRenderer:render(gpu)
+    for rowIndex, row in pairs(self.rows) do
+        for index, from, to in traverseBorder(row) do
+            -- print("Horizontal", row[index], from, to)
+            gpu.fill(from, rowIndex, to - from + 1, 1, row[index])
+        end
+    end
+    for colIndex, col in pairs(self.cols) do
+        for index, from, to in traverseBorder(col) do
+            -- print("Vertical", col[index], from, to)
+            gpu.fill(colIndex, from, 1, to - from + 1, col[index])
+        end
+    end
+end
+
+
+function BorderRenderer:enterWindow(x, y)
+    return BRProxy(self, x, y)
 end
 
 
