@@ -183,11 +183,19 @@ function traverseBorder(tree)
     local indexStack = {1}  -- top of this stack = state of current index
     local stackPtr = 1
     local index = nil
+    local from, to
 
     function digDown(dir)
         stackPtr = stackPtr + 1
         indexStack[stackPtr] = 1
         index = nextBinTreeIndex(index, dir)
+        if isNumber(tree[index]) then
+            if dir then
+                to = tree[index]
+            else
+                from = tree[index]
+            end
+        end
     end
 
     function goUp()
@@ -202,6 +210,7 @@ function traverseBorder(tree)
     function goNext()
         if index == nil then
             index = 1
+            to = tree[index]
             return false
         end
         if not isNumber(tree[index]) then
@@ -222,7 +231,7 @@ function traverseBorder(tree)
         repeat
             if goNext() then return nil end
         until (tree[index] ~= nil) and (not isNumber(tree[index]))
-        return index
+        return index, from, to - 1
     end
 end
 

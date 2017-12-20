@@ -206,10 +206,15 @@ describe("windows framework", function()
             addBorder(12, 15, "z")
 
             local result = {}
-            for index in traverseBorder(tree) do
-                table.insert(result, tree[index])
+            for index, from, to in traverseBorder(tree) do
+                table.insert(result, {tree[index], from, to})
             end
-            assert.are.same(result, {"x", "y", "!", "z"})
+            assert.are.same(result, {
+                {"x", 1, 5},
+                {"y", 6, 8},
+                {"!", 10, 10},
+                {"z", 12, 15}
+            })
         end)
         it("inserts border gaps properly", function()
             local tree = {}
