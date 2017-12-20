@@ -1,6 +1,33 @@
 local utils = require("utils")
 
 
+local BorderTypes = {
+    [0]={width=0, h=" ", v=" "},
+    [1]={width=1, h="─", v="│"},
+    [2]={width=1, h="═", v="║"}
+}
+
+
+function getBorderType(borderType)
+    local bt = BorderTypes[borderType]
+    if bt == nil then
+        bt = BorderTypes[0]
+    end
+    return bt
+end
+
+
+function getBorderWidth(borderType)
+    return getBorderType(borderType).width
+end
+
+
+function getBorderFillChar(borderType, vertical)
+    local bt = getBorderType(borderType)
+    return vertical and bt.v or bt.h
+end
+
+
 -- BorderRenderer
 
 
@@ -185,7 +212,7 @@ function traverseBorder(tree)
 end
 
 
-function BorderRenderer:horizontal(x, y, length, char)
+function BorderRenderer:horizontal(x, y, length, borderType)
     if self.rows[y] == nil then
         self.rows[y] = {}
     end
@@ -195,7 +222,7 @@ function BorderRenderer:horizontal(x, y, length, char)
 end
 
 
-function BorderRenderer:vertical(x, y, length, char)
+function BorderRenderer:vertical(x, y, length, borderType)
     if self.cols[x] == nil then
         self.cols[x] = {}
     end
@@ -242,6 +269,8 @@ end
 
 
 return {
+    getBorderWidth=getBorderWidth,
+    getBorderFillChar=getBorderFillChar,
     BorderRenderer=BorderRenderer,
     testing={
         nextBinTreeIndex=nextBinTreeIndex,

@@ -1,5 +1,6 @@
 local utils = require("utils")
 local markupModule = require("ui.markup")
+local bordersModule = require("ui.borders")
 
 
 function intersection(a1, a2, b1, b2)
@@ -219,10 +220,16 @@ end
 
 local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super, border)
     local self = super()
-    self.border = border ~= nil and border or 0
+    self:setBorder(border)
     self.frameGrowFactors = {}
     self.growFactorSum = 0
 end)
+
+
+function BaseSplitFrame:setBorder(borderType)
+    self.border = borderType
+    self.borderWidth = bordersModule.getBorderWidth(borderType)
+end
 
 
 function BaseSplitFrame:insert(frame, before, growFactor)
@@ -244,7 +251,7 @@ end
 
 
 function BaseSplitFrame:reflowLengths(mainAxisLength)
-    mainAxisLength = mainAxisLength - self.border * (self:getCount() - 1)
+    mainAxisLength = mainAxisLength - self.borderWidth * (self:getCount() - 1)
     local iter = self:iterFrames()
     return function()
         frame, frameId = iter()
@@ -277,7 +284,7 @@ function BaseSplitFrame:render(gpu)
                 self:drawFrameBorder(gpu, x, y, w, h)
             end
             frame:render(RegionGpu(gpu, x, y, w, h))
-            if self.border > 0 then first = false end
+            if self.borderWidth > 0 then first = false end
         end
     end
 end
@@ -301,7 +308,7 @@ function HSplitFrame:iterFramePositions()
         local frame = iter()
         if frame == nil then return end
         local prevX = x
-        x = x + frame.width + self.border
+        x = x + frame.width + self.borderWidth
         return frame, prevX, 1, frame.width, frame.height
     end
 end
@@ -312,7 +319,7 @@ function VSplitFrame:iterFramePositions()
         local frame = iter()
         if frame == nil then return end
         local prevY = y
-        y = y + frame.height + self.border
+        y = y + frame.height + self.borderWidth
         return frame, 1, prevY, frame.width, frame.height
     end
 end
@@ -339,12 +346,18 @@ end
 function HSplitFrame:drawFrameBorder(gpu, x, y, w, h)
     gpu.setBackground(0x000000)
     gpu.setForeground(0xFFFFFF)
-    gpu.fill(x - self.border, y, self.border, h, "│")
+    gpu.fill(
+        x - self.borderWidth, y, self.borderWidth, h,
+        bordersModule.getBorderFillChar(self.border, true)
+    )
 end
 function VSplitFrame:drawFrameBorder(gpu, x, y, w, h)
     gpu.setBackground(0x000000)
     gpu.setForeground(0xFFFFFF)
-    gpu.fill(x, y - self.border, w, self.border, "─")
+    gpu.fill(
+        x, y - self.borderWidth, w, self.borderWidth,
+        bordersModule.getBorderFillChar(self.border, false)
+    )
 end
 
 
