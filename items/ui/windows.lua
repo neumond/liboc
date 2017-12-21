@@ -167,14 +167,14 @@ function ContentFrame:getMaxScroll()
 end
 
 
-function ContentFrame:scrollTo(x, y, inv)
+function ContentFrame:scrollTo(x, y, suppressInv)
     self.scrollX = forceRange(x, 1, self.scrollMaxX)
     self.scrollY = forceRange(y, 1, self.scrollMaxY)
-    if inv then self:invalidateContent() end
+    if not suppressInv then self:invalidateContent() end
 end
 
 
-function ContentFrame:relativeScroll(dx, dy, inv)
+function ContentFrame:relativeScroll(dx, dy, suppressInv)
     return self:scrollTo(self.scrollX + dx, self.scrollY + dy, inv)
 end
 
@@ -215,7 +215,7 @@ function MarkupFrame:reflowMarkup()
     )
     self.scrollMaxX = math.max(1, width - self.width + 1)
     self.scrollMaxY = math.max(1, #self.commands - self.height + 1)
-    self:scrollTo(self.scrollX, self.scrollY, false)
+    self:scrollTo(self.scrollX, self.scrollY, true)
 end
 
 

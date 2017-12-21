@@ -338,6 +338,7 @@ function renderingMarkup()
         local root, mfs = createUI(gpu)
         renderUI(root, mfs)
         -- renderMarkup(gpu)
+        return root, mfs[9]
     end
 
     function outsideOC()
@@ -369,12 +370,31 @@ function renderingMarkup()
         gpu.setBackground(0x202020)
         gpu.fill(1, 1, 200, 100, " ")
 
-        renderFrames(gpu)
+        local root, sm = renderFrames(gpu)
 
         gpu.setForeground(oldForeground)
         gpu.setBackground(oldBackground)
 
-        waitForKey()
+        -- waitForKey()
+
+        local event = require("event")
+        repeat
+            local _, _, _, key = event.pull("key_down")
+            if key == 200 then
+                sm:relativeScroll(0, -1)
+            elseif key == 208 then
+                sm:relativeScroll(0, 1)
+            elseif key == 203 then
+                sm:relativeScroll(-1, 0)
+            elseif key == 205 then
+                sm:relativeScroll(1, 0)
+            end
+            root:update()
+            -- 200 up
+            -- 208 down
+            -- 203 left
+            -- 205 right
+        until key == 28
     end
 
     -- m.testing.tokenDebug(text)
