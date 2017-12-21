@@ -44,8 +44,22 @@ end
 
 
 function RegionGpu(gpu, winX, winY, winWidth, winHeight)
+    local fg, bg
+
+    function flushColors()
+        if fg ~= nil then
+            gpu.setForeground(fg)
+            fg = nil
+        end
+        if bg ~= nil then
+            gpu.setBackground(bg)
+            bg = nil
+        end
+    end
+
     return {
         set = function(x, y, text)
+            flushColors()
             local w = utils.strlen(text)
             local ox, ow = intersectionWH(1, winWidth, x, w)
             if ox == nil then return false end
@@ -58,6 +72,7 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
             return gpu.set(ox + winX - 1, oy + winY - 1, text)
         end,
         fill = function(x, y, w, h, fillchar)
+            flushColors()
             local ox, ow = intersectionWH(1, winWidth, x, w)
             if ox == nil then return false end
             local oy, oh = intersectionWH(1, winHeight, y, h)
@@ -65,10 +80,12 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
             return gpu.fill(ox + winX - 1, oy + winY - 1, ow, oh, fillchar)
         end,
         setForeground = function(color)  -- TODO: palette colors support
-            return gpu.setForeground(color)
+            fg = color
+            -- NOTE: no return value here
         end,
         setBackground = function(color)
-            return gpu.setBackground(color)
+            bg = color
+            -- NOTE: no return value here
         end,
         getResolution = function()
             return winWidth, winHeight

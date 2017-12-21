@@ -379,14 +379,21 @@ function renderingMarkup()
         local event = require("event")
         repeat
             local _, _, _, key = event.pull("key_down")
-            if key == 200 then
-                sm:relativeScroll(0, -1)
-            elseif key == 208 then
-                sm:relativeScroll(0, 1)
-            elseif key == 203 then
-                sm:relativeScroll(-1, 0)
-            elseif key == 205 then
-                sm:relativeScroll(1, 0)
+            local sx, sy = 0, 0
+            repeat
+                if key == 200 then
+                    sy = sy - 1
+                elseif key == 208 then
+                    sy = sy + 1
+                elseif key == 203 then
+                    sx = sx - 1
+                elseif key == 205 then
+                    sx = sx + 1
+                end
+                local _, _, _, key = event.pull(0, "key_down")
+            until key == nil
+            if (sx ~= 0) or (sy ~= 0) then
+                sm:relativeScroll(sx, sy)
             end
             -- root:update()
             -- 200 up
