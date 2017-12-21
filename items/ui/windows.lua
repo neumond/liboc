@@ -64,7 +64,7 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
             if oy == nil then return false end
             return gpu.fill(ox + winX - 1, oy + winY - 1, ow, oh, fillchar)
         end,
-        setForeground = function(color)
+        setForeground = function(color)  -- TODO: palette colors support
             return gpu.setForeground(color)
         end,
         setBackground = function(color)
@@ -72,6 +72,27 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
         end,
         getResolution = function()
             return winWidth, winHeight
+        end,
+        copy = function(x, y, width, height, tx, ty)
+            x, width = intersectionWH(1, winWidth, x, width)
+            if x == nil then return false end
+            y, height = intersectionWH(1, winHeight, y, height)
+            if y == nil then return false end
+
+            _, targetWidth = intersectionWH(1, winWidth, x + tx, width)
+            if targetWidth == nil then return false end
+            _, targetHeight = intersectionWH(1, winHeight, y + ty, height)
+            if targetHeight == nil then return false end
+
+            correctedWidth = math.min(width, targetWidth)
+            correctedHeight = math.min(height, targetHeight)
+
+            wDiff = width - correctedWidth
+            hDiff = height - correctedHeight
+
+            if tx < 0 then x = x + wDiff end
+            if ty < 0 then y = y + hDiff end
+            return gpu.copy(x + winX - 1, y + winY - 1, correctedWidth, correctedHeight, tx, ty)
         end
     }
 end
@@ -113,12 +134,25 @@ function BaseFrame:render(gpu)
 end
 
 
-function BaseFrame:renderRegion(gpu)
-    self:render(RegionGpu(
+function BaseFrame:getRegion(gpu)
+    return RegionGpu(
         gpu,
         self.posX, self.posY,
         self.width, self.height
-    ))
+    )
+end
+
+
+function BaseFrame:getSubRegion(gpu, x, y, w, h)
+    x, w = intersectionWH(1, self.width, x, w)
+    if x == nil then return end
+    y, h = intersectionWH(1, self.height, y, h)
+    if y == nil then return end
+    return RegionGpu(
+        gpu,
+        self.posX + x - 1, self.posY + y - 1,
+        w, h
+    )
 end
 
 
@@ -168,9 +202,12 @@ end
 
 
 function ContentFrame:scrollTo(x, y, suppressInv)
+    local oldx, oldy = self.scrollX, self.scrollY
     self.scrollX = forceRange(x, 1, self.scrollMaxX)
     self.scrollY = forceRange(y, 1, self.scrollMaxY)
+    if (oldx == self.scrollX) and (oldy == self.scrollY) then return false end
     if not suppressInv then self:invalidateContent() end
+    return true
 end
 
 
@@ -191,12 +228,20 @@ local MarkupFrame = utils.makeClass(ContentFrame, function(super, markup, styles
     self.commands = {}
     self.reflownFor = nil
     self.minWidth = 1
+
+    self.lsScrollX = nil
+    self.lsScrollY = nil
+    self.lsPosX = nil
+    self.lsPosY = nil
+    self.lsWidth = nil
+    self.lsHeight = nil
 end)
 
 
 function MarkupFrame:setMinimalContentWidth(minWidth)
     assert(minWidth >= 1)
     self.minWidth = minWidth
+    self:invalidateContent()
 end
 
 
@@ -215,20 +260,103 @@ function MarkupFrame:reflowMarkup()
     )
     self.scrollMaxX = math.max(1, width - self.width + 1)
     self.scrollMaxY = math.max(1, #self.commands - self.height + 1)
-    self:scrollTo(self.scrollX, self.scrollY, true)
+    MarkupFrame.__super.scrollTo(self, self.scrollX, self.scrollY, true)
+end
+
+
+function MarkupFrame:scrollTo(x, y, suppressInv)
+    local oldMatch = (
+        (self.scrollX == self.lsScrollX) and
+        (self.scrollY == self.lsScrollY)
+    )
+    if not MarkupFrame.__super.scrollTo(self, x, y, true) then
+        return false
+    end
+    if not suppressInv then
+        if (
+            oldMatch and
+            (self.posX == self.lsPosX) and
+            (self.posY == self.lsPosY) and
+            (self.width == self.lsWidth) and
+            (self.height == self.lsHeight)
+        ) then
+            local gpu = self:getRegion(self.root.gpu)
+            local dx, dy = self.lsScrollX - self.scrollX, self.lsScrollY - self.scrollY
+            gpu.copy(
+                1, 1,
+                self.width, self.height,
+                dx, dy
+            )
+
+            if dy ~= 0 then
+                -- redrawing insufficient rows
+                local lineCount = math.abs(dy)
+                local fromLine
+                if dy > 0 then  -- scroll down, redraw top rows
+                    fromLine = 1
+                else  -- scroll up, redraw bottom rows
+                    fromLine = self.height - lineCount + 1
+                end
+                local gpu = self:getSubRegion(self.root.gpu, 1, fromLine, self.width, lineCount)
+                if gpu ~= nil then
+                    self:renderInner(gpu, fromLine, lineCount, 1)
+                end
+            end
+            if dx ~= 0 then
+                -- redrawing insufficient cols
+                local colCount = math.abs(dx)
+                local lineCount = self.height - math.abs(dy)
+                local fromLine
+                if dy > 0 then  -- scroll down, redraw top rows
+                    fromLine = 1 + dy
+                else  -- scroll up, redraw bottom rows
+                    fromLine = 1
+                end
+                local fromCol
+                if dx > 0 then  -- scroll right, redraw left cols
+                    fromCol = 1
+                else  -- scroll left, redraw right cols
+                    fromCol = self.width - colCount + 1
+                end
+
+                local gpu = self:getSubRegion(self.root.gpu, fromCol, fromLine, colCount, lineCount)
+                if gpu ~= nil then
+                    self:renderInner(gpu, fromLine, lineCount, fromCol)
+                end
+            end
+
+            self.lsScrollX = self.scrollX
+            self.lsScrollY = self.scrollY
+        else
+            self:invalidateContent()
+        end
+    end
+    return true
+end
+
+
+function MarkupFrame:renderInner(gpu, fromLine, lineCount, fromCol)
+    local cmds = {}
+    for i=1,lineCount do
+        cmds[i] = self.commands[i + (fromLine - 1) + (self.scrollY - 1)]
+    end
+    markupModule.execGpuCommands(
+        gpu, cmds,
+        self.scrollX - 1 + fromCol - 1, 0
+    )
 end
 
 
 function MarkupFrame:render(gpu)
     self:reflowMarkup()
-    local cmds = {}
-    for i=1,self.height do
-        cmds[i] = self.commands[i + (self.scrollY - 1)]
-    end
-    markupModule.execGpuCommands(
-        gpu, cmds,
-        self.scrollX - 1, 0
-    )
+    self:renderInner(gpu, 1, self.height, 1)
+
+    self.lsScrollX = self.scrollX
+    self.lsScrollY = self.scrollY
+    self.lsPosX = self.posX
+    self.lsPosY = self.posY
+    self.lsWidth = self.width
+    self.lsHeight = self.height
 end
 
 
@@ -540,7 +668,7 @@ end
 
 function FrameRoot:_reDraw()
     for frame, _ in pairs(self.needRedraw) do
-        frame:renderRegion(self.gpu)
+        frame:render(frame:getRegion(self.gpu))
     end
     self.needRedraw = {}
 end
