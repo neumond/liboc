@@ -282,43 +282,21 @@ function MarkupFrame:scrollTo(x, y, suppressInv)
         ) then
             local gpu = self:getRegion(self.root.gpu)
             local dx, dy = self.lsScrollX - self.scrollX, self.lsScrollY - self.scrollY
-            gpu.copy(
-                1, 1,
-                self.width, self.height,
-                dx, dy
-            )
+            gpu.copy(1, 1, self.width, self.height, dx, dy)
 
-            if dy ~= 0 then
-                -- redrawing insufficient rows
+            if dy ~= 0 then  -- redrawing insufficient rows
                 local lineCount = math.abs(dy)
-                local fromLine
-                if dy > 0 then  -- scroll down, redraw top rows
-                    fromLine = 1
-                else  -- scroll up, redraw bottom rows
-                    fromLine = self.height - lineCount + 1
-                end
+                local fromLine = dy > 0 and 1 or (self.height - lineCount + 1)
                 local gpu = self:getSubRegion(self.root.gpu, 1, fromLine, self.width, lineCount)
                 if gpu ~= nil then
                     self:renderInner(gpu, fromLine, lineCount, 1)
                 end
             end
-            if dx ~= 0 then
-                -- redrawing insufficient cols
+            if dx ~= 0 then  -- redrawing insufficient cols
                 local colCount = math.abs(dx)
                 local lineCount = self.height - math.abs(dy)
-                local fromLine
-                if dy > 0 then  -- scroll down, redraw top rows
-                    fromLine = 1 + dy
-                else  -- scroll up, redraw bottom rows
-                    fromLine = 1
-                end
-                local fromCol
-                if dx > 0 then  -- scroll right, redraw left cols
-                    fromCol = 1
-                else  -- scroll left, redraw right cols
-                    fromCol = self.width - colCount + 1
-                end
-
+                local fromLine = 1 + math.max(0, dy)
+                local fromCol = dx > 0 and 1 or (self.width - colCount + 1)
                 local gpu = self:getSubRegion(self.root.gpu, fromCol, fromLine, colCount, lineCount)
                 if gpu ~= nil then
                     self:renderInner(gpu, fromLine, lineCount, fromCol)
