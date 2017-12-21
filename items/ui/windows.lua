@@ -1,6 +1,25 @@
 local utils = require("utils")
 local markupModule = require("ui.markup")
 local bordersModule = require("ui.borders")
+local LinkedList = require("lib.linkedList").LinkedList
+local Stack = require("lib.stack").Stack
+
+
+-- Frame resize doesn't affect its parent or siblings
+-- Parent controls sizes of all its children
+-- Frame resize affect all of its children (by launching their resize methods)
+-- Frame resize causes global redraw of borders
+-- You can't directly call resize method of any frame, instead you can
+--   manipulate children lists of ContainerFrame
+--   setGrowFactor of child of SplitFrame
+--   setActive of child of SwitcherFrame
+--   change resolution of target gpu
+-- Frame invalidation for redrawing invalidates all its children recursively
+
+-- Frames do not draw anything on the screen except borders and "empty container" messages
+--   Normally its only borders
+
+-- How about recursive border iterator across frame tree?
 
 
 function forceRange(value, a, b)
@@ -63,57 +82,121 @@ end
 
 
 local BaseFrame = utils.makeClass(function(self)
+    self.root = nil
+
+    self.posX = 0
+    self.posY = 0
     self.width = 0
     self.height = 0
-    self.needRedraw = true
 end)
 
 
-function BaseFrame:resize(width, height)
+function BaseFrame:setWindow(x, y, width, height)
     local wc = self.width ~= width
     local hc = self.height ~= height
+    local posc = (self.posX ~= x) or (self.posY ~= y)
+
+    self.posX = x
+    self.posY = y
     self.width = width
     self.height = height
-    self:invalidate()  -- always redraw on resize
-    return wc, hc
+
+    if wc or hc or posc then
+        self:invalidateContent()
+    end
+    return wc, hc, posc
 end
 
 
-function BaseFrame:render(gpu, br)
-    if not self.needRedraw then return end
-    self.needRedraw = false
+function BaseFrame:render(gpu)
+    error("Not implemented")
+end
+
+
+function BaseFrame:renderRegion(gpu)
+    self:render(RegionGpu(
+        gpu,
+        self.posX, self.posY,
+        self.width, self.height
+    ))
+end
+
+
+function BaseFrame:iterBordersCoro()
+    -- intentionally empty
+end
+
+
+function BaseFrame:iterBorders()
+    return coroutine.wrap(function() self:iterBordersCoro() end)
+end
+
+
+function BaseFrame:invalidateContent()
+    if self.root == nil then return false end  -- TODO: remove this check?
+    self.root.needRedraw[self] = true
     return true
 end
 
 
-function BaseFrame:invalidate()
-    self.needRedraw = true
+function BaseFrame:invalidateBorders()
+    if self.root == nil then return end  -- TODO: remove this check?
+    self.root.needReBorder = true
+end
+
+
+-- ContentFrame
+
+
+local ContentFrame = utils.makeClass(BaseFrame, function(super)
+    local self = super()
+    self.scrollX = 1
+    self.scrollY = 1
+    self.scrollMaxX = math.huge
+    self.scrollMaxY = math.huge
+end)
+
+
+function ContentFrame:getContentWidth()
+    return self.width
+end
+
+
+function ContentFrame:getMaxScroll()
+    return self.scrollMaxX, self.scrollMaxY
+end
+
+
+function ContentFrame:scrollTo(x, y, inv)
+    self.scrollX = forceRange(x, 1, self.scrollMaxX)
+    self.scrollY = forceRange(y, 1, self.scrollMaxY)
+    if inv then self:invalidateContent() end
+end
+
+
+function ContentFrame:relativeScroll(dx, dy, inv)
+    return self:scrollTo(self.scrollX + dx, self.scrollY + dy, inv)
 end
 
 
 -- MarkupFrame
 
 
-local MarkupFrame = utils.makeClass(BaseFrame, function(super, markup, styles, minWidth)
+local MarkupFrame = utils.makeClass(ContentFrame, function(super, markup, styles)
     local self = super()
+
     self.markup = markup
     self.styles = styles
+
     self.commands = {}
-    self.reflown = false
-
-    self.scrollX = 1
-    self.scrollY = 1
-    self.scrollMaxX = 1
-    self.scrollMaxY = 1
-
-    self:setMinimalContentWidth(minWidth)  -- TODO: remove from constructor parameters
+    self.reflownFor = nil
+    self.minWidth = 1
 end)
 
 
 function MarkupFrame:setMinimalContentWidth(minWidth)
-    self.minWidth = minWidth ~= nil and minWidth or 1
-    assert(self.minWidth >= 1)
-    self:invalidate()
+    assert(minWidth >= 1)
+    self.minWidth = minWidth
 end
 
 
@@ -122,51 +205,22 @@ function MarkupFrame:getContentWidth()
 end
 
 
-function MarkupFrame:getMaxScroll()
-    return self.scrollMaxX, self.scrollMaxY
-end
+function MarkupFrame:reflowMarkup()
+    local width = self:getContentWidth()
+    if self.reflownFor == width then return end
+    self.reflownFor = width
 
-
-function MarkupFrame:scrollTo(x, y)
-    x = forceRange(x, 1, self.scrollMaxX)
-    y = forceRange(y, 1, self.scrollMaxY)
-    self.scrollX = x
-    self.scrollY = y
-    self:invalidate()
-end
-
-
-function MarkupFrame:relativeScroll(dx, dy)
-    return self:scrollTo(self.scrollX + dx, self.scrollY + dy)
-end
-
-
-function MarkupFrame:reflowMarkup(width)
     self.commands = markupModule.markupToGpuCommands(
         self.markup, self.styles, width
     )
     self.scrollMaxX = math.max(1, width - self.width + 1)
     self.scrollMaxY = math.max(1, #self.commands - self.height + 1)
-    self.reflown = true
-    self:scrollTo(self.scrollX, self.scrollY)
-    self:invalidate()
+    self:scrollTo(self.scrollX, self.scrollY, false)
 end
 
 
-function MarkupFrame:resize(width, height)
-    local oldWidth = self:getContentWidth()
-    local wc, _ = MarkupFrame.__super.resize(self, width, height)
-    if wc then
-        local newWidth = self:getContentWidth()
-        if (oldWidth ~= newWidth) or (not self.reflown) then
-            self:reflowMarkup(newWidth)
-        end
-    end
-end
-
-
-function MarkupFrame:render(gpu, br)
-    if not MarkupFrame.__super.render(self, gpu, br) then return end
+function MarkupFrame:render(gpu)
+    self:reflowMarkup()
     local cmds = {}
     for i=1,self.height do
         cmds[i] = self.commands[i + (self.scrollY - 1)]
@@ -183,48 +237,13 @@ end
 
 local ContainerFrame = utils.makeClass(BaseFrame, function(super)
     local self = super()
-    self.frameIds = {}
-    self.frames = {}
-    self.autoId = 0
+    self.children = LinkedList(function(event, item)
+        self:onChange(event, item)
+    end)
 end)
 
 
-function ContainerFrame:insert(frame, beforeIdx)
-    self.autoId = self.autoId + 1
-    if beforeIdx == nil then
-        table.insert(self.frameIds, self.autoId)
-    else
-        table.insert(self.frameIds, beforeIdx, self.autoId)
-    end
-    self.frames[self.autoId] = frame
-    return self.autoId
-end
-
-
-function ContainerFrame:remove(idx)
-    local frameId = table.remove(self.frameIds, idx)
-    self.frames[frameId] = nil
-    return frameId
-end
-
-
-function ContainerFrame:isEmpty()
-    return #self.frameIds == 0
-end
-
-
-function ContainerFrame:getCount()
-    return #self.frameIds
-end
-
-
-function ContainerFrame:iterFrames()
-    local iter, iterTable, iterKey = pairs(self.frameIds)
-    return function()
-        iterKey, frameId = iter(iterTable, iterKey)
-        if iterKey == nil then return end
-        return self.frames[frameId], frameId
-    end
+function ContainerFrame:onChange(event, item)
 end
 
 
@@ -241,6 +260,7 @@ end
 
 
 -- SwitcherFrame
+-- TODO: rewrite for LinkedList children
 
 
 local SwitcherFrame = utils.makeClass(ContainerFrame, function(super)
@@ -259,8 +279,8 @@ end
 function SwitcherFrame:setActive(frameId)
     if self.activeFrameId == frameId then return end
     self.activeFrameId = frameId
-    self:getActiveFrame():resize(width, height)
-    self:invalidate()
+    self:_rePositionActiveFrame()
+    self:getActiveFrame():invalidateContent()
 end
 
 
@@ -269,20 +289,32 @@ function SwitcherFrame:getActiveFrame()
 end
 
 
-function SwitcherFrame:resize(width, height)
-    local wc, hc = SwitcherFrame.__super.resize(self, width, height)
-    if (wc or hc) and self.activeFrameId ~= nil then
-        self:getActiveFrame():resize(width, height)
+function SwitcherFrame:invalidateContent()
+    if SwitcherFrame.__super.invalidateContent(self) then
+        if self.activeFrameId ~= nil then
+            self.root.needRedraw[self:getActiveFrame()] = true
+        end
     end
 end
 
 
-function SwitcherFrame:render(gpu, br)
-    if not SwitcherFrame.__super.render(self, gpu, br) then return end
+function SwitcherFrame:_rePositionActiveFrame()
+    if self.activeFrameId == nil then return end
+    self:getActiveFrame():setWindow(self.posX, self.posY, self.width, self.height)
+end
+
+
+function SwitcherFrame:setWindow(x, y, width, height)
+    local wc, hc, posc = SwitcherFrame.__super.setWindow(self, x, y, width, height)
+    if wc or hc or posc then
+        self:_rePositionActiveFrame()
+    end
+end
+
+
+function SwitcherFrame:render(gpu)
     if self.activeFrameId == nil then
         self:renderWarning(gpu, "No active frame available")
-    else
-        self:getActiveFrame():render(gpu, br)
     end
 end
 
@@ -290,66 +322,80 @@ end
 -- BaseSplitFrame
 
 
-local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super, borderType)
+local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super)
     local self = super()
-    self:setBorder(borderType)
-    self.frameGrowFactors = {}
-    self.growFactorSum = 0
+    self:setBorderType(0)
 end)
 
 
-function BaseSplitFrame:setBorder(borderType)
+function BaseSplitFrame:setBorderType(borderType)
     self.borderType = borderType
     self.borderWidth = bordersModule.getBorderWidth(borderType)
+    self:invalidateBorders()
 end
 
 
-function BaseSplitFrame:insert(frame, before)
-    local frameId = BaseSplitFrame.__super.insert(self, frame, before)
-    self.frameGrowFactors[frameId] = 1
-    self.growFactorSum = self.growFactorSum + 1
-    return frameId
+function BaseSplitFrame:onChange(event, item)
+    if event == "add" then
+        item.growFactor = 1
+        item.setGrowFactor = function(frameItem, growFactor)
+            assert(growFactor > 0)
+            if growFactor == frameItem.growFactor then return end
+            frameItem.growFactor = growFactor
+            self:resizeInner(self.width, self.height)
+            self:invalidateBorders()
+            self:invalidateContent()
+        end
+    end
+    self:invalidateBorders()
+    self:invalidateContent()
 end
 
 
-function BaseSplitFrame:remove(idx)
-    local frameId = BaseSplitFrame.__super.remove(self, idx)
-    self.growFactorSum = self.growFactorSum - self.frameGrowFactors[frameId]
-    self.frameGrowFactors[frameId] = nil
-    return frameId
-end
-
-
-function BaseSplitFrame:setGrowFactor(frameId, growFactor)
-    if growFactor == nil then growFactor = 1 end
-    assert(growFactor > 0)
-    local old = self.frameGrowFactors[frameId]
-    if growFactor == old then return end
-    self.growFactorSum = self.growFactorSum - old + growFactor
-    self.frameGrowFactors[frameId] = growFactor
-    self:resizeInner(self.width, self.height)
-    self:invalidate()
-end
-
-
-function BaseSplitFrame:resize(width, height)
-    local wc, hc = BaseSplitFrame.__super.resize(self, width, height)
-    if (wc or hc) then
-        self:resizeInner(width, height)
+function BaseSplitFrame:setWindow(x, y, width, height)
+    local wc, hc, posc = BaseSplitFrame.__super.setWindow(self, x, y, width, height)
+    if wc or hc or posc then
+        self:setWindowInner(x, y, width, height)
     end
 end
 
 
+function BaseSplitFrame:setWindowInner(x, y, width, height)
+    error("Not implemented")
+end
+
+
+function BaseSplitFrame:invalidateContent()
+    if BaseSplitFrame.__super.invalidateContent(self) then
+        for frameItem in self.children:iter() do
+            frameItem:getPayload():invalidateContent()
+        end
+    end
+end
+
+
+function BaseSplitFrame:calcGrowFactorSum()
+    local sum = 0
+    for frameItem in self.children:iter() do
+        sum = sum + frameItem.growFactor
+    end
+    return sum
+end
+
+
 function BaseSplitFrame:reflowLengths(mainAxisLength)
-    mainAxisLength = mainAxisLength - self.borderWidth * (self:getCount() - 1)
-    local iter = self:iterFrames()
-    local restCount = self:getCount()
+    mainAxisLength = mainAxisLength - self.borderWidth * (#self.children - 1)
+    local growFactorSum = self:calcGrowFactorSum()
+    local iter = self.children:iter()
+    local restCount = #self.children
     local restSpace = mainAxisLength
+    local posAcc = -self.borderWidth
     return function()
-        frame, frameId = iter()
-        if frame == nil then return end
+        frameItem = iter()
+        if frameItem == nil then return end
+        local frame = frameItem:getPayload()
         local length = math.floor(
-            mainAxisLength * self.frameGrowFactors[frameId] / self.growFactorSum
+            mainAxisLength * frameItem.growFactor / growFactorSum
         )
         if restCount == 1 then
             length = restSpace
@@ -357,34 +403,41 @@ function BaseSplitFrame:reflowLengths(mainAxisLength)
             restCount = restCount - 1
             restSpace = restSpace - length
         end
-        return frame, length
+        posAcc = posAcc + self.borderWidth
+        local pos = posAcc
+        posAcc = posAcc + length
+        return frame, length, pos
     end
 end
 
 
-function BaseSplitFrame:iterFramePositions()
+function BaseSplitFrame:positionFrameBorder(frame)
     error("Not implemented")
 end
 
 
-function BaseSplitFrame:drawFrameBorder(gpu, x, y, w, h)
-    error("Not implemented")
-end
-
-
-function BaseSplitFrame:render(gpu, br)
-    if not BaseSplitFrame.__super.render(self, gpu, br) then return end
-    if self:isEmpty() then
+function BaseSplitFrame:render(gpu)
+    if #self.children == 0 then
         self:renderWarning(gpu, "No content available")
-    else
+    end
+end
+
+
+function BaseSplitFrame:iterBordersCoro()
+    if #self.children > 1 then
+        coroutine.yield("setBorderType", self.borderType)
         local first = true
-        for frame, x, y, w, h in self:iterFramePositions() do
+        for frameItem in self.children:iter() do
+            local frame = frameItem:getPayload()
             if not first then
-                self:drawFrameBorder(br, x, y, w, h)
+                coroutine.yield(self:positionFrameBorder(frame))
             end
-            frame:render(RegionGpu(gpu, x, y, w, h), br:enterWindow(x, y))
             if self.borderWidth > 0 then first = false end
         end
+    end
+    for frameItem in self.children:iter() do
+        local frame = frameItem:getPayload()
+        frame:iterBordersCoro()
     end
 end
 
@@ -392,57 +445,139 @@ end
 -- HSplitFrame, VSplitFrame
 
 
-local HSplitFrame = utils.makeClass(BaseSplitFrame, function(super, ...)
-    local self = super(...)
+local HSplitFrame = utils.makeClass(BaseSplitFrame, function(super)
+    local self = super()
 end)
-local VSplitFrame = utils.makeClass(BaseSplitFrame, function(super, ...)
-    local self = super(...)
+local VSplitFrame = utils.makeClass(BaseSplitFrame, function(super)
+    local self = super()
+end)  -- TODO: make this empty constructor automatically
+
+
+function HSplitFrame:setWindowInner(x, y, width, height)
+    for frame, fsize, fpos in self:reflowLengths(width) do
+        frame:setWindow(self.posX + fpos, self.posY, fsize, height)
+    end
+end
+function VSplitFrame:setWindowInner(x, y, width, height)
+    for frame, fsize, fpos in self:reflowLengths(height) do
+        frame:setWindow(self.posX, self.posY + fpos, width, fsize)
+    end
+end
+
+
+function HSplitFrame:positionFrameBorder(frame)
+    return "vertical", frame.posX - 1, frame.posY, frame.height
+end
+function VSplitFrame:positionFrameBorder(frame)
+    return "horizontal", frame.posX, frame.posY - 1, frame.width
+end
+
+
+-- FrameRoot
+
+
+local FrameRoot = utils.makeClass(function(self, gpu)
+    self.gpu = gpu
+    self.rootFrame = nil
+    self.needRedraw = {}
+    self.needReBorder = true
+    self.gpuWidth = 0
+    self.gpuHeight = 0
 end)
 
 
-function HSplitFrame:iterFramePositions()
-    local x = 1
-    local iter = self:iterFrames()
-    return function()
-        local frame = iter()
-        if frame == nil then return end
-        local prevX = x
-        x = x + frame.width + self.borderWidth
-        return frame, prevX, 1, frame.width, frame.height
-    end
+function FrameRoot:assignRoot(frame)
+    assert(self.rootFrame == nil, "Can be assigned only once")
+    assert(frame.root == self)
+    self.rootFrame = frame
 end
-function VSplitFrame:iterFramePositions()
-    local y = 1
-    local iter = self:iterFrames()
-    return function()
-        local frame = iter()
-        if frame == nil then return end
-        local prevY = y
-        y = y + frame.height + self.borderWidth
-        return frame, 1, prevY, frame.width, frame.height
+
+
+function FrameRoot:_checkSize()
+    local gpuWidth, gpuHeight = self.gpu.getResolution()
+    if (gpuWidth ~= self.gpuWidth) or (gpuHeight ~= self.gpuHeight) then
+        self.gpuWidth = gpuWidth
+        self.gpuHeight = gpuHeight
+        self.rootFrame:setWindow(1, 1, gpuWidth, gpuHeight)
     end
 end
 
 
-function HSplitFrame:resizeInner(width, height)
-    for frame, fsize in self:reflowLengths(width) do
-        frame:resize(fsize, height)
-    end
-end
-function VSplitFrame:resizeInner(width, height)
-    for frame, fsize in self:reflowLengths(height) do
-        frame:resize(width, fsize)
+function FrameRoot:_accumulateBorders(br)
+    local shiftX, shiftY = 0, 0
+    local shiftStack = Stack()
+    for cmd, a, b, c in self.rootFrame:iterBorders() do
+        if cmd == "setBorderType" then
+            br:setBorderType(a)
+        elseif cmd == "horizontal" then
+            br:horizontal(a + shiftX, b + shiftY, c)
+        elseif cmd == "vertical" then
+            br:vertical(a + shiftX, b + shiftY, c)
+        elseif cmd == "enter" then
+            shiftStack:push(shiftY)
+            shiftStack:push(shiftX)
+            shiftX = shiftX + a - 1
+            shiftY = shiftY + b - 1
+        elseif cmd == "exit" then
+            shiftX = shiftStack:pop()
+            shiftY = shiftStack:pop()
+        end
     end
 end
 
 
-function HSplitFrame:drawFrameBorder(br, x, y, w, h)
-    br:setBorderType(self.borderType)
-    br:vertical(x - 1, y, h)
+function FrameRoot:_reBorder()
+    if not self.needReBorder then return end
+    local br = bordersModule.BorderRenderer()
+    self:_accumulateBorders(br)
+    br:applyJoints()
+    self.gpu.setBackground(0x000000)
+    self.gpu.setForeground(0x00FF00)
+    br:render(self.gpu)
+    self.needReBorder = false
 end
-function VSplitFrame:drawFrameBorder(br, x, y, w, h)
-    br:setBorderType(self.borderType)
-    br:horizontal(x, y - 1, w)
+
+
+function FrameRoot:_reDraw()
+    for frame, _ in pairs(self.needRedraw) do
+        frame:renderRegion(self.gpu)
+    end
+    self.needRedraw = {}
+end
+
+
+function FrameRoot:update()
+    self:_checkSize()
+    self:_reBorder()
+    self:_reDraw()
+end
+
+
+function FrameRoot:Markup(...)
+    local f = MarkupFrame(...)
+    f.root = self
+    return f
+end
+
+
+function FrameRoot:Switcher(...)
+    local f = SwitcherFrame(...)
+    f.root = self
+    return f
+end
+
+
+function FrameRoot:HSplit(...)
+    local f = HSplitFrame(...)
+    f.root = self
+    return f
+end
+
+
+function FrameRoot:VSplit(...)
+    local f = VSplitFrame(...)
+    f.root = self
+    return f
 end
 
 
@@ -451,10 +586,7 @@ end
 
 return {
     RegionGpu=RegionGpu,
-    MarkupFrame=MarkupFrame,
-    SwitcherFrame=SwitcherFrame,
-    HSplitFrame=HSplitFrame,
-    VSplitFrame=VSplitFrame,
+    FrameRoot=FrameRoot,
     testing={
         intersection=intersection
     }

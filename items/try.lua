@@ -277,62 +277,51 @@ function mu5(m)
 end
 
 
-function createUI()
+function createUI(gpu)
     local m = require("ui.markup")
-    local w = require("ui.windows")
+    local root = require("ui.windows").FrameRoot(gpu)
 
     local text, styles = mu5(m)
 
-    function makeMarkupFrame(scrollX, scrollY)
-        local f = w.MarkupFrame(text, styles)
-        f:scrollTo(scrollX, scrollY)
-    end
-
     local mfs = {}
-    for i=1,8 do
-        table.insert(mfs, w.MarkupFrame(text, styles))
+    for i=1,16 do
+        table.insert(mfs, root:Markup(text, styles))
     end
     for i=9,16 do
-        table.insert(mfs, w.MarkupFrame(text, styles, 40))
+        mfs[i]:setMinimalContentWidth(30)
     end
 
-    local h1 = w.HSplitFrame(1)
+    local h1 = root:HSplit()
+    h1:setBorderType(1)
     for i=1,8 do
-        h1:insert(mfs[i])
+        h1.children:append(mfs[i])
     end
 
-    local h2 = w.HSplitFrame(1)
+    local h2 = root:HSplit()
+    h2:setBorderType(1)
     for i=9,16 do
-        h2:insert(mfs[i])
+        h2.children:append(mfs[i])
     end
 
-    local c = w.VSplitFrame(1)
-    c:insert(h1)
-    c:insert(h2)
+    local c = root:VSplit()
+    c:setBorderType(2)
+    c.children:append(h1)
+    c.children:append(h2)
 
-    return c, mfs
+    root:assignRoot(c)
+
+    return root, mfs
 end
 
 
-function renderUI(gpu, c, mfs)
-    local BorderRenderer = require("ui.borders").BorderRenderer
-
-    c:resize(gpu.getResolution())
-
+function renderUI(root, mfs)
     for i=1,8 do
         mfs[i]:scrollTo(1, i)
     end
     for i=9,16 do
         mfs[i]:scrollTo(i - 8, 1)
     end
-
-    local br = BorderRenderer()
-    c:render(gpu, br)
-
-    gpu.setBackground(0x000000)
-    gpu.setForeground(0x00FF00)
-    br:applyJoints()
-    br:render(gpu)
+    root:update()
 end
 
 
@@ -346,8 +335,8 @@ end
 
 function renderingMarkup()
     function renderFrames(gpu)
-        local c, mfs = createUI()
-        renderUI(gpu, c, mfs)
+        local root, mfs = createUI(gpu)
+        renderUI(root, mfs)
         -- renderMarkup(gpu)
     end
 

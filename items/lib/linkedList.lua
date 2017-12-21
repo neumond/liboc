@@ -9,11 +9,13 @@ local LinkedListItem = makeClass(function(self, list, prev, next, payload)
     self.prev = prev
     self.next = next
     self.payload = payload
+    self.list.onChange("add", self)
     self.list.count = self.list.count + 1
 end)
 
 
 function LinkedListItem:remove()
+    self.list.onChange("remove", self)
     if self.prev ~= nil then self.prev.next = self.next end
     if self.next ~= nil then self.next.prev = self.prev end
     self.list.count = self.list.count - 1
@@ -49,10 +51,11 @@ end
 -- LinkedList
 
 
-local LinkedList = makeClass(function(self)
+local LinkedList = makeClass(function(self, onChange)
     self.first = nil
     self.last = nil
     self.count = 0
+    self.onChange = onChange ~= nil and onChange or function() end
 end)
 
 
