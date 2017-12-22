@@ -12,7 +12,7 @@ Markup module works with very simplified HTML.
     local styles = {
         m.Selector({"em"}, {color=0xFF0000})
     }
-    local commands = m.markupToGpuCommands(text, styles, 50)
+    local commands = m.markupToGpuCommands(text, {}, styles, 50)
     m.execGpuCommands(gpu, commands)
     ```
 1. Styles can be applied only to element classes. You can't use generic `div`, `span`, `*` selectors. You can't use ID selectors as well.

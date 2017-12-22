@@ -156,6 +156,16 @@ local function getLipsum()
 end
 
 
+local function lipsumIter()
+    local lipsum = getLipsum()
+    local lipsumPtr = 0
+    return function()
+        lipsumPtr = lipsumPtr + 1
+        return lipsum[lipsumPtr]
+    end
+end
+
+
 local function mu1(m)
     local lipsumTable = getLipsum()
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
@@ -223,13 +233,7 @@ end
 
 
 local function mu5(m)
-    local lipsum = getLipsum()
-    local lipsumPtr = 0
-    local function lipsumNext()
-        lipsumPtr = lipsumPtr + 1
-        return lipsum[lipsumPtr]
-    end
-
+    local lipsumNext = lipsumIter()
     local out = {}
     for i=1,2 do
         table.insert(out, lipsumNext())
@@ -288,7 +292,7 @@ local function createUI(gpu)
 
     local mfs = {}
     for i=1,16 do
-        table.insert(mfs, root:Markup(text, styles))
+        table.insert(mfs, root:Markup(text, {}, styles))
     end
     for i=9,16 do
         mfs[i]:setMinimalContentWidth(30)
@@ -317,21 +321,10 @@ local function createUI(gpu)
 end
 
 
-local function renderUI(root, mfs)
-    for i=1,8 do
-        mfs[i]:scrollTo(1, i)
-    end
-    for i=9,16 do
-        mfs[i]:scrollTo(i - 8, 1)
-    end
-    root:update()
-end
-
-
 local function tokenizeMarkup(gpu)
     local m = require("ui.markup")
     local text, styles = mu5(m)
-    local commands = m.markupToGpuCommands(text, styles, 50)
+    local commands = m.markupToGpuCommands(text, {}, styles, 50)
     -- m.execGpuCommands(gpu, commands)
     -- m.testing.tokenDebug(text)
     for i, line in ipairs(commands) do
@@ -340,6 +333,18 @@ local function tokenizeMarkup(gpu)
             print(table.unpack(cmd))
         end
     end
+end
+
+
+local function waitForKey()
+    local event = require("event")
+    repeat
+        local _, _, _, key = event.pull("key_down")
+        -- 200 up
+        -- 208 down
+        -- 203 left
+        -- 205 right
+    until key == 28
 end
 
 
@@ -386,10 +391,21 @@ local function runUsingRealGpu(f)
 end
 
 
+local function runUsingFakeGpu(f)
+    f(fakeGpu)
+end
+
+
 local function renderingUI()
     local function renderFrames(gpu)
         local root, mfs = createUI(gpu)
-        renderUI(root, mfs)
+        for i=1,8 do
+            mfs[i]:scrollTo(1, i)
+        end
+        for i=9,16 do
+            mfs[i]:scrollTo(i - 8, 1)
+        end
+        root:update()
         return root, mfs[9]
     end
 
@@ -397,17 +413,6 @@ local function renderingUI()
         local root, sm = renderFrames(fakeGpu)
         sm:relativeScroll(1, 0)
         root:update()
-    end
-
-    local function waitForKey()
-        local event = require("event")
-        repeat
-            local _, _, _, key = event.pull("key_down")
-            -- 200 up
-            -- 208 down
-            -- 203 left
-            -- 205 right
-        until key == 28
     end
 
     local function execGpu()
@@ -431,7 +436,7 @@ local function scrollingInCentralFrame()
         local mfs = {}
         do
             for i=1,9 do
-                table.insert(mfs, root:Markup(text, styles))
+                table.insert(mfs, root:Markup(text, {}, styles))
             end
             for _, mf in ipairs(mfs) do
                 mf:setMinimalContentWidth(70)
@@ -495,10 +500,32 @@ local function renderBigWallOfText()
     runUsingRealGpu(function(gpu)
         local root = require("ui.windows").FrameRoot(gpu)
         local text, styles = veryLongLipsum()
-        local sm = root:Markup(text, styles)
+        local sm = root:Markup(text, {}, styles)
         root:assignRoot(sm)
         root:update()
         scrollingHandler(root, sm)
+    end)
+end
+
+
+local function clickableElements()
+    runUsingFakeGpu(function(gpu)
+        local m = require("ui.markup")
+        local lipsumNext = lipsumIter()
+        local spans = {}
+        for i=1,5 do
+            table.insert(spans, m.Span(lipsumNext()))
+        end
+        table.insert(spans, m.Span(lipsumNext()):clickable())
+        for i in lipsumNext do
+            table.insert(spans, m.Span(lipsumNext()))
+        end
+        local text = m.Div(table.unpack(spans))
+        local styles = {
+            -- m.Selector({"right"}, {align="right"}),
+            -- m.Selector({"right", "left"}, {align="left", color=0x00FF00})
+        }
+        -- waitForKey()
     end)
 end
 
@@ -514,4 +541,5 @@ end
 -- tokenizeMarkup()
 -- renderingUI()
 -- scrollingInCentralFrame()
-renderBigWallOfText()
+-- renderBigWallOfText()
+clickableElements()

@@ -236,11 +236,12 @@ end
 -- MarkupFrame
 
 
-local MarkupFrame = utils.makeClass(ContentFrame, function(super, markup, styles)
+local MarkupFrame = utils.makeClass(ContentFrame, function(super, markup, defaultStyles, selectorTable)
     local self = super()
 
     self.markup = markup
-    self.styles = styles
+    self.defaultStyles = defaultStyles
+    self.selectorTable = selectorTable
 
     self.commands = {}
     self.reflownFor = nil
@@ -273,7 +274,7 @@ function MarkupFrame:reflowMarkup()
     self.reflownFor = width
 
     self.commands = markupModule.markupToGpuCommands(
-        self.markup, self.styles, width
+        self.markup, self.defaultStyles, self.selectorTable, width
     )
     self.scrollMaxX = math.max(1, width - self.width + 1)
     self.scrollMaxY = math.max(1, #self.commands - self.height + 1)

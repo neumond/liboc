@@ -4,14 +4,29 @@ local utils = require("utils")
 local DEFAULT_STYLES = {
     color=0xFFFFFF,
     background=0x000000,
+    -- block paddings
     align="left",
     fill=" ",
-    fillcolor=0xFFFFFF
+    fillcolor=0xFFFFFF,
+    -- clickable elements
+    hoverColor=0x0000FF,
+    hoverBackground=0x000000,
+    activeColor=0xFF0000,
+    activeBackground=0x000000
 }
 
 -- TODO:
 -- marginLeft, marginRight, marginTop, marginBottom
 -- paddingLeft, paddingRight, paddingTop, paddingBottom
+
+
+local function makeDefaultStyles(s)
+    local result = utils.copyTable(DEFAULT_STYLES)
+    for k, v in pairs(s) do
+        result[k] = v
+    end
+    return result
+end
 
 
 -- Selector
@@ -26,11 +41,11 @@ end)
 -- StyleStack
 
 
-local StyleStack = utils.makeClass(function(self, changedStyleCallback)
+local StyleStack = utils.makeClass(function(self, defaultStyles, changedStyleCallback)
     self.changedStyleCallback = changedStyleCallback
 
     self.activeStyleSets = {
-        [-1]=utils.copyTable(DEFAULT_STYLES)
+        [-1]=makeDefaultStyles(defaultStyles)
     }
     -- this must use selector indices as priorities
     -- bigger index = higher priority of this styleset
@@ -39,7 +54,7 @@ local StyleStack = utils.makeClass(function(self, changedStyleCallback)
     self.minIndex = -1
     self.maxIndex = -1
 
-    self.currentStyles = utils.copyTable(DEFAULT_STYLES)  -- style values
+    self.currentStyles = makeDefaultStyles(defaultStyles)  -- style values
     self.currentStyleIndices = {}  -- top priorities for every style
 
     for k, v in pairs(self.currentStyles) do
@@ -158,7 +173,7 @@ end
 -- SelectorEngine
 
 
-local SelectorEngine = utils.makeClass(function(self, selectorTable, changedStyleCallback)
+local SelectorEngine = utils.makeClass(function(self, defaultStyles, selectorTable, changedStyleCallback)
     self.selectorTable = {}
     self.styleSets = {}
     for selectorIndex, sel in ipairs(selectorTable) do
@@ -169,7 +184,7 @@ local SelectorEngine = utils.makeClass(function(self, selectorTable, changedStyl
     self.expected = {}
     self.downward = {}
     self.stackPtr = 1
-    self.styleStack = StyleStack(changedStyleCallback)
+    self.styleStack = StyleStack(defaultStyles, changedStyleCallback)
 
     for selectorIndex, ss in ipairs(self.selectorTable) do
         self:addExpectation(ss:getExpectedClassName(), selectorIndex)

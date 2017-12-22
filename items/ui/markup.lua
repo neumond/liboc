@@ -347,7 +347,7 @@ function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColo
 end
 
 
-local function markupToGpuCommands(markup, styles, screenWidth)
+local function markupToGpuCommands(markup, defaultStyles, selectorTable, screenWidth)
     local currentLine = GpuLine()
     local result = {}
     local currentBlock = {currentLine}
@@ -361,7 +361,7 @@ local function markupToGpuCommands(markup, styles, screenWidth)
         end
     }
 
-    local selectorEngine = selectorModule.SelectorEngine(styles, function(k, v)
+    local selectorEngine = selectorModule.SelectorEngine(defaultStyles, selectorTable, function(k, v)
         local cb = styleSwitch[k]
         if cb ~= nil then cb(v) end
     end)
