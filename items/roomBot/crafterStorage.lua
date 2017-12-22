@@ -120,7 +120,7 @@ local CrafterStorage = utils.makeClass(function(self, robot, inventoryController
     self.index = IntegratedIndex()
     self.table = CraftingTable(self.robot.inventorySize())
 
-    function addSlot(address)
+    local function addSlot(address)
         local slotId = self.index:registerSlot(address)
         self:updateSlotIndex(slotId)
         return slotId

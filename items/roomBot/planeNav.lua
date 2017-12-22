@@ -54,11 +54,11 @@ end
 
 
 function PlaneNav:gotoPosition(x, z)
-    function isCoAxial(to)
+    local function isCoAxial(to)
         return string.sub(self.currentRotation, 1, 1) == to
     end
 
-    function handleAxis(current, target, axis)
+    local function handleAxis(current, target, axis)
         local delta = target - current
         if delta == 0 then return end
         local direction = axis .. (delta > 0 and "+" or "-")

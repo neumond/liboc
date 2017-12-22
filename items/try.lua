@@ -1,4 +1,4 @@
-function craftPlanning()
+local function craftPlanning()
     c = require("crafting")
     local success, second = c.craft({
         ["iron_ingot"]=3,
@@ -26,8 +26,8 @@ function craftPlanning()
 end
 
 
-function errtest()
-    function func()
+local function errtest()
+    local function func()
         assert(false, "lol")
     end
 
@@ -39,8 +39,8 @@ function errtest()
 end
 
 
-function variableHiding()
-    function f(a)
+local function variableHiding()
+    local function f(a)
         print(a)
         for i=1,3 do
             local a=5
@@ -53,11 +53,11 @@ function variableHiding()
 end
 
 
-function variadic()
-    function inner(...)
+local function variadic()
+    local function inner(...)
         print(...)
     end
-    function x(...)
+    local function x(...)
         inner("lol", ...)
     end
 
@@ -68,7 +68,7 @@ function variadic()
 end
 
 
-function keycodes()
+local function keycodes()
     local event = require("event")
     for i=1,10 do
         local evt, adr, char, code, player = event.pull("key_down")
@@ -77,10 +77,10 @@ function keycodes()
 end
 
 
-function returnFromDoBlock()
+local function returnFromDoBlock()
     local b
     do
-        function b(x)
+        b = function(x)
             return x + 2
         end
     end
@@ -88,8 +88,8 @@ function returnFromDoBlock()
 end
 
 
-function coros()
-    function f()
+local function coros()
+    local function f()
         for i=1,10 do
             coroutine.yield(i)
         end
@@ -102,12 +102,12 @@ function coros()
 end
 
 
-function multiParams()
-    function a()
+local function multiParams()
+    local function a()
         return 2, 3
     end
 
-    function b(x, y)
+    local function b(x, y)
         print(x, y)
     end
 
@@ -145,7 +145,7 @@ local fakeGpu = {
 }
 
 
-function getLipsum()
+local function getLipsum()
     local lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras feugiat mattis augue condimentum finibus. Quisque vestibulum justo ut nisl interdum suscipit. Sed sed nunc vitae orci scelerisque viverra at ultricies metus. Nullam quam mauris, consectetur eu nunc sed, posuere ullamcorper quam. Phasellus eu turpis sed ipsum suscipit egestas viverra id odio. Duis hendrerit facilisis finibus. Maecenas consequat quis lorem ut mattis. Proin ultrices lectus ut felis tincidunt, eu porta quam mattis. Cras sagittis erat consectetur condimentum rhoncus. Curabitur convallis convallis mauris sed convallis. Curabitur a quam ac nisl sodales bibendum. Nunc ut sem eleifend leo viverra blandit vitae ac augue. Etiam faucibus ligula ac sem tempus ultrices. Donec suscipit ullamcorper nibh eu aliquam."
 
     local lipsumTable = {}
@@ -156,7 +156,7 @@ function getLipsum()
 end
 
 
-function mu1(m)
+local function mu1(m)
     local lipsumTable = getLipsum()
     lipsumTable[2] = m.Span(lipsumTable[2]):class("highlight")
 
@@ -173,7 +173,7 @@ function mu1(m)
 end
 
 
-function mu2(m)
+local function mu2(m)
     local text = m.Div(
         "Lorem", "ipsum",
         m.Div(
@@ -190,7 +190,7 @@ function mu2(m)
 end
 
 
-function mu3(m)
+local function mu3(m)
     local text = m.Div(
         m.Div(
             m.Div("Lorem", "ipsum"):class("right")
@@ -207,7 +207,7 @@ function mu3(m)
 end
 
 
-function mu4(m)
+local function mu4(m)
     local lipsumTable = getLipsum()
     local text = m.Div(
         m.Span(table.unpack(lipsumTable)):class("left")
@@ -222,10 +222,10 @@ function mu4(m)
 end
 
 
-function mu5(m)
+local function mu5(m)
     local lipsum = getLipsum()
     local lipsumPtr = 0
-    function lipsumNext()
+    local function lipsumNext()
         lipsumPtr = lipsumPtr + 1
         return lipsum[lipsumPtr]
     end
@@ -280,7 +280,7 @@ function mu5(m)
 end
 
 
-function createUI(gpu)
+local function createUI(gpu)
     local m = require("ui.markup")
     local root = require("ui.windows").FrameRoot(gpu)
 
@@ -317,7 +317,7 @@ function createUI(gpu)
 end
 
 
-function renderUI(root, mfs)
+local function renderUI(root, mfs)
     for i=1,8 do
         mfs[i]:scrollTo(1, i)
     end
@@ -328,7 +328,7 @@ function renderUI(root, mfs)
 end
 
 
-function tokenizeMarkup(gpu)
+local function tokenizeMarkup(gpu)
     local m = require("ui.markup")
     local text, styles = mu5(m)
     local commands = m.markupToGpuCommands(text, styles, 50)
@@ -343,20 +343,20 @@ function tokenizeMarkup(gpu)
 end
 
 
-function renderingUI()
-    function renderFrames(gpu)
+local function renderingUI()
+    local function renderFrames(gpu)
         local root, mfs = createUI(gpu)
         renderUI(root, mfs)
         return root, mfs[9]
     end
 
-    function outsideOC()
+    local function outsideOC()
         local root, sm = renderFrames(fakeGpu)
         sm:relativeScroll(1, 0)
         root:update()
     end
 
-    function waitForKey()
+    local function waitForKey()
         local event = require("event")
         repeat
             local _, _, _, key = event.pull("key_down")
@@ -367,7 +367,7 @@ function renderingUI()
         until key == 28
     end
 
-    function execGpu()
+    local function execGpu()
         local gpu = require("component").gpu
 
         local oldForeground = gpu.getForeground()
@@ -409,8 +409,8 @@ function renderingUI()
         gpu.setBackground(oldBackground)
     end
 
-    -- outsideOC()
-    execGpu()
+    outsideOC()
+    -- execGpu()
 end
 
 

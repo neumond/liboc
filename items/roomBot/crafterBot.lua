@@ -4,14 +4,14 @@ local db = require("recipedb")
 
 local planCrafting
 do
-    function getAmountForCraft(stock, item_id, amountNeeded)
+    local function getAmountForCraft(stock, item_id, amountNeeded)
         local preDone = utils.stock.take(stock, item_id, amountNeeded)
         utils.stock.put(stock, item_id, preDone)
         return math.max(0, amountNeeded - preDone)
     end
 
 
-    function regroupCraftLog(craftLog)
+    local function regroupCraftLog(craftLog)
         local result = {}
         local index = {}
         local tip = 1
@@ -29,7 +29,7 @@ do
     end
 
 
-    function recipeSummary(recipe)
+    local function recipeSummary(recipe)
         local r = {}
         for i=1,9 do
             local v = recipe[i]
@@ -41,7 +41,7 @@ do
     end
 
 
-    function craftInner(stock, item_id, amountNeeded, craftLog, needStock)
+    local function craftInner(stock, item_id, amountNeeded, craftLog, needStock)
         local amountForCraft = getAmountForCraft(stock, item_id, amountNeeded)
         if amountForCraft <= 0 then
             return craftLog, needStock
@@ -86,7 +86,7 @@ do
     end
 
 
-    function planCrafting(stock, item_id, amountNeeded)
+    planCrafting = function(stock, item_id, amountNeeded)
         stock = utils.copyTable(stock)
         craftLog, needStock = craftInner(stock, item_id, amountNeeded, {}, {})
         if utils.isTableEmpty(needStock) then

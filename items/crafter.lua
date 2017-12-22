@@ -5,7 +5,7 @@ local CrafterStorage = require("roomBot.crafterStorage").CrafterStorage
 local CrafterBot = require("roomBot.crafterBot").CrafterBot
 
 
-function launchAssembler(func)
+local function launchAssembler(func)
     assert(robot.up())
     local nav = CrafterNav(robot, 1)  -- TODO: change to 3
     local storage = CrafterStorage(robot, component.inventory_controller, nav)

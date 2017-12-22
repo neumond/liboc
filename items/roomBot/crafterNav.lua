@@ -9,7 +9,7 @@ local CrafterNav = makeClass(function(self, robot, chestCascades)
 end)
 
 
-function getChestPairPosition(n)
+local function getChestPairPosition(n)
     local x = n % 2
     if x == 0 then x = -1 end
     local z = math.floor(n / 2) * 2
@@ -17,7 +17,7 @@ function getChestPairPosition(n)
 end
 
 
-function getChestPosition(n)
+local function getChestPosition(n)
     n = n - 1
     x, z = getChestPairPosition(math.floor(n / 2))
     return x, z, (n % 2 == 1) and sides.up or sides.down

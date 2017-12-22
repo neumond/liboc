@@ -1,7 +1,7 @@
 local M = {}
 
 
-function recipe1x1(item)
+local function recipe1x1(item)
     return {
         nil, nil, nil,
         nil, item, nil,
@@ -10,7 +10,7 @@ function recipe1x1(item)
 end
 
 
-function recipe1x2(a, b)
+local function recipe1x2(a, b)
     return {
         a, nil, nil,
         b, nil, nil,
@@ -19,7 +19,7 @@ function recipe1x2(a, b)
 end
 
 
-function recipe2x2(a, b, c, d)
+local function recipe2x2(a, b, c, d)
     return {
         a, b, nil,
         c, d, nil,
@@ -28,7 +28,7 @@ function recipe2x2(a, b, c, d)
 end
 
 
-function recipe3x1(a, b, c)
+local function recipe3x1(a, b, c)
     return {
         nil, nil, nil,
         a, b, c,
@@ -37,7 +37,7 @@ function recipe3x1(a, b, c)
 end
 
 
-function recipe3x2(a, b, c, d, e, f)
+local function recipe3x2(a, b, c, d, e, f)
     return {
         nil, nil, nil,
         a, b, c,
@@ -1772,7 +1772,7 @@ function M.formatRecipe(recipe)
     -- print(M.formatRecipe(M.getRecipe("workbench")))
     local widths={}
 
-    function getName(row, col)
+    local function getName(row, col)
         local item = recipe[row * 3 + col - 3]
         if item == nil then return "" end
         return M.getItemName(item)
