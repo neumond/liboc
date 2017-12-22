@@ -8,7 +8,7 @@ local BorderTypes = {
 }
 
 
-function getBorderType(borderType)
+local function getBorderType(borderType)
     local bt = BorderTypes[borderType]
     if bt == nil then
         bt = BorderTypes[0]
@@ -17,7 +17,7 @@ function getBorderType(borderType)
 end
 
 
-function getBorderWidth(borderType)
+local function getBorderWidth(borderType)
     return getBorderType(borderType).width
 end
 
@@ -107,22 +107,22 @@ BorderRenderer.jointTable = {
 }
 
 
-function isNumber(v)
+local function isNumber(v)
     return type(v) == "number"
 end
 
 
-function nextBinTreeIndex(current, isRight)
+local function nextBinTreeIndex(current, isRight)
     return current * 2 + (isRight and 1 or 0)
 end
 
 
-function parentBinTreeIndex(current)
+local function parentBinTreeIndex(current)
     return current // 2
 end
 
 
-function addBorder(tree, from, to, value)
+local function addBorder(tree, from, to, value)
     local i = 1
     while tree[i] ~= nil do
         assert(isNumber(tree[i]))
@@ -137,7 +137,7 @@ function addBorder(tree, from, to, value)
 end
 
 
-function getBorderChar(tree, position)
+local function getBorderChar(tree, position)
     local i = 1
     while tree[i] ~= nil do
         if not isNumber(tree[i]) then return tree[i] end
@@ -146,7 +146,7 @@ function getBorderChar(tree, position)
 end
 
 
-function splitBorder(tree, position, valueFunc)
+local function splitBorder(tree, position, valueFunc)
     local i = 1
     local from, to
     while tree[i] ~= nil do
@@ -180,7 +180,8 @@ function splitBorder(tree, position, valueFunc)
 end
 
 
-function makeStack()
+local function makeStack()
+    -- TODO: replace with Stack from lib
     local s = {}
     local ptr = 0
 
@@ -209,7 +210,7 @@ function makeStack()
 end
 
 
-function traverseBorder(tree)
+local function traverseBorder(tree)
     -- top of this stack = state of current index
     local indexStack = makeStack()
     indexStack.push(1)
@@ -225,7 +226,7 @@ function traverseBorder(tree)
     local fromStack = makeStack()
     fromStack.push(-math.huge)
 
-    function digDown(dir)
+    local function digDown(dir)
         indexStack.push(1)
         index = nextBinTreeIndex(index, dir)
         if not dir then
@@ -234,7 +235,7 @@ function traverseBorder(tree)
         fromStack.push(tree[index])
     end
 
-    function goUp()
+    local function goUp()
         if index == 1 then return true end
         indexStack.pop()
         indexStack.transformTip(function(v) return v + 1 end)
@@ -246,7 +247,7 @@ function traverseBorder(tree)
         return false
     end
 
-    function goNext()
+    local function goNext()
         if index == nil then
             index = 1
             fromStack.push(tree[index])
@@ -308,7 +309,7 @@ end
 
 
 function BorderRenderer:applyJoints()
-    function charFunc(jointChar, side)
+    local function charFunc(jointChar, side)
         return function(borderChar)
             local r = self.jointTable[borderChar]
             if r == nil then return end

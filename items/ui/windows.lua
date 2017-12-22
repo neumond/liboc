@@ -14,26 +14,24 @@ local Stack = require("lib.stack").Stack
 --   setGrowFactor of child of SplitFrame
 --   setActive of child of SwitcherFrame
 --   change resolution of target gpu
--- Frame invalidation for redrawing invalidates all its children recursively
+-- Frame invalidation for redrawing invalidates its children recursively
 
 -- Frames do not draw anything on the screen except borders and "empty container" messages
 --   Normally its only borders
 
--- How about recursive border iterator across frame tree?
 
-
-function forceRange(value, a, b)
+local function forceRange(value, a, b)
     return math.min(math.max(value, a), b)
 end
 
 
-function intersection(a1, a2, b1, b2)
+local function intersection(a1, a2, b1, b2)
     if (b1 > a2) or (b2 < a1) then return end
     return math.max(a1, b1), math.min(a2, b2)
 end
 
 
-function intersectionWH(a, aw, b, bw)
+local function intersectionWH(a, aw, b, bw)
     local j, k = intersection(a, a + aw - 1, b, b + bw - 1)
     if j == nil then return end
     return j, k - j + 1
@@ -43,10 +41,10 @@ end
 -- RegionGpu
 
 
-function RegionGpu(gpu, winX, winY, winWidth, winHeight)
+local function RegionGpu(gpu, winX, winY, winWidth, winHeight)
     local fg, bg
 
-    function flushColors()
+    local function flushColors()
         if fg ~= nil then
             gpu.setForeground(fg)
             fg = nil
@@ -81,10 +79,12 @@ function RegionGpu(gpu, winX, winY, winWidth, winHeight)
         end,
         setForeground = function(color)  -- TODO: palette colors support
             fg = color
+            -- gpu.setForeground(color)
             -- NOTE: no return value here
         end,
         setBackground = function(color)
             bg = color
+            -- gpu.setBackground(color)
             -- NOTE: no return value here
         end,
         getResolution = function()

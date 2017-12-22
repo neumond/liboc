@@ -138,6 +138,9 @@ local fakeGpu = {
     setBackground=function(v)
         -- print("BACKGROUND", v)
         return 0x000000
+    end,
+    copy=function(x, y, w, h, tx, ty)
+        return true
     end
 }
 
@@ -325,29 +328,29 @@ function renderUI(root, mfs)
 end
 
 
-function renderMarkup(gpu)
+function tokenizeMarkup(gpu)
     local m = require("ui.markup")
     local text, styles = mu5(m)
     local commands = m.markupToGpuCommands(text, styles, 50)
-    m.execGpuCommands(gpu, commands)
+    -- m.execGpuCommands(gpu, commands)
+    -- m.testing.tokenDebug(text)
+    for i, line in ipairs(commands) do
+        print('==============')
+        for j, cmd in ipairs(line) do
+            print(table.unpack(cmd))
+        end
+    end
 end
 
 
-function renderingMarkup()
+function renderingUI()
     function renderFrames(gpu)
         local root, mfs = createUI(gpu)
         renderUI(root, mfs)
-        -- renderMarkup(gpu)
         return root, mfs[9]
     end
 
     function outsideOC()
-        -- for i, line in ipairs(result) do
-        --     print('==============')
-        --     for j, cmd in ipairs(line) do
-        --         print(table.unpack(cmd))
-        --     end
-        -- end
         local root, sm = renderFrames(fakeGpu)
         sm:relativeScroll(1, 0)
         root:update()
@@ -406,7 +409,6 @@ function renderingMarkup()
         gpu.setBackground(oldBackground)
     end
 
-    -- m.testing.tokenDebug(text)
     -- outsideOC()
     execGpu()
 end
@@ -420,4 +422,5 @@ end
 -- returnFromDoBlock()
 -- coros()
 -- multiParams()
-renderingMarkup()
+-- tokenizeMarkup()
+renderingUI()

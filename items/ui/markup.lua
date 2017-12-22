@@ -75,7 +75,7 @@ function Element:iterTokens()
 end
 
 
-function removeGlueAddWordLengths(iter)
+local function removeGlueAddWordLengths(iter)
     -- splitting point of words
     -- Flow.string not preceded by Flow.glue
     -- i.e. Flow.glue makes next Flow.string non word-breaking
@@ -124,7 +124,7 @@ function removeGlueAddWordLengths(iter)
 end
 
 
-function squashBlockBounds(iter)
+local function squashBlockBounds(iter)
     local prevNewLine = true  -- true to omit first newLine
     return function()
         while true do
@@ -147,7 +147,7 @@ function squashBlockBounds(iter)
 end
 
 
-function pushclassAfterWordsize(iter)
+local function pushclassAfterWordsize(iter)
     return utils.bufferingIterator(function(append, prepend)
         return function()
             while true do
@@ -169,7 +169,7 @@ function pushclassAfterWordsize(iter)
 end
 
 
-function iterMarkupTokens(markup)
+local function iterMarkupTokens(markup)
     return pushclassAfterWordsize(
         squashBlockBounds(
             removeGlueAddWordLengths(
@@ -233,12 +233,12 @@ end
 
 
 function GpuLine:color(value)
-    table.insert(self.commands, {"setForeground", value})
+    table.insert(self.commands, {"color", value})
 end
 
 
 function GpuLine:background(value)
-    table.insert(self.commands, {"setBackground", value})
+    table.insert(self.commands, {"background", value})
 end
 
 
@@ -254,6 +254,7 @@ end
 
 function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColor)
     -- TODO: "justify" align
+    -- TODO: split this function
 
     local pad = screenWidth - self.width
     local x = 0
@@ -266,21 +267,67 @@ function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColo
     end
 
     local cmds = {}
-    for _, c in ipairs(self.commands) do
-        if c[1] == "token" then
-            table.insert(cmds, {"set", x + 1, c[2]})
-            x = x + utils.strlen(c[2])
-        elseif c[1] == "space" then
-            table.insert(cmds, {"set", x + 1, " "})
-            x = x + 1
-        else
-            table.insert(cmds, c)
+    local tokenSpaceBuf = ""
+    local fg, bg
+    local lastFg, lastBg
+
+    local function flushColors()
+        if fg ~= nil then
+            table.insert(cmds, {"setForeground", fg})
+            fg = nil
+        end
+        if bg ~= nil then
+            table.insert(cmds, {"setBackground", bg})
+            bg = nil
         end
     end
 
+    local function setForeground(color)
+        if lastFg ~= color then
+            fg = color
+            lastFg = color
+        end
+    end
+
+    local function setBackground(color)
+        if lastBg ~= color then
+            bg = color
+            lastBg = color
+        end
+    end
+
+    local function flushTokenSpaceBuf()
+        if #tokenSpaceBuf == 0 then return false end
+        flushColors()
+        table.insert(cmds, {"set", x + 1, tokenSpaceBuf})
+        x = x + utils.strlen(tokenSpaceBuf)
+        tokenSpaceBuf = ""
+        return true
+    end
+
+    for _, c in ipairs(self.commands) do
+        local cmd, a = table.unpack(c)
+        if cmd == "token" then
+            tokenSpaceBuf = tokenSpaceBuf .. a
+        elseif cmd == "space" then
+            tokenSpaceBuf = tokenSpaceBuf .. " "
+        elseif cmd == "color" then
+            flushTokenSpaceBuf()
+            setForeground(a)
+        elseif cmd == "background" then
+            flushTokenSpaceBuf()
+            setBackground(a)
+        else
+            flushTokenSpaceBuf()
+            table.insert(cmds, c)
+        end
+    end
+    flushTokenSpaceBuf()
+
     if pad > 0 then
-        table.insert(cmds, {"setBackground", fillBackground})
-        table.insert(cmds, {"setForeground", fillColor})
+        setForeground(fillColor)
+        setBackground(fillBackground)
+        flushColors()
         if align == "left" then
             table.insert(cmds, {"fill", x + 1, pad, fillChar})
         elseif align == "right" then
@@ -300,7 +347,7 @@ function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColo
 end
 
 
-function markupToGpuCommands(markup, styles, screenWidth)
+local function markupToGpuCommands(markup, styles, screenWidth)
     local currentLine = GpuLine()
     local result = {}
     local currentBlock = {currentLine}
@@ -392,7 +439,7 @@ function markupToGpuCommands(markup, styles, screenWidth)
 end
 
 
-function execGpuCommands(gpu, commands, shiftX, shiftY)
+local function execGpuCommands(gpu, commands, shiftX, shiftY)
     if shiftX == nil then shiftX = 0 end
     if shiftY == nil then shiftY = 0 end
 
@@ -414,7 +461,7 @@ function execGpuCommands(gpu, commands, shiftX, shiftY)
 end
 
 
-function tokenDebug(markup)
+local function tokenDebug(markup)
     local RevFlow = {}
     for k, v in pairs(Flow) do
         RevFlow[v] = k
