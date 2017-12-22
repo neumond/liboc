@@ -12,19 +12,19 @@ local function launchAssembler(func)
     local bot = CrafterBot(storage, component.crafting)
 
     local success, err = pcall(function()
-        func(bot.assemble)
+        func(bot)
     end)
     if not success then
         print("Error has occured:")
         print(err)
     end
 
-    nav:gotoPosition(0, 0)
-    nav:rotate("Z+")
+    nav.nav:gotoPosition(0, 0)
+    nav.nav:rotate("Z+")
     assert(robot.down())
 end
 
 
-launchAssembler(function(assembleFunc)
-    assembleFunc(itemId, amount)
+launchAssembler(function(bot)
+    bot:assemble(itemId, amount, print)
 end)

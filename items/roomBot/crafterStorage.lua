@@ -129,7 +129,7 @@ local CrafterStorage = utils.makeClass(function(self, robot, inventoryController
     for k in self.table:iterNonTableSlots() do
         addSlot(InternalSlot(self.robot, self.inventoryController, k))
     end
-    for side in self.nav:walkAllChests() do
+    for side, i in self.nav:walkAllChests() do
         for k=1,self.inventoryController.getInventorySize(side) do
             addSlot(ChestSlot(self.nav, self.inventoryController, i, k))
         end

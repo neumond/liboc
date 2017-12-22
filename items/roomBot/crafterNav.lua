@@ -51,7 +51,7 @@ function CrafterNav:walkAllChests()
         if i > self.maxChests then return end
         local side = self:gotoChest(i)
         i = i + 1
-        return side
+        return side, i - 1
     end)
 end
 
