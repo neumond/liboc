@@ -1,6 +1,7 @@
 require("busted.runner")()
 local utils = require("utils")
 local mod = require("ui.markup")
+local DEFAULT_STYLES = require("ui.selectors").testing.DEFAULT_STYLES
 local Flow = mod.testing.Flow
 
 
@@ -270,8 +271,8 @@ describe("Markup tokenizer", function()
         it("works in simple cases", function()
             local singleAWord = {
                 {
-                    {"setForeground", 0xFFFFFF},
-                    {"setBackground", 0x000000},
+                    {"setForeground", DEFAULT_STYLES.color},
+                    {"setBackground", DEFAULT_STYLES.background},
                     {"set", 1, "a"},
                     {"fill", 2, 9, " "}
                 }
@@ -291,6 +292,137 @@ describe("Markup tokenizer", function()
                 mod.Div(mod.Div(mod.Div(mod.Div("a")))),
                 {}, {}, 10
             ))
+        end)
+        it("can handle hoverable inline elements", function()
+            local onClick = function() end
+            local raw, clickables = f(
+                mod.Span("a"):clickable(onClick),
+                {}, {}, 10
+            )
+            assert.are_same({
+                {
+                    {"setForeground", DEFAULT_STYLES.color},
+                    {"setBackground", DEFAULT_STYLES.background},
+                    {"set", 1, "a"},
+                    {"fill", 2, 9, " "}
+                }
+            }, raw)
+            assert.are_same({
+                [onClick]={
+                    hover={
+                        [1]={
+                            {"setForeground", DEFAULT_STYLES.hoverColor},
+                            {"setBackground", DEFAULT_STYLES.hoverBackground},
+                            {"set", 1, "a"},
+                        }
+                    },
+                    active={
+                        [1]={
+                            {"setForeground", DEFAULT_STYLES.activeColor},
+                            {"setBackground", DEFAULT_STYLES.activeBackground},
+                            {"set", 1, "a"},
+                        }
+                    }
+                }
+            }, clickables)
+        end)
+        it("can handle hoverable long inline elements", function()
+            local onClick = function() end
+            local raw, clickables = f(
+                mod.Span("1111", "2222", "3333", "4444"):clickable(onClick),
+                {}, {}, 10
+            )
+            assert.are_same({
+                {
+                    {"setForeground", DEFAULT_STYLES.color},
+                    {"setBackground", DEFAULT_STYLES.background},
+                    {"set", 1, "1111 2222"},
+                    {"fill", 10, 1, " "}
+                },
+                {
+                    {"setForeground", DEFAULT_STYLES.color},
+                    {"setBackground", DEFAULT_STYLES.background},
+                    {"set", 1, "3333 4444"},
+                    {"fill", 10, 1, " "}
+                }
+            }, raw)
+            assert.are_same({
+                [onClick]={
+                    hover={
+                        [1]={
+                            {"setForeground", DEFAULT_STYLES.hoverColor},
+                            {"setBackground", DEFAULT_STYLES.hoverBackground},
+                            {"set", 1, "1111 2222"},
+                        },
+                        [2]={
+                            {"setForeground", DEFAULT_STYLES.hoverColor},
+                            {"setBackground", DEFAULT_STYLES.hoverBackground},
+                            {"set", 1, "3333 4444"},
+                        }
+                    },
+                    active={
+                        [1]={
+                            {"setForeground", DEFAULT_STYLES.activeColor},
+                            {"setBackground", DEFAULT_STYLES.activeBackground},
+                            {"set", 1, "1111 2222"},
+                        },
+                        [2]={
+                            {"setForeground", DEFAULT_STYLES.activeColor},
+                            {"setBackground", DEFAULT_STYLES.activeBackground},
+                            {"set", 1, "3333 4444"},
+                        }
+                    }
+                }
+            }, clickables)
+        end)
+        it("can handle hoverable block elements", function()
+            local onClick = function() end
+            local raw, clickables = f(
+                mod.Span("1111", "2222", "3333", "4444"):clickable(onClick),
+                {}, {}, 10
+            )
+            assert.are_same({
+                {
+                    {"setForeground", 0xFFFFFF},
+                    {"setBackground", 0x000000},
+                    {"set", 1, "1111 2222"},
+                    {"fill", 10, 1, " "}
+                },
+                {
+                    {"setForeground", 0xFFFFFF},
+                    {"setBackground", 0x000000},
+                    {"set", 1, "3333 4444"},
+                    {"fill", 10, 1, " "}
+                }
+            }, raw)
+            assert.are_same({
+                [onClick]={
+                    hover={
+                        [1]={
+                            {"setForeground", 0x0000FF},
+                            {"setBackground", 0x000000},
+                            {"set", 1, "1111 2222"},
+                        },
+                        [2]={
+                            {"setForeground", 0x0000FF},
+                            {"setBackground", 0x000000},
+                            {"set", 1, "3333 4444"},
+                        }
+                    },
+                    active={
+                        [1]={
+                            {"setForeground", 0xFF0000},
+                            {"setBackground", 0x000000},
+                            {"set", 1, "1111 2222"},
+                        },
+                        [2]={
+                            {"setForeground", 0xFF0000},
+                            {"setBackground", 0x000000},
+                            {"set", 1, "3333 4444"},
+                        }
+                    }
+                }
+            }, clickables)
         end)
     end)
 end)

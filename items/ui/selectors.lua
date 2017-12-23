@@ -264,5 +264,8 @@ end
 
 return {
     Selector=Selector,
-    SelectorEngine=SelectorEngine
+    SelectorEngine=SelectorEngine,
+    testing={
+        DEFAULT_STYLES=DEFAULT_STYLES
+    }
 }
