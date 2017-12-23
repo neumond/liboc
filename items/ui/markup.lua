@@ -11,7 +11,9 @@ local Flow = {
     endControl=8,
     styleChange=9,
     lineSize=10,
-    space=11
+    space=11,
+    blockStart=12,  -- replacement of blockBound
+    blockEnd=13
 }
 local Glue = {}
 
@@ -112,28 +114,39 @@ local function removeGlueAddWordLengths(iter)
             accuLength = 0
         end
 
+        local cmdSwitch = {
+            [Flow.glue] = function()
+                glued = true  -- setting flag and skipping this command
+            end,
+            [Flow.string] = function(val)
+                if not glued then  -- non-glued word boundary detected
+                    prependWordSize()
+                    local idx = appendString(val)
+                    return false, idx - 1  -- output everything except last string
+                else  -- glued case
+                    glued = false  -- reset flag
+                    appendString(val)
+                end
+            end,
+            [Flow.blockBound] = function()
+                prependWordSize()
+                append(Flow.blockBound)
+                glued = true
+                return false, nil
+            end
+        }
+
         return function()
             while true do
                 local cmd, val = iter()
                 if cmd == nil then
                     prependWordSize()
                     return true, nil  -- finish and output everything in buffer
-                elseif cmd == Flow.glue then
-                    glued = true  -- setting flag and skipping this command
-                elseif cmd == Flow.string then
-                    if not glued then  -- non-glued word boundary detected
-                        prependWordSize()
-                        local idx = appendString(val)
-                        return false, idx - 1  -- output everything except last string
-                    else  -- glued case
-                        glued = false  -- reset flag
-                        appendString(val)
-                    end
-                elseif cmd == Flow.blockBound then
-                    prependWordSize()
-                    append(cmd, val)
-                    glued = true
-                    return false, nil
+                end
+                local cb = cmdSwitch[cmd]
+                if cb ~= nil then
+                    local a, b = cb(val)
+                    if a ~= nil then return a, b end
                 else
                     append(cmd, val)
                 end
@@ -250,9 +263,11 @@ end)
 
 
 function Div:iterTokensCoro()
+    -- coroutine.yield(Flow.blockStart)
     coroutine.yield(Flow.blockBound)
     self:iterTokensPushClass()
     self:iterTokensChildren()
+    -- coroutine.yield(Flow.blockEnd)
     coroutine.yield(Flow.blockBound)
     self:iterTokensPopClass()
 end
