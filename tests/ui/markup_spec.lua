@@ -92,7 +92,7 @@ describe("Markup tokenizer", function()
                 {Flow.string, "kek"}
             }))
         end)
-        it("can handle multiple blockBounds #ztag", function()
+        it("can handle multiple blockBounds", function()
             assert.are_same({
                 {Flow.blockBound},
                 {Flow.blockBound},
@@ -249,7 +249,7 @@ describe("Markup tokenizer", function()
                 mod.Div(mod.Div(mod.Div("a")))
             ))
         end)
-        it("inserts blockBound between Divs  #xtag", function()
+        it("inserts blockBound between Divs", function()
             assert.are_same({
                 {Flow.wordSize, 1},
                 {Flow.string, "a"},
@@ -267,28 +267,30 @@ describe("Markup tokenizer", function()
     describe("markupToGpuCommands", function()
         local f = mod.markupToGpuCommands
 
-        local singleAWord = {
-            {
-                {"setForeground", 0xFFFFFF},
-                {"setBackground", 0x000000},
-                {"set", 1, "a"},
-                {"fill", 2, 9, " "}
+        it("works in simple cases", function()
+            local singleAWord = {
+                {
+                    {"setForeground", 0xFFFFFF},
+                    {"setBackground", 0x000000},
+                    {"set", 1, "a"},
+                    {"fill", 2, 9, " "}
+                }
             }
-        }
 
-        assert.are_same(singleAWord, f(
-            mod.Span("a"),
-            {}, {}, 10
-        ))
+            assert.are_same(singleAWord, f(
+                mod.Span("a"),
+                {}, {}, 10
+            ))
 
-        assert.are_same(singleAWord, f(
-            mod.Div("a"),
-            {}, {}, 10
-        ))
+            assert.are_same(singleAWord, f(
+                mod.Div("a"),
+                {}, {}, 10
+            ))
 
-        assert.are_same(singleAWord, f(
-            mod.Div(mod.Div(mod.Div(mod.Div("a")))),
-            {}, {}, 10
-        ))
+            assert.are_same(singleAWord, f(
+                mod.Div(mod.Div(mod.Div(mod.Div("a")))),
+                {}, {}, 10
+            ))
+        end)
     end)
 end)
