@@ -311,6 +311,54 @@ describe("Markup tokenizer", function()
             }))
         end)
     end)
+    describe("splitIntoLines", function()
+        local f = function(tokens)
+            return accumulate(mod.testing.splitIntoLines(
+                iterArrayValues(tokens), 10
+            ))
+        end
+
+        it("handles blocks as lines", function()
+            assert.are_same({
+                {Flow.lineSize, 4, 0},
+                {Flow.string, "abcd"},
+                {Flow.blockBound},
+                {Flow.lineSize, 5, 1},
+                {Flow.string, "aa"},
+                {Flow.space},
+                {Flow.string, "bb"}
+            }, f({
+                {Flow.wordSize, 4},
+                {Flow.string, "abcd"},
+                {Flow.blockBound},
+                {Flow.wordSize, 2},
+                {Flow.string, "aa"},
+                {Flow.wordSize, 2},
+                {Flow.string, "bb"}
+            }))
+        end)
+        it("splits long lines", function()
+            assert.are_same({
+                {Flow.lineSize, 9, 1},
+                {Flow.string, "aaaa"},
+                {Flow.space},
+                {Flow.string, "bbbb"},
+                {Flow.lineSize, 10, 0},
+                {Flow.string, "exception…"},
+                {Flow.lineSize, 4, 0},
+                {Flow.string, "word"}
+            }, f({
+                {Flow.wordSize, 4},
+                {Flow.string, "aaaa"},
+                {Flow.wordSize, 4},
+                {Flow.string, "bbbb"},
+                {Flow.wordSize, 17},
+                {Flow.string, "exceptionallylong"},
+                {Flow.wordSize, 4},
+                {Flow.string, "word"}
+            }))
+        end)
+    end)
     describe("markupToGpuCommands", function()
         local f = mod.markupToGpuCommands
 

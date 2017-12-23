@@ -10,6 +10,8 @@ local Flow = {
     startControl=7,
     endControl=8,
     styleChange=9,
+    lineSize=10,
+    space=11
 }
 local Glue = {}
 
@@ -260,6 +262,8 @@ end
 
 
 local function classesToStyles(markupIter, defaultStyles, selectorTable)
+    -- removes Flow.pushClass and Flow.popClass
+    -- adds Flow.styleChange
     return utils.bufferingIterator(function(append, prepend)
         local selectorEngine = selectorModule.SelectorEngine(defaultStyles, selectorTable, function(k, v)
             append(Flow.styleChange, k, v)
@@ -281,6 +285,79 @@ local function classesToStyles(markupIter, defaultStyles, selectorTable)
             else
                 append(cmd, value)
             end
+            return false, nil
+        end
+    end)
+end
+
+
+local function splitIntoLines(markupIter, screenWidth)
+    -- removes Flow.wordSize
+    -- adds Flow.lineSize and Flow.space
+    return utils.bufferingIterator(function(append, prepend)
+        local currentLineWidth = 0
+        local spaceCount = 0
+        local lineNeedsFlush = false
+        local needPreSpace = false
+
+        local function fitWidth(len)
+            local v = math.min(len, screenWidth - currentLineWidth)
+            return v == len, v
+        end
+
+        local function finishLine()
+            if currentLineWidth > 0 then
+                prepend(Flow.lineSize, currentLineWidth, spaceCount)
+                currentLineWidth = 0
+                spaceCount = 0
+                lineNeedsFlush = true
+            end
+        end
+
+        local cmdSwitch = {
+            [Flow.blockBound] = function()
+                finishLine()
+                needPreSpace = false
+                return true
+            end,
+            [Flow.string] = function(s)
+                if currentLineWidth >= screenWidth then return end
+                local len = utils.strlen(s)
+                local fits, len = fitWidth(len)
+                if not fits then
+                    s = utils.strsub(s, 1, len - 1) .. "…"
+                end
+                append(Flow.string, s)
+                currentLineWidth = currentLineWidth + len
+            end,
+            [Flow.wordSize] = function(value)
+                local fits = fitWidth(value + (needPreSpace and 1 or 0))
+                if not fits then
+                    finishLine()
+                else
+                    if needPreSpace then
+                        spaceCount = spaceCount + 1
+                        currentLineWidth = currentLineWidth + 1
+                        append(Flow.space)
+                    end
+                end
+                needPreSpace = true
+            end
+        }
+
+        return function()
+            while not lineNeedsFlush do
+                local cmd, a, b = markupIter()
+                if cmd == nil then
+                    finishLine()
+                    return true, nil
+                end
+                local cb = cmdSwitch[cmd]
+                if cb == nil or cb(a, b) then
+                    append(cmd, a, b)
+                end
+            end
+            lineNeedsFlush = false
             return false, nil
         end
     end)
@@ -453,9 +530,6 @@ function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColo
 end
 
 
-
-
-
 local function markupToGpuCommands(markup, defaultStyles, selectorTable, screenWidth)
     local currentLine = GpuLine()
     local result = {}
@@ -601,6 +675,7 @@ return {
         removeGlueAddWordLengths=removeGlueAddWordLengths,
         squashBlockBounds=squashBlockBounds,
         iterMarkupTokens=iterMarkupTokens,
-        classesToStyles=classesToStyles
+        classesToStyles=classesToStyles,
+        splitIntoLines=splitIntoLines
     }
 }
