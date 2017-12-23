@@ -6,7 +6,9 @@ local Flow = {
     pushClass=3,
     popClass=4,
     blockBound=5,
-    wordSize=6
+    wordSize=6,
+    startControl=7,
+    endControl=8
 }
 local Glue = {}
 
@@ -19,6 +21,7 @@ local Glue = {}
 local Element = utils.makeClass(function(self, ...)
     self.children = {...}
     self.className = nil
+    self.clickCallback = nil
 end)
 
 
@@ -36,7 +39,16 @@ function Element:class(s)
 end
 
 
+function Element:clickable(callback)
+    self.clickCallback = callback
+    return self
+end
+
+
 function Element:iterTokensPushClass()
+    if self.clickCallback ~= nil then
+        coroutine.yield(Flow.startControl, self.clickCallback)
+    end
     if self.className ~= nil then
         coroutine.yield(Flow.pushClass, self.className)
     end
@@ -46,6 +58,9 @@ end
 function Element:iterTokensPopClass()
     if self.className ~= nil then
         coroutine.yield(Flow.popClass)
+    end
+    if self.clickCallback ~= nil then
+        coroutine.yield(Flow.endControl)
     end
 end
 
@@ -114,6 +129,7 @@ local function removeGlueAddWordLengths(iter)
                 elseif cmd == Flow.blockBound then
                     prependWordSize()
                     append(cmd, val)
+                    glued = true
                     return false, nil
                 else
                     append(cmd, val)
@@ -147,6 +163,35 @@ local function squashBlockBounds(iter)
 end
 
 
+local function removeLastBlockBound(iter)
+    local prevBlockBound = false
+    return utils.bufferingIterator(function(append, prepend)
+        return function()
+            while true do
+                local cmd, val = iter()
+                if cmd == nil then
+                    return true, nil
+                elseif cmd == Flow.blockBound then
+                    assert(val == nil)
+                    prevBlockBound = true
+                elseif cmd == Flow.string then
+                    if prevBlockBound then
+                        prepend(Flow.blockBound)
+                        prevBlockBound = false
+                    end
+                    append(cmd, val)
+                else
+                    append(cmd, val)
+                end
+                if not prevBlockBound then
+                    return false, nil
+                end
+            end
+        end
+    end)
+end
+
+
 local function pushclassAfterWordsize(iter)
     return utils.bufferingIterator(function(append, prepend)
         return function()
@@ -171,9 +216,11 @@ end
 
 local function iterMarkupTokens(markup)
     return pushclassAfterWordsize(
-        squashBlockBounds(
-            removeGlueAddWordLengths(
-                markup:iterTokens()
+        removeLastBlockBound(
+            squashBlockBounds(
+                removeGlueAddWordLengths(
+                    markup:iterTokens()
+                )
             )
         )
     )
@@ -209,6 +256,43 @@ end
 
 
 -- Renderer
+
+
+local GpuLineColorControl = utils.makeClass(function(self, cmdAppend)
+    self.cmdAppend = cmdAppend
+    self.fg = nil
+    self.bg = nil
+    self.lastFg = nil
+    self.lastBg = nil
+end)
+
+
+function GpuLineColorControl:flush()
+    if self.fg ~= nil then
+        self.cmdAppend("setForeground", self.fg)
+        self.fg = nil
+    end
+    if self.bg ~= nil then
+        self.cmdAppend("setBackground", self.bg)
+        self.bg = nil
+    end
+end
+
+
+function GpuLineColorControl:setForeground(color)
+    if self.lastFg ~= color then
+        self.fg = color
+        self.lastFg = color
+    end
+end
+
+
+function GpuLineColorControl:setBackground(color)
+    if self.lastBg ~= color then
+        self.bg = color
+        self.lastBg = color
+    end
+end
 
 
 local GpuLine = utils.makeClass(function(self)
@@ -252,95 +336,90 @@ function GpuLine:isEmpty()
 end
 
 
+local function getCenterPad(pad)
+    return pad // 2
+end
+
+
+local function getStartingX(align, pad)
+    local x = 0
+    if align == "right" then
+        x = pad
+    elseif align == "center" then
+        x = getCenterPad(pad)
+    end
+    return x
+end
+
+
+local fillPadding = {
+    left=function(x, pad, cmdAppend)
+        cmdAppend(x + 1, pad)
+    end,
+    right=function(x, pad, cmdAppend)
+        cmdAppend(1, pad)
+    end,
+    center=function(x, pad, cmdAppend)
+        local centerPad = getCenterPad(pad)
+        if centerPad > 0 then cmdAppend(1, centerPad) end
+        centerPad = pad - centerPad
+        if centerPad > 0 then cmdAppend(x + 1, centerPad) end
+    end
+}
+
+
 function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColor)
     -- TODO: "justify" align
     -- TODO: split this function
 
     local pad = screenWidth - self.width
-    local x = 0
-    local centerPad
-    if align == "right" then
-        x = pad
-    elseif align == "center" then
-        centerPad = math.floor(pad / 2)
-        x = centerPad
-    end
+    local x = getStartingX(align, pad)
 
     local cmds = {}
     local tokenSpaceBuf = ""
-    local fg, bg
-    local lastFg, lastBg
-
-    local function flushColors()
-        if fg ~= nil then
-            table.insert(cmds, {"setForeground", fg})
-            fg = nil
-        end
-        if bg ~= nil then
-            table.insert(cmds, {"setBackground", bg})
-            bg = nil
-        end
-    end
-
-    local function setForeground(color)
-        if lastFg ~= color then
-            fg = color
-            lastFg = color
-        end
-    end
-
-    local function setBackground(color)
-        if lastBg ~= color then
-            bg = color
-            lastBg = color
-        end
-    end
+    local colors = GpuLineColorControl(function(cmd, a)
+        table.insert(cmds, {cmd, a})
+    end)
 
     local function flushTokenSpaceBuf()
         if #tokenSpaceBuf == 0 then return false end
-        flushColors()
+        colors:flush()
         table.insert(cmds, {"set", x + 1, tokenSpaceBuf})
         x = x + utils.strlen(tokenSpaceBuf)
         tokenSpaceBuf = ""
         return true
     end
 
+    local cmdSwitch = {
+        ["token"] = function(a)
+            tokenSpaceBuf = tokenSpaceBuf .. a  -- TODO: is it optimal?
+        end,
+        ["space"] = function()
+            tokenSpaceBuf = tokenSpaceBuf .. " "
+        end,
+        ["color"] = function(a)
+            flushTokenSpaceBuf()
+            colors:setForeground(a)
+        end,
+        ["background"] = function(a)
+            flushTokenSpaceBuf()
+            colors:setBackground(a)
+        end
+    }
+
     for _, c in ipairs(self.commands) do
         local cmd, a = table.unpack(c)
-        if cmd == "token" then
-            tokenSpaceBuf = tokenSpaceBuf .. a
-        elseif cmd == "space" then
-            tokenSpaceBuf = tokenSpaceBuf .. " "
-        elseif cmd == "color" then
-            flushTokenSpaceBuf()
-            setForeground(a)
-        elseif cmd == "background" then
-            flushTokenSpaceBuf()
-            setBackground(a)
-        else
-            flushTokenSpaceBuf()
-            table.insert(cmds, c)
-        end
+        cmdSwitch[cmd](a)
     end
     flushTokenSpaceBuf()
 
     if pad > 0 then
-        setForeground(fillColor)
-        setBackground(fillBackground)
-        flushColors()
-        if align == "left" then
-            table.insert(cmds, {"fill", x + 1, pad, fillChar})
-        elseif align == "right" then
-            table.insert(cmds, {"fill", 1, pad, fillChar})
-        elseif align == "center" then
-            if centerPad > 0 then
-                table.insert(cmds, {"fill", 1, centerPad, fillChar})
-            end
-            centerPad = pad - centerPad
-            if centerPad > 0 then
-                table.insert(cmds, {"fill", x + 1, centerPad, fillChar})
-            end
-        end
+        colors:setForeground(fillColor)
+        colors:setBackground(fillBackground)
+        colors:flush()
+        fillPadding[align](x, pad, function(a, b)
+            table.insert(cmds, {"fill", a, b, fillChar})
+        end)
     end
 
     return cmds
@@ -427,6 +506,12 @@ local function markupToGpuCommands(markup, defaultStyles, selectorTable, screenW
         end,
         [Flow.popClass] = function(value)
             selectorEngine:pop()
+        end,
+        [Flow.startControl] = function(value)
+            -- TODO
+        end,
+        [Flow.endControl] = function()
+            -- TODO
         end
     }
 
@@ -481,6 +566,10 @@ return {
     markupToGpuCommands=markupToGpuCommands,
     execGpuCommands=execGpuCommands,
     testing={
-        tokenDebug=tokenDebug
+        tokenDebug=tokenDebug,
+        Flow=Flow,
+        removeGlueAddWordLengths=removeGlueAddWordLengths,
+        squashBlockBounds=squashBlockBounds,
+        iterMarkupTokens=iterMarkupTokens
     }
 }

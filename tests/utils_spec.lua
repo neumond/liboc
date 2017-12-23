@@ -60,3 +60,64 @@ describe("class framework", function()
         local o = C()
     end)
 end)
+
+describe("bufferingIterator", function()
+    local b = M.bufferingIterator
+
+    local function accumulate(iter)
+        local result = {}
+        for a in iter do
+            table.insert(result, a)
+        end
+        return result
+    end
+
+    it("works in simple flow", function()
+        local t = accumulate(b(function(append, prepend)
+            return function()
+                append(1)
+                append(2)
+                append(3)
+                return true, nil
+            end
+        end))
+        assert.are_same(t, {
+            1, 2, 3
+        })
+    end)
+    it("works with prepend", function()
+        local t = accumulate(b(function(append, prepend)
+            return function()
+                append(4)
+                append(5)
+                append(6)
+                prepend(3)
+                prepend(2)
+                prepend(1)
+                return true, nil
+            end
+        end))
+        assert.are_same(t, {
+            1, 2, 3, 4, 5, 6
+        })
+    end)
+    it("works in several iterations", function()
+        local t = accumulate(b(function(append, prepend)
+            local i = 0
+            return function()
+                i = i + 1
+                if i > 3 then return true, nil end
+                append(i)
+                prepend(i + 10)
+                prepend(i + 20)
+                append(i + 100)
+                return false, nil
+            end
+        end))
+        assert.are_same(t, {
+            21, 11, 1, 101,
+            22, 12, 2, 102,
+            23, 13, 3, 103
+        })
+    end)
+end)

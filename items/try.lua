@@ -509,22 +509,34 @@ end
 
 
 local function clickableElements()
-    runUsingFakeGpu(function(gpu)
-        local m = require("ui.markup")
-        local lipsumNext = lipsumIter()
-        local spans = {}
-        for i=1,5 do
-            table.insert(spans, m.Span(lipsumNext()))
+    runUsingRealGpu(function(gpu)
+        local function createMarkup()
+            local m = require("ui.markup")
+            local lipsumNext = lipsumIter()
+            local spans = {}
+            for i=1,5 do
+                table.insert(spans, m.Span(lipsumNext()))
+            end
+            table.insert(spans, m.Span(lipsumNext()):clickable(function()
+                print("LOL")
+            end))
+            for word in lipsumNext do
+                table.insert(spans, m.Span(word))
+            end
+            local text = m.Div(table.unpack(spans))
+            local styles = {
+                -- m.Selector({"right"}, {align="right"}),
+                -- m.Selector({"right", "left"}, {align="left", color=0x00FF00})
+            }
+            return text, {}, styles
         end
-        table.insert(spans, m.Span(lipsumNext()):clickable())
-        for i in lipsumNext do
-            table.insert(spans, m.Span(lipsumNext()))
-        end
-        local text = m.Div(table.unpack(spans))
-        local styles = {
-            -- m.Selector({"right"}, {align="right"}),
-            -- m.Selector({"right", "left"}, {align="left", color=0x00FF00})
-        }
+
+        local root = require("ui.windows").FrameRoot(gpu)
+        local sm = root:Markup(createMarkup())
+        root:assignRoot(sm)
+        root:update()
+
+        scrollingHandler(root, sm)
         -- waitForKey()
     end)
 end
@@ -541,5 +553,5 @@ end
 -- tokenizeMarkup()
 -- renderingUI()
 -- scrollingInCentralFrame()
--- renderBigWallOfText()
-clickableElements()
+renderBigWallOfText()
+-- clickableElements()
