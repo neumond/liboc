@@ -46,21 +46,21 @@ end
 
 
 function Element:iterTokensPushClass()
-    if self.clickCallback ~= nil then
-        coroutine.yield(Flow.startControl, self.clickCallback)
-    end
     if self.className ~= nil then
         coroutine.yield(Flow.pushClass, self.className)
+    end
+    if self.clickCallback ~= nil then
+        coroutine.yield(Flow.startControl, self.clickCallback)
     end
 end
 
 
 function Element:iterTokensPopClass()
-    if self.className ~= nil then
-        coroutine.yield(Flow.popClass)
-    end
     if self.clickCallback ~= nil then
         coroutine.yield(Flow.endControl)
+    end
+    if self.className ~= nil then
+        coroutine.yield(Flow.popClass)
     end
 end
 
@@ -323,11 +323,6 @@ end
 
 function GpuLine:background(value)
     table.insert(self.commands, {"background", value})
-end
-
-
-function GpuLine:makeNonEmpty()
-    self.nonEmpty = true
 end
 
 

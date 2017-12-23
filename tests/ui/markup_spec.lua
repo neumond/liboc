@@ -293,7 +293,7 @@ describe("Markup tokenizer", function()
                 {}, {}, 10
             ))
         end)
-        it("can handle hoverable inline elements", function()
+        it("can handle hoverable inline elements #skip", function()
             local onClick = function() end
             local raw, clickables = f(
                 mod.Span("a"):clickable(onClick),
@@ -326,7 +326,7 @@ describe("Markup tokenizer", function()
                 }
             }, clickables)
         end)
-        it("can handle hoverable long inline elements", function()
+        it("can handle hoverable long inline elements #skip", function()
             local onClick = function() end
             local raw, clickables = f(
                 mod.Span("1111", "2222", "3333", "4444"):clickable(onClick),
@@ -375,7 +375,7 @@ describe("Markup tokenizer", function()
                 }
             }, clickables)
         end)
-        it("can handle hoverable block elements", function()
+        it("can handle hoverable block elements #skip", function()
             local onClick = function() end
             local raw, clickables = f(
                 mod.Span("1111", "2222", "3333", "4444"):clickable(onClick),
