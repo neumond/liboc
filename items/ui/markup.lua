@@ -8,7 +8,8 @@ local Flow = {
     blockBound=5,
     wordSize=6,
     startControl=7,
-    endControl=8
+    endControl=8,
+    styleChange=9,
 }
 local Glue = {}
 
@@ -255,6 +256,37 @@ function Div:iterTokensCoro()
 end
 
 
+-- Next iterator layers
+
+
+local function classesToStyles(markupIter, defaultStyles, selectorTable)
+    return utils.bufferingIterator(function(append, prepend)
+        local selectorEngine = selectorModule.SelectorEngine(defaultStyles, selectorTable, function(k, v)
+            append(Flow.styleChange, k, v)
+        end)
+        local cmdSwitch = {
+            [Flow.pushClass] = function(value)
+                selectorEngine:push(value)
+            end,
+            [Flow.popClass] = function(value)
+                selectorEngine:pop()
+            end
+        }
+        return function()
+            local cmd, value = markupIter()
+            if cmd == nil then return true, nil end
+            local cb = cmdSwitch[cmd]
+            if cb ~= nil then
+                cb(value)
+            else
+                append(cmd, value)
+            end
+            return false, nil
+        end
+    end)
+end
+
+
 -- Renderer
 
 
@@ -421,6 +453,9 @@ function GpuLine:finalize(screenWidth, align, fillBackground, fillChar, fillColo
 end
 
 
+
+
+
 local function markupToGpuCommands(markup, defaultStyles, selectorTable, screenWidth)
     local currentLine = GpuLine()
     local result = {}
@@ -565,6 +600,7 @@ return {
         Flow=Flow,
         removeGlueAddWordLengths=removeGlueAddWordLengths,
         squashBlockBounds=squashBlockBounds,
-        iterMarkupTokens=iterMarkupTokens
+        iterMarkupTokens=iterMarkupTokens,
+        classesToStyles=classesToStyles
     }
 }

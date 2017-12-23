@@ -265,6 +265,52 @@ describe("Markup tokenizer", function()
             ))
         end)
     end)
+    describe("classesToStyles", function()
+        local mainColor = 0x808080
+        local selectorTable = {
+            mod.Selector({"main"}, {color=mainColor})
+        }
+        local f = function(tokens, dontUseHack)
+            local defaultStyles = {}
+            if not dontUseHack then
+                defaultStyles._testingReset = true
+            end
+            return accumulate(mod.testing.classesToStyles(
+                iterArrayValues(tokens), defaultStyles, selectorTable
+            ))
+        end
+
+        it("sets default styles for empty markup", function()
+            local r = f({}, true)
+            assert(#r > 0)
+            for _, v in ipairs(r) do
+                local a, b, c = table.unpack(v)
+                assert.are_equal(Flow.styleChange, a)
+                -- print(a, b, c)
+            end
+        end)
+        it("can suppress default styles using testing hack", function()
+            local r = f({})
+            assert(#r == 0)
+        end)
+        it("tranforms class tokens into style changes", function()
+            assert.are_same({
+                {Flow.wordSize, 1},
+                {Flow.string, "a"},
+                {Flow.styleChange, "color", mainColor},
+                {Flow.wordSize, 1},
+                {Flow.string, "b"},
+                {Flow.styleChange, "color", nil}
+            }, f({
+                {Flow.wordSize, 1},
+                {Flow.string, "a"},
+                {Flow.pushClass, "main"},
+                {Flow.wordSize, 1},
+                {Flow.string, "b"},
+                {Flow.popClass}
+            }))
+        end)
+    end)
     describe("markupToGpuCommands", function()
         local f = mod.markupToGpuCommands
 

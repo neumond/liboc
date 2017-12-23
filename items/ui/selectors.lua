@@ -21,6 +21,11 @@ local DEFAULT_STYLES = {
 
 
 local function makeDefaultStyles(s)
+    if s._testingReset then
+        local result = utils.copyTable(s)
+        result._testingReset = nil
+        return result
+    end
     local result = utils.copyTable(DEFAULT_STYLES)
     for k, v in pairs(s) do
         result[k] = v
