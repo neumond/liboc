@@ -13,7 +13,8 @@ local Flow = {
     lineSize=10,
     space=11,
     blockStart=12,  -- replacement of blockBound
-    blockEnd=13
+    blockEnd=13,
+    blockWidth=14
 }
 local Glue = {}
 
@@ -95,7 +96,44 @@ function Element:iterTokens()
 end
 
 
+-- Span takes as much horizontal space as needed for content
+-- consequent Spans follow on the same line
+
+
+local Span = utils.makeClass(Element, function(super, ...)
+    local self = super(...)
+end)
+
+
+-- Div takes all the horizontal space available
+-- consequent Divs always start from a new line
+
+
+local Div = utils.makeClass(Element, function(super, ...)
+    local self = super(...)
+end)
+
+
+function Div:iterTokensCoro()
+    coroutine.yield(Flow.blockBound)
+    -- coroutine.yield(Flow.blockStart)
+    self:iterTokensPushClass()
+
+    self:iterTokensChildren()
+
+    coroutine.yield(Flow.blockBound)
+    -- coroutine.yield(Flow.blockEnd)
+    self:iterTokensPopClass()
+end
+
+
+-- Token iteration
+
+
 local function removeGlueAddWordLengths(iter)
+    -- removes Flow.glue
+    -- adds Flow.wordSize
+
     -- splitting point of words
     -- Flow.string not preceded by Flow.glue
     -- i.e. Flow.glue makes next Flow.string non word-breaking
@@ -157,6 +195,7 @@ end
 
 
 local function squashBlockBounds(iter)
+    -- removes excessive Flow.blockBound
     local prevNewLine = true  -- true to omit first newLine
     return function()
         while true do
@@ -180,6 +219,7 @@ end
 
 
 local function removeLastBlockBound(iter)
+    -- removes excessive Flow.blockBound
     local prevBlockBound = false
     return utils.bufferingIterator(function(append, prepend)
         return function()
@@ -209,6 +249,8 @@ end
 
 
 local function pushclassAfterWordsize(iter)
+    -- TODO: need?
+    -- repositions Flow.pushClass and Flow.wordSize
     return utils.bufferingIterator(function(append, prepend)
         return function()
             while true do
@@ -228,52 +270,6 @@ local function pushclassAfterWordsize(iter)
         end
     end)
 end
-
-
-local function iterMarkupTokens(markup)
-    return pushclassAfterWordsize(
-        removeLastBlockBound(
-            squashBlockBounds(
-                removeGlueAddWordLengths(
-                    markup:iterTokens()
-                )
-            )
-        )
-    )
-end
-
-
-
--- Span takes as much horizontal space as needed for content
--- consequent Spans follow on the same line
-
-
-local Span = utils.makeClass(Element, function(super, ...)
-    local self = super(...)
-end)
-
-
--- Div takes all the horizontal space available
--- consequent Divs always start from a new line
-
-
-local Div = utils.makeClass(Element, function(super, ...)
-    local self = super(...)
-end)
-
-
-function Div:iterTokensCoro()
-    -- coroutine.yield(Flow.blockStart)
-    coroutine.yield(Flow.blockBound)
-    self:iterTokensPushClass()
-    self:iterTokensChildren()
-    -- coroutine.yield(Flow.blockEnd)
-    coroutine.yield(Flow.blockBound)
-    self:iterTokensPopClass()
-end
-
-
--- Next iterator layers
 
 
 local function classesToStyles(markupIter, defaultStyles, selectorTable)
@@ -304,6 +300,11 @@ local function classesToStyles(markupIter, defaultStyles, selectorTable)
         end
     end)
 end
+
+
+-- local function blockWidthChanges()
+--     blockWidth
+-- end
 
 
 local function splitIntoLines(markupIter, screenWidth)
@@ -379,7 +380,20 @@ local function splitIntoLines(markupIter, screenWidth)
 end
 
 
--- Renderer
+-- OLD CODE
+
+
+local function iterMarkupTokens(markup)
+    return pushclassAfterWordsize(
+        removeLastBlockBound(
+            squashBlockBounds(
+                removeGlueAddWordLengths(
+                    markup:iterTokens()
+                )
+            )
+        )
+    )
+end
 
 
 local GpuLineColorControl = utils.makeClass(function(self, cmdAppend)

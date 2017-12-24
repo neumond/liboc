@@ -12,12 +12,29 @@ local DEFAULT_STYLES = {
     hoverColor=0x0000FF,
     hoverBackground=0x000000,
     activeColor=0xFF0000,
-    activeBackground=0x000000
+    activeBackground=0x000000,
+    -- block box model
+    --     empty space outside block
+    --         margins of adjacent elements collapse
+    marginLeft=0,
+    marginRight=0,
+    marginTop=0,
+    marginBottom=0,
+    --     empty space inside block
+    --         filled using "fill" and "fillcolor" properties
+    paddingLeft=0,
+    paddingRight=0,
+    paddingTop=0,
+    paddingBottom=0,
+    --     borders between paddings and margins
+    --         0/1/2: no border, single line, double line
+    borderLeft=0,
+    borderRight=0,
+    borderTop=0,
+    borderBottom=0,
+    borderColor=0xFFFFFF,
+    borderBackground=0x000000
 }
-
--- TODO:
--- marginLeft, marginRight, marginTop, marginBottom
--- paddingLeft, paddingRight, paddingTop, paddingBottom
 
 
 local function makeDefaultStyles(s)
