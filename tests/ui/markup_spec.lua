@@ -32,6 +32,67 @@ end
 
 
 describe("Markup tokenizer", function()
+    describe("squashNewLines", function()
+        local f = makeIterTestable(mod.testing.squashNewLines)
+
+        it("leaves tokens without newLines unchanged", function()
+            local t = {
+                {Flow.string, "long"},
+                {Flow.string, "word"}
+            }
+            assert.are_same(t, f(t))
+        end)
+        it("squashes consequent newLines into one", function()
+            local function makeTokens(nBounds)
+                local t = {
+                    {Flow.string, "top"},
+                    -- newLine's here
+                    {Flow.string, "kek"}
+                }
+                for i=1,nBounds do
+                    table.insert(t, 3, {Flow.newLine})
+                end
+                return t
+            end
+            assert.are_same(makeTokens(1), f(makeTokens(1)))
+            assert.are_same(makeTokens(1), f(makeTokens(3)))
+            assert.are_same(makeTokens(1), f(makeTokens(5)))
+        end)
+    end)
+    describe("removeLastNewLine", function()
+        local f = makeIterTestable(mod.testing.removeLastNewLine)
+
+        it("leaves tokens without newLines unchanged", function()
+            local t = {
+                {Flow.string, "long"},
+                {Flow.string, "word"}
+            }
+            assert.are_same(t, f(t))
+        end)
+        it("strips last newLine", function()
+            assert.are_same({
+                {Flow.string, "long"},
+                {Flow.string, "word"}
+            }, f({
+                {Flow.string, "long"},
+                {Flow.string, "word"},
+                {Flow.newLine}
+            }))
+        end)
+        it("doesn't strip last newLine followed by a string", function()
+            assert.are_same({
+                {Flow.string, "long"},
+                {Flow.string, "word"},
+                {Flow.newLine},
+                {Flow.string, "test"}
+            }, f({
+                {Flow.string, "long"},
+                {Flow.string, "word"},
+                {Flow.newLine},
+                {Flow.string, "test"}
+            }))
+        end)
+    end)
     describe("removeGlueAddWordLengths", function()
         local f = makeIterTestable(mod.testing.removeGlueAddWordLengths)
 
@@ -80,40 +141,40 @@ describe("Markup tokenizer", function()
                 {Flow.string, "kek"}
             }))
         end)
-        it("calculates sizes for two words divided by blockBound", function()
+        it("calculates sizes for two words divided by newLine", function()
             assert.are_same({
                 {Flow.wordSize, 3},
                 {Flow.string, "lol"},
-                {Flow.blockBound},
+                {Flow.newLine},
                 {Flow.wordSize, 3},
                 {Flow.string, "kek"},
             }, f({
                 {Flow.string, "lol"},
-                {Flow.blockBound},
+                {Flow.newLine},
                 {Flow.string, "kek"}
             }))
         end)
-        it("can handle multiple blockBounds", function()
+        it("can handle multiple newLines", function()
             assert.are_same({
-                {Flow.blockBound},
-                {Flow.blockBound},
+                {Flow.newLine},
+                {Flow.newLine},
                 {Flow.wordSize, 1},
                 {Flow.string, "a"},
-                {Flow.blockBound},
-                {Flow.blockBound},
+                {Flow.newLine},
+                {Flow.newLine},
                 {Flow.wordSize, 1},
                 {Flow.string, "b"},
-                {Flow.blockBound},
-                {Flow.blockBound}
+                {Flow.newLine},
+                {Flow.newLine}
             }, f({
-                {Flow.blockBound},
-                {Flow.blockBound},
+                {Flow.newLine},
+                {Flow.newLine},
                 {Flow.string, "a"},
-                {Flow.blockBound},
-                {Flow.blockBound},
+                {Flow.newLine},
+                {Flow.newLine},
                 {Flow.string, "b"},
-                {Flow.blockBound},
-                {Flow.blockBound}
+                {Flow.newLine},
+                {Flow.newLine}
             }))
         end)
         it("can glue two words", function()
@@ -157,18 +218,18 @@ describe("Markup tokenizer", function()
                 {Flow.string, "word"}
             }))
         end)
-        it("ignores glue near blockBound", function()
+        it("ignores glue near newLine", function()
             local expected = {
                 {Flow.wordSize, 4},
                 {Flow.string, "long"},
-                {Flow.blockBound},
+                {Flow.newLine},
                 {Flow.wordSize, 4},
                 {Flow.string, "word"}
             }
             for t in beforeAfterTokens({
                 {Flow.string, "long"},
                 {Flow.glue},
-                {Flow.blockBound},  -- breaks words
+                {Flow.newLine},  -- breaks words
                 {Flow.glue},
                 {Flow.string, "word"}
             }, 2, 4) do
@@ -198,71 +259,6 @@ describe("Markup tokenizer", function()
                     assert.are_same(expected, f(t))
                 end
             end
-        end)
-    end)
-    describe("squashBlockBounds", function()
-        local f = makeIterTestable(mod.testing.squashBlockBounds)
-
-        it("leaves tokens without blockBounds unchanged", function()
-            local t = {
-                {Flow.wordSize, 8},
-                {Flow.string, "long"},
-                {Flow.string, "word"}
-            }
-            assert.are_same(t, f(t))
-        end)
-        it("squashes consequent blockBounds into one", function()
-            local function makeTokens(nBounds)
-                local t = {
-                    {Flow.wordSize, 3},
-                    {Flow.string, "top"},
-                    {Flow.wordSize, 3},
-                    {Flow.string, "kek"}
-                }
-                for i=1,nBounds do
-                    table.insert(t, 3, {Flow.blockBound})
-                end
-                return t
-            end
-            assert.are_same(makeTokens(1), f(makeTokens(1)))
-            assert.are_same(makeTokens(1), f(makeTokens(3)))
-            assert.are_same(makeTokens(1), f(makeTokens(5)))
-        end)
-    end)
-    describe("iterMarkupTokens", function()
-        local f = function(markup)
-            return accumulate(mod.testing.iterMarkupTokens(markup))
-        end
-
-        it("returns no tokens for empty markups", function()
-            assert.are_same({}, f(mod.Span()))
-            assert.are_same({}, f(mod.Div()))
-        end)
-        it("handles single word markups", function()
-            local singleAWord = {
-                {Flow.wordSize, 1},
-                {Flow.string, "a"}
-            }
-
-            assert.are_same(singleAWord, f(mod.Span("a")))
-            assert.are_same(singleAWord, f(mod.Div("a")))
-            assert.are_same(singleAWord, f(
-                mod.Div(mod.Div(mod.Div("a")))
-            ))
-        end)
-        it("inserts blockBound between Divs", function()
-            assert.are_same({
-                {Flow.wordSize, 1},
-                {Flow.string, "a"},
-                {Flow.blockBound},
-                {Flow.wordSize, 1},
-                {Flow.string, "b"},
-            }, f(
-                mod.Div(
-                    mod.Div("a"),
-                    mod.Div("b")
-                )
-            ))
         end)
     end)
     describe("classesToStyles", function()
@@ -311,6 +307,8 @@ describe("Markup tokenizer", function()
             }))
         end)
     end)
+    -- describe("", function()
+    -- end)
     describe("splitIntoLines", function()
         local f = function(tokens)
             return accumulate(mod.testing.splitIntoLines(
@@ -322,7 +320,7 @@ describe("Markup tokenizer", function()
             assert.are_same({
                 {Flow.lineSize, 4, 0},
                 {Flow.string, "abcd"},
-                {Flow.blockBound},
+                {Flow.newLine},
                 {Flow.lineSize, 5, 1},
                 {Flow.string, "aa"},
                 {Flow.space},
@@ -330,7 +328,7 @@ describe("Markup tokenizer", function()
             }, f({
                 {Flow.wordSize, 4},
                 {Flow.string, "abcd"},
-                {Flow.blockBound},
+                {Flow.newLine},
                 {Flow.wordSize, 2},
                 {Flow.string, "aa"},
                 {Flow.wordSize, 2},
@@ -359,7 +357,46 @@ describe("Markup tokenizer", function()
             }))
         end)
     end)
-    describe("markupToGpuCommands", function()
+
+    -- OLD
+
+    describe("iterMarkupTokens #skip", function()
+        local f = function(markup)
+            return accumulate(mod.testing.iterMarkupTokens(markup))
+        end
+
+        it("returns no tokens for empty markups", function()
+            assert.are_same({}, f(mod.Span()))
+            assert.are_same({}, f(mod.Div()))
+        end)
+        it("handles single word markups", function()
+            local singleAWord = {
+                {Flow.wordSize, 1},
+                {Flow.string, "a"}
+            }
+
+            assert.are_same(singleAWord, f(mod.Span("a")))
+            assert.are_same(singleAWord, f(mod.Div("a")))
+            assert.are_same(singleAWord, f(
+                mod.Div(mod.Div(mod.Div("a")))
+            ))
+        end)
+        it("inserts newLine between Divs", function()
+            assert.are_same({
+                {Flow.wordSize, 1},
+                {Flow.string, "a"},
+                {Flow.newLine},
+                {Flow.wordSize, 1},
+                {Flow.string, "b"},
+            }, f(
+                mod.Div(
+                    mod.Div("a"),
+                    mod.Div("b")
+                )
+            ))
+        end)
+    end)
+    describe("markupToGpuCommands #skip", function()
         local f = mod.markupToGpuCommands
 
         it("works in simple cases", function()

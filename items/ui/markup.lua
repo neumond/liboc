@@ -5,14 +5,14 @@ local Flow = {
     glue=2,
     pushClass=3,
     popClass=4,
-    blockBound=5,
+    newLine=5,
     wordSize=6,
     startControl=7,
     endControl=8,
     styleChange=9,
     lineSize=10,
     space=11,
-    blockStart=12,  -- replacement of blockBound
+    blockStart=12,
     blockEnd=13,
     blockWidth=14
 }
@@ -115,19 +115,80 @@ end)
 
 
 function Div:iterTokensCoro()
-    coroutine.yield(Flow.blockBound)
-    -- coroutine.yield(Flow.blockStart)
+    coroutine.yield(Flow.newLine)
+    coroutine.yield(Flow.blockStart)
     self:iterTokensPushClass()
 
     self:iterTokensChildren()
 
-    coroutine.yield(Flow.blockBound)
-    -- coroutine.yield(Flow.blockEnd)
+    coroutine.yield(Flow.newLine)
+    coroutine.yield(Flow.blockEnd)
     self:iterTokensPopClass()
 end
 
 
 -- Token iteration
+
+
+local function makeIterChain(func, ...)
+    for _, iter in ipairs({...}) do
+        func = iter(func)
+    end
+    return func
+end
+
+
+local function squashNewLines(markupIter)
+    -- removes excessive Flow.newLine
+    local suppress = true  -- must be set to false with first Flow.string
+    return function()
+        while true do
+            local cmd, a, b = markupIter()
+            if cmd == nil then
+                return nil
+            elseif cmd == Flow.newLine then
+                if not suppress then
+                    suppress = true
+                    return cmd, a, b
+                end
+            elseif cmd == Flow.string then
+                suppress = false  -- has some content, don't omit newLine
+                return cmd, a, b
+            else
+                return cmd, a, b
+            end
+        end
+    end
+end
+
+
+local function removeLastNewLine(markupIter)
+    -- removes excessive Flow.newLine
+    local prevNewLine = false
+    return utils.bufferingIterator(function(append, prepend)
+        return function()
+            while true do
+                local cmd, a, b = markupIter()
+                if cmd == nil then
+                    return true, nil
+                elseif cmd == Flow.newLine then
+                    prevNewLine = true
+                elseif cmd == Flow.string then
+                    if prevNewLine then
+                        prepend(Flow.newLine)
+                        prevNewLine = false
+                    end
+                    append(cmd, a, b)
+                else
+                    append(cmd, a, b)
+                end
+                if not prevNewLine then
+                    return false, nil
+                end
+            end
+        end
+    end)
+end
 
 
 local function removeGlueAddWordLengths(iter)
@@ -166,9 +227,9 @@ local function removeGlueAddWordLengths(iter)
                     appendString(val)
                 end
             end,
-            [Flow.blockBound] = function()
+            [Flow.newLine] = function()
                 prependWordSize()
-                append(Flow.blockBound)
+                append(Flow.newLine)
                 glued = true
                 return false, nil
             end
@@ -187,60 +248,6 @@ local function removeGlueAddWordLengths(iter)
                     if a ~= nil then return a, b end
                 else
                     append(cmd, val)
-                end
-            end
-        end
-    end)
-end
-
-
-local function squashBlockBounds(iter)
-    -- removes excessive Flow.blockBound
-    local prevNewLine = true  -- true to omit first newLine
-    return function()
-        while true do
-            local cmd, val = iter()
-            if cmd == nil then
-                return nil
-            elseif cmd ~= Flow.blockBound then
-                if cmd == Flow.string then
-                    prevNewLine = false  -- has some content, don't omit newLine
-                end
-                return cmd, val
-            else
-                if not prevNewLine then
-                    prevNewLine = true
-                    return cmd, val
-                end
-            end
-        end
-    end
-end
-
-
-local function removeLastBlockBound(iter)
-    -- removes excessive Flow.blockBound
-    local prevBlockBound = false
-    return utils.bufferingIterator(function(append, prepend)
-        return function()
-            while true do
-                local cmd, val = iter()
-                if cmd == nil then
-                    return true, nil
-                elseif cmd == Flow.blockBound then
-                    assert(val == nil)
-                    prevBlockBound = true
-                elseif cmd == Flow.string then
-                    if prevBlockBound then
-                        prepend(Flow.blockBound)
-                        prevBlockBound = false
-                    end
-                    append(cmd, val)
-                else
-                    append(cmd, val)
-                end
-                if not prevBlockBound then
-                    return false, nil
                 end
             end
         end
@@ -302,14 +309,22 @@ local function classesToStyles(markupIter, defaultStyles, selectorTable)
 end
 
 
--- local function blockWidthChanges()
---     blockWidth
--- end
+local function blockWidthChanges(markupIter, screenWidth)
+    -- requires classesToStyles
+    -- adds Flow.blockWidth
+    return utils.bufferingIterator(function(append, prepend)
+        return function()
+        end
+    end)
+end
 
 
 local function splitIntoLines(markupIter, screenWidth)
     -- removes Flow.wordSize
     -- adds Flow.lineSize and Flow.space
+
+    -- TODO: port to blockWidthChanges
+    -- TODO: should remove Flow.newLine?
     return utils.bufferingIterator(function(append, prepend)
         local currentLineWidth = 0
         local spaceCount = 0
@@ -331,7 +346,7 @@ local function splitIntoLines(markupIter, screenWidth)
         end
 
         local cmdSwitch = {
-            [Flow.blockBound] = function()
+            [Flow.newLine] = function()
                 finishLine()
                 needPreSpace = false
                 return true
@@ -618,7 +633,7 @@ local function markupToGpuCommands(markup, defaultStyles, selectorTable, screenW
 
     local needPreSpace = false
     local cmdSwitch = {
-        [Flow.blockBound] = function()
+        [Flow.newLine] = function()
             startNewLine(true)
             needPreSpace = false
         end,
@@ -702,7 +717,8 @@ return {
         tokenDebug=tokenDebug,
         Flow=Flow,
         removeGlueAddWordLengths=removeGlueAddWordLengths,
-        squashBlockBounds=squashBlockBounds,
+        squashNewLines=squashNewLines,
+        removeLastNewLine=removeLastNewLine,
         iterMarkupTokens=iterMarkupTokens,
         classesToStyles=classesToStyles,
         splitIntoLines=splitIntoLines
