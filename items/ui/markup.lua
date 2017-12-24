@@ -2,21 +2,26 @@ local utils = require("utils")
 local selectorModule = require("ui.selectors")
 local Stack = require("lib.stack").Stack
 local getBorderWidth = require("ui.borders").getBorderWidth
-local Flow = {
-    string=1,
-    glue=2,
-    pushClass=3,
-    popClass=4,
-    newLine=5,
-    wordSize=6,
-    startControl=7,
-    endControl=8,
-    styleChange=9,
-    lineSize=10,
-    space=11,
-    blockStart=12,
-    blockEnd=13
-}
+local Flow = {}
+do
+    local i = 0
+    local function add(k)
+        i = i + 1
+        Flow[k] = i
+    end
+    add("string")
+    add("glue")
+    add("pushClass")
+    add("popClass")
+    add("newLine")
+    add("wordSize")
+    add("startControl")
+    add("endControl")
+    add("styleChange")
+    add("space")
+    add("blockStart")
+    add("blockEnd")
+end
 local Glue = {}
 
 
@@ -372,11 +377,13 @@ end
 
 
 local function splitIntoLines(markupIter, screenWidth)
+    -- requires
+    --     blockContentWidths
+    --     removeGlueAddWordLengths
     -- removes Flow.wordSize
-    -- adds Flow.lineSize and Flow.space
-
-    -- TODO: port to blockWidthChanges
-    -- TODO: should remove Flow.newLine?
+    -- adds Flow.space
+    -- extends and reflows Flow.newLine
+    --     Flow.newLine, lineWidth, spaceCount
     return utils.bufferingIterator(function(append, prepend)
         local currentLineWidth = 0
         local spaceCount = 0
@@ -389,8 +396,10 @@ local function splitIntoLines(markupIter, screenWidth)
         end
 
         local function finishLine()
+            -- TODO: this can make useless
+            -- squashNewLines and removeLastNewLine
             if currentLineWidth > 0 then
-                prepend(Flow.lineSize, currentLineWidth, spaceCount)
+                prepend(Flow.newLine, currentLineWidth, spaceCount)
                 currentLineWidth = 0
                 spaceCount = 0
                 lineNeedsFlush = true
@@ -401,7 +410,6 @@ local function splitIntoLines(markupIter, screenWidth)
             [Flow.newLine] = function()
                 finishLine()
                 needPreSpace = false
-                return true
             end,
             [Flow.string] = function(s)
                 if currentLineWidth >= screenWidth then return end
@@ -425,6 +433,15 @@ local function splitIntoLines(markupIter, screenWidth)
                     end
                 end
                 needPreSpace = true
+            end,
+            [Flow.blockStart] = function(w)
+                assert(currentLineWidth == 0)
+                screenWidth = w
+                append(Flow.blockStart, w)
+            end,
+            [Flow.blockEnd] = function(w)
+                screenWidth = w
+                append(Flow.blockEnd, w)
             end
         }
 
@@ -436,8 +453,10 @@ local function splitIntoLines(markupIter, screenWidth)
                     return true, nil
                 end
                 local cb = cmdSwitch[cmd]
-                if cb == nil or cb(a, b) then
+                if cb == nil then
                     append(cmd, a, b)
+                else
+                    cb(a, b)
                 end
             end
             lineNeedsFlush = false

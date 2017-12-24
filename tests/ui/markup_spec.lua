@@ -366,10 +366,9 @@ describe("Markup tokenizer", function()
 
         it("handles blocks as lines", function()
             assert.are_same({
-                {Flow.lineSize, 4, 0},
+                {Flow.newLine, 4, 0},
                 {Flow.string, "abcd"},
-                {Flow.newLine},
-                {Flow.lineSize, 5, 1},
+                {Flow.newLine, 5, 1},
                 {Flow.string, "aa"},
                 {Flow.space},
                 {Flow.string, "bb"}
@@ -385,13 +384,13 @@ describe("Markup tokenizer", function()
         end)
         it("splits long lines", function()
             assert.are_same({
-                {Flow.lineSize, 9, 1},
+                {Flow.newLine, 9, 1},
                 {Flow.string, "aaaa"},
                 {Flow.space},
                 {Flow.string, "bbbb"},
-                {Flow.lineSize, 10, 0},
+                {Flow.newLine, 10, 0},
                 {Flow.string, "exception…"},
-                {Flow.lineSize, 4, 0},
+                {Flow.newLine, 4, 0},
                 {Flow.string, "word"}
             }, f({
                 {Flow.wordSize, 4},
@@ -402,6 +401,29 @@ describe("Markup tokenizer", function()
                 {Flow.string, "exceptionallylong"},
                 {Flow.wordSize, 4},
                 {Flow.string, "word"}
+            }))
+        end)
+        it("changes widths for blocks", function()
+            assert.are_same({
+                {Flow.newLine, 10, 0},
+                {Flow.string, "exception…"},
+                {Flow.newLine, 3, 0},
+                {Flow.blockStart, 3},
+                {Flow.string, "ex…"},
+                {Flow.blockEnd, 10},
+                {Flow.newLine, 10, 0},
+                {Flow.string, "exception…"}
+            }, f({
+                {Flow.wordSize, 17},
+                {Flow.string, "exceptionallylong"},
+                {Flow.newLine},
+                {Flow.blockStart, 3},
+                {Flow.wordSize, 17},
+                {Flow.string, "exceptionallylong"},
+                {Flow.blockEnd, 10},
+                {Flow.newLine},
+                {Flow.wordSize, 17},
+                {Flow.string, "exceptionallylong"}
             }))
         end)
     end)
