@@ -1,5 +1,7 @@
 local utils = require("utils")
 local selectorModule = require("ui.selectors")
+local Stack = require("lib.stack").Stack
+local getBorderWidth = require("ui.borders").getBorderWidth
 local Flow = {
     string=1,
     glue=2,
@@ -13,8 +15,7 @@ local Flow = {
     lineSize=10,
     space=11,
     blockStart=12,
-    blockEnd=13,
-    blockWidth=14
+    blockEnd=13
 }
 local Glue = {}
 
@@ -116,14 +117,14 @@ end)
 
 function Div:iterTokensCoro()
     coroutine.yield(Flow.newLine)
-    coroutine.yield(Flow.blockStart)
     self:iterTokensPushClass()
+    coroutine.yield(Flow.blockStart)
 
     self:iterTokensChildren()
 
-    coroutine.yield(Flow.newLine)
     coroutine.yield(Flow.blockEnd)
     self:iterTokensPopClass()
+    coroutine.yield(Flow.newLine)
 end
 
 
@@ -217,14 +218,14 @@ local function removeGlueAddWordLengths(iter)
             [Flow.glue] = function()
                 glued = true  -- setting flag and skipping this command
             end,
-            [Flow.string] = function(val)
+            [Flow.string] = function(a)
                 if not glued then  -- non-glued word boundary detected
                     prependWordSize()
-                    local idx = appendString(val)
+                    local idx = appendString(a)
                     return false, idx - 1  -- output everything except last string
                 else  -- glued case
                     glued = false  -- reset flag
-                    appendString(val)
+                    appendString(a)
                 end
             end,
             [Flow.newLine] = function()
@@ -237,17 +238,17 @@ local function removeGlueAddWordLengths(iter)
 
         return function()
             while true do
-                local cmd, val = iter()
+                local cmd, a, b = iter()
                 if cmd == nil then
                     prependWordSize()
                     return true, nil  -- finish and output everything in buffer
                 end
                 local cb = cmdSwitch[cmd]
                 if cb ~= nil then
-                    local a, b = cb(val)
-                    if a ~= nil then return a, b end
+                    local j, k = cb(a, b)
+                    if j ~= nil then return j, k end
                 else
-                    append(cmd, val)
+                    append(cmd, a, b)
                 end
             end
         end
@@ -261,16 +262,16 @@ local function pushclassAfterWordsize(iter)
     return utils.bufferingIterator(function(append, prepend)
         return function()
             while true do
-                local cmd, val = iter()
+                local cmd, a, b = iter()
                 if cmd == nil then
                     return true, nil
                 elseif cmd == Flow.pushClass then
-                    append(cmd, val)
+                    append(cmd, a, b)
                 elseif cmd == Flow.wordSize then
-                    prepend(cmd, val)
+                    prepend(cmd, a, b)
                     return false, nil
                 else
-                    append(cmd, val)
+                    append(cmd, a, b)
                     return false, nil
                 end
             end
@@ -287,21 +288,21 @@ local function classesToStyles(markupIter, defaultStyles, selectorTable)
             append(Flow.styleChange, k, v)
         end)
         local cmdSwitch = {
-            [Flow.pushClass] = function(value)
-                selectorEngine:push(value)
+            [Flow.pushClass] = function(c)
+                selectorEngine:push(c)
             end,
-            [Flow.popClass] = function(value)
+            [Flow.popClass] = function()
                 selectorEngine:pop()
             end
         }
         return function()
-            local cmd, value = markupIter()
+            local cmd, a, b = markupIter()
             if cmd == nil then return true, nil end
             local cb = cmdSwitch[cmd]
             if cb ~= nil then
-                cb(value)
+                cb(a, b)
             else
-                append(cmd, value)
+                append(cmd, a, b)
             end
             return false, nil
         end
@@ -309,13 +310,64 @@ local function classesToStyles(markupIter, defaultStyles, selectorTable)
 end
 
 
-local function blockWidthChanges(markupIter, screenWidth)
-    -- requires classesToStyles
-    -- adds Flow.blockWidth
-    return utils.bufferingIterator(function(append, prepend)
-        return function()
+local function styleTracker(props)
+    local obj = {}
+    obj.onStyleChange = function(k, v)
+        if props[k] then
+            obj[k] = v
         end
-    end)
+    end
+    return obj
+end
+
+
+local function blockContentWidths(markupIter, screenWidth)
+    -- requires classesToStyles
+    -- extends Flow.blockStart and Flow.blockEnd
+    --     Flow.blockStart, contentWidthOfThisBlock
+    --     Flow.blockEnd, contentWidthAfter
+    local widthStack = Stack()
+    widthStack:push(screenWidth)
+    local styles = styleTracker({
+        marginLeft = true,
+        marginRight = true,
+        paddingLeft = true,
+        paddingRight = true,
+        borderLeft = true,
+        borderRight = true
+    })
+    local cmdSwitch = {
+        [Flow.styleChange] = function(k, v)
+            styles.onStyleChange(k, v)
+            return Flow.styleChange, k, v
+        end,
+        [Flow.blockStart] = function()
+            widthStack:push(
+                widthStack:tip()
+                - styles.marginLeft
+                - styles.marginRight
+                - styles.paddingLeft
+                - styles.paddingRight
+                - getBorderWidth(styles.borderLeft)
+                - getBorderWidth(styles.borderRight)
+            )
+            return Flow.blockStart, widthStack:tip()  -- TODO: can be negative
+        end,
+        [Flow.blockEnd] = function()
+            widthStack:pop()
+            return Flow.blockEnd, widthStack:tip()  -- TODO: can be negative
+        end
+    }
+    return function()
+        local cmd, a, b = markupIter()
+        if cmd == nil then return end
+        local cb = cmdSwitch[cmd]
+        if cb == nil then
+            return cmd, a, b
+        else
+            return cb(a, b)
+        end
+    end
 end
 
 
@@ -716,11 +768,13 @@ return {
     testing={
         tokenDebug=tokenDebug,
         Flow=Flow,
-        removeGlueAddWordLengths=removeGlueAddWordLengths,
         squashNewLines=squashNewLines,
         removeLastNewLine=removeLastNewLine,
-        iterMarkupTokens=iterMarkupTokens,
+        removeGlueAddWordLengths=removeGlueAddWordLengths,
         classesToStyles=classesToStyles,
+        blockContentWidths=blockContentWidths,
+
+        iterMarkupTokens=iterMarkupTokens,
         splitIntoLines=splitIntoLines
     }
 }

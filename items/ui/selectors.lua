@@ -2,39 +2,48 @@ local utils = require("utils")
 
 
 local DEFAULT_STYLES = {
-    color=0xFFFFFF,
-    background=0x000000,
-    -- block paddings
-    align="left",
-    fill=" ",
-    fillcolor=0xFFFFFF,
-    -- clickable elements
-    hoverColor=0x0000FF,
-    hoverBackground=0x000000,
-    activeColor=0xFF0000,
-    activeBackground=0x000000,
-    -- block box model
-    --     empty space outside block
-    --         margins of adjacent elements collapse
-    marginLeft=0,
-    marginRight=0,
-    marginTop=0,
-    marginBottom=0,
-    --     empty space inside block
-    --         filled using "fill" and "fillcolor" properties
-    paddingLeft=0,
-    paddingRight=0,
-    paddingTop=0,
-    paddingBottom=0,
-    --     borders between paddings and margins
-    --         0/1/2: no border, single line, double line
-    borderLeft=0,
-    borderRight=0,
-    borderTop=0,
-    borderBottom=0,
-    borderColor=0xFFFFFF,
-    borderBackground=0x000000
+    -- text align
+    align="left"
 }
+do
+    -- block box model
+    for _, side in ipairs({"Left", "Right", "Top", "Bottom"}) do
+        -- empty space outside block
+        -- margins of adjacent elements collapse
+        DEFAULT_STYLES["margin" .. side] = 0
+        -- empty space inside block
+        DEFAULT_STYLES["padding" .. side] = 0
+        -- borders between paddings and margins
+        -- 0/1/2: no border, single line, double line
+        -- TODO: arbitrary fill character?
+        DEFAULT_STYLES["border" .. side] = 0
+    end
+    -- colors
+    local function addColorCategory(fg, bg, prefix)
+        local function p(sname)
+            if prefix == nil then return sname end
+            return prefix .. sname:sub(1, 1):upper() .. sname:sub(2)
+        end
+
+        DEFAULT_STYLES[p("textColor")] = fg
+        DEFAULT_STYLES[p("textBackground")] = bg
+
+        DEFAULT_STYLES[p("spaceColor")] = fg
+        DEFAULT_STYLES[p("spaceBackground")] = bg
+        DEFAULT_STYLES[p("spaceFill")] = " "
+
+        DEFAULT_STYLES[p("paddingColor")] = fg
+        DEFAULT_STYLES[p("paddingBackground")] = bg
+        DEFAULT_STYLES[p("paddingFill")] = " "
+
+        DEFAULT_STYLES[p("borderColor")] = fg
+        DEFAULT_STYLES[p("borderBackground")] = bg
+    end
+
+    addColorCategory(0xFFFFFF, 0x000000, nil)
+    addColorCategory(0x0000FF, 0x000000, "hover")
+    addColorCategory(0xFF0000, 0x000000, "active")
+end
 
 
 local function makeDefaultStyles(s)

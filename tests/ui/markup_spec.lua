@@ -31,6 +31,17 @@ local function makeIterTestable(f)
 end
 
 
+local function stripToken(iter, token)
+    return function()
+        while true do
+            local cmd, a, b = iter()
+            if cmd == nil then return end
+            if token ~= cmd then return cmd, a, b end
+        end
+    end
+end
+
+
 describe("Markup tokenizer", function()
     describe("squashNewLines", function()
         local f = makeIterTestable(mod.testing.squashNewLines)
@@ -307,8 +318,45 @@ describe("Markup tokenizer", function()
             }))
         end)
     end)
-    -- describe("", function()
-    -- end)
+    describe("blockContentWidths", function()
+        local selectorTable = {
+            mod.Selector({"main"}, {marginLeft=3})
+        }
+        local f = function(tokens)
+            return accumulate(
+                stripToken(
+                    mod.testing.blockContentWidths(
+                        mod.testing.classesToStyles(
+                            iterArrayValues(tokens), {}, selectorTable
+                        ),
+                        10
+                    ),
+                    Flow.styleChange
+                )
+            )
+        end
+
+        it("uses screen width as default", function()
+            assert.are_same({
+                {Flow.blockStart, 10},
+                {Flow.blockEnd, 10}
+            }, f({
+                {Flow.blockStart},
+                {Flow.blockEnd}
+            }))
+        end)
+        it("uses narrows width on margin", function()
+            assert.are_same({
+                {Flow.blockStart, 7},
+                {Flow.blockEnd, 10}
+            }, f({
+                {Flow.pushClass, "main"},
+                {Flow.blockStart},
+                {Flow.blockEnd},
+                {Flow.popClass}
+            }))
+        end)
+    end)
     describe("splitIntoLines", function()
         local f = function(tokens)
             return accumulate(mod.testing.splitIntoLines(
