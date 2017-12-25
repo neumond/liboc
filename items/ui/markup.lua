@@ -4,23 +4,26 @@ local Stack = require("lib.stack").Stack
 local getBorderWidth = require("ui.borders").getBorderWidth
 local Flow = {}
 do
-    local i = 0
-    local function add(k)
-        i = i + 1
-        Flow[k] = i
+    local function makeEnumeration(items)
+        local result = {}
+        for i, k in ipairs(items) do
+            result[k] = i
+        end
+        return result
     end
-    add("string")
-    add("glue")
-    add("pushClass")
-    add("popClass")
-    add("wordSize")
-    add("lineSize")
-    add("startControl")
-    add("endControl")
-    add("styleChange")
-    add("space")
-    add("blockStart")
-    add("blockEnd")
+    Flow = makeEnumeration{
+        "string", "glue",
+        "pushClass", "popClass",
+        "wordSize", "lineSize",
+        "inlineCtrlStart", "inlineCtrlEnd",
+        "blockCtrlStart", "blockCtrlEnd",
+        "styleChange",
+        "space",
+        "blockStart", "blockEnd",
+        -- gpu tokens
+        "gpuColor", "gpuBackground",
+        "gpuFill", "gpuSet"
+    }
 end
 local Glue = {}
 
@@ -61,9 +64,6 @@ function Element:iterTokensPushClass()
     if self.className ~= nil then
         coroutine.yield(Flow.pushClass, self.className)
     end
-    if self.clickCallback ~= nil then
-        coroutine.yield(Flow.startControl, self.clickCallback)
-    end
 end
 
 
@@ -73,6 +73,13 @@ function Element:iterTokensPopClass()
     end
     if self.className ~= nil then
         coroutine.yield(Flow.popClass)
+    end
+end
+
+
+function Element:iterTokensControl(token)
+    if self.clickCallback ~= nil then
+        coroutine.yield(token, self.clickCallback)
     end
 end
 
@@ -91,9 +98,7 @@ end
 
 
 function Element:iterTokensCoro()
-    self:iterTokensPushClass()
-    self:iterTokensChildren()
-    self:iterTokensPopClass()
+    error("Not implemented")
 end
 
 
@@ -111,6 +116,17 @@ local Span = utils.makeClass(Element, function(super, ...)
 end)
 
 
+function Span:iterTokensCoro()
+    self:iterTokensPushClass()
+    self:iterTokensControl(Flow.inlineCtrlStart)
+
+    self:iterTokensChildren()
+
+    self:iterTokensControl(Flow.inlineCtrlEnd)
+    self:iterTokensPopClass()
+end
+
+
 -- Div takes all the horizontal space available
 -- consequent Divs always start from a new line
 
@@ -122,11 +138,13 @@ end)
 
 function Div:iterTokensCoro()
     self:iterTokensPushClass()
+    self:iterTokensControl(Flow.blockCtrlStart)
     coroutine.yield(Flow.blockStart)
 
     self:iterTokensChildren()
 
     coroutine.yield(Flow.blockEnd)
+    self:iterTokensControl(Flow.blockCtrlEnd)
     self:iterTokensPopClass()
 end
 
@@ -269,7 +287,7 @@ end
 local function styleTracker(props)
     local obj = {}
     obj.onStyleChange = function(k, v)
-        if props[k] then
+        if props == nil or props[k] then
             obj[k] = v
         end
     end
@@ -416,7 +434,112 @@ local function splitIntoLines(markupIter, screenWidth)
 end
 
 
-local function generatePaddings()
+-- TODO: margin collapsing
+
+
+local function renderBlock(markupIter, fillerStack, result)
+    -- for every block render
+    -- 1. top margin
+    -- 2. top border
+    -- 3. top padding
+    -- 4. content lines, inner blocks
+    -- 5. bottom padding
+    -- 6. bottom border
+    -- 7. bottom margin
+
+    local parentStyles = fillerStack:tip()
+
+
+
+    "gpuColor", "gpuBackground",
+    "gpuFill", "gpuSet"
+
+    repeat
+        local cmd, a, b = markupIter()
+        if cmd == nil then return end
+        local cb = cmdSwitch[cmd]
+        if cb == nil then
+            append(cmd, a, b)
+        else
+            cb(a, b)
+        end
+    until cmd == Flow.blockEnd
+end
+
+
+local function renderToGpuLines(markupIter, screenWidth)
+    -- requires splitIntoLines
+    -- outputs lines with gpu commands
+    return utils.bufferingIterator(function(append, prepend)
+        local fillerStack = Stack()
+        local styleStack = Stack()
+
+        local parentStyles = {}
+        local styles = styleTracker()
+
+        local function renderMarginLine()
+            newLine()
+            renderFillers()
+            append(Flow.gpuColor, parentStyles.paddingColor)
+            append(Flow.gpuBackground, parentStyles.paddingBackground)
+            append(Flow.gpuFill, 1, width, parentStyles.paddingFill)
+        end
+
+        local function renderBorderLine()
+            newLine()
+            renderFillers()
+            append(Flow.gpuColor, styles.borderColor)
+            append(Flow.gpuBackground, styles.borderBackground)
+            append(Flow.gpuFill, 1, width, styles.borderFill)
+        end
+
+        local function renderPaddingLine()
+            newLine()
+            renderFillers()
+            append(Flow.gpuColor, styles.paddingColor)
+            append(Flow.gpuBackground, styles.paddingBackground)
+            append(Flow.gpuFill, 1, width, styles.paddingFill)
+        end
+
+        local cmdSwitch = {
+            [Flow.styleChange] = function(k, v)
+                styles.onStyleChange(k, v)
+            end,
+            [Flow.blockStart] = function(w)
+                for i=1,marginTop do
+                    renderMarginLine()
+                end
+                -- fillerStack:push({
+                --     Flow.
+                -- })
+                renderBorderLine()
+                for i=1,paddingTop do
+                    renderPaddingLine()
+                end
+            end,
+            [Flow.blockEnd] = function(w)
+                for i=1,paddingBottom do
+                    renderPaddingLine()
+                end
+                renderBorderLine()
+                for i=1,marginBottom do
+                    renderMarginLine()
+                end
+
+                leftFillers:pop()
+                rightFillers:pop()
+            end,
+            [Flow.lineSize] = function(lineWidth, spaceCount)
+            end,
+            [Flow.string] = function(s)
+            end,
+            [Flow.space] = function()
+            end
+        }
+
+        return function()
+        end
+    end)
 end
 
 
