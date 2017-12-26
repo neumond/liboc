@@ -58,20 +58,21 @@ function M.bufferingIterator(createIter)
         return back
     end
 
-    local function flushedAll() return flushUntil < back end
+    local function flushedAll() return back > flushUntil end
 
     local iter = createIter(append, prepend)
     return function()
-        if flushedAll() then
-            if finish then return nil end
-            finish, flushUntil = iter()
-            if flushUntil == nil then flushUntil = front end
-            if finish and flushedAll() then return nil end
+        while not (finish and flushedAll()) do
+            if flushedAll() then
+                finish, flushUntil = iter()
+                if flushUntil == nil then flushUntil = front end
+            else
+                local value = buf[back]
+                buf[back] = nil
+                back = back + 1
+                return table.unpack(value)
+            end
         end
-        local value = buf[back]
-        buf[back] = nil
-        back = back + 1
-        return table.unpack(value)
     end
 end
 

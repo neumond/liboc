@@ -120,4 +120,20 @@ describe("bufferingIterator", function()
             23, 13, 3, 103
         })
     end)
+    it("handles lack of append calls", function()
+        local t = accumulate(b(function(append, prepend)
+            local i = 0
+            return function()
+                i = i + 1
+                if i > 3 then return true, nil end
+                if i ~= 2 then
+                    append(i)
+                end
+                return false, nil
+            end
+        end))
+        assert.are_same(t, {
+            1, 3
+        })
+    end)
 end)

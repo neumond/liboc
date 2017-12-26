@@ -1,7 +1,7 @@
 require("busted.runner")()
 local utils = require("utils")
 local mod = require("ui.markup")
-local DEFAULT_STYLES = require("ui.selectors").testing.DEFAULT_STYLES
+local DEFAULT_STYLES = require("ui.selectors").DEFAULT_STYLES
 local Flow = mod.testing.Flow
 
 
@@ -24,6 +24,64 @@ local function accumulate(iter)
 end
 
 
+local function strReplace(line, pos, text)
+    assert(pos > 0)
+    local len = utils.strlen(text)
+    return (
+        utils.strsub(line, 1, pos - 1) ..
+        text ..
+        utils.strsub(line, pos + len)
+    )
+end
+
+
+local function render(iter, screenWidth, colorBox)
+    local textLines = {}
+    local colorLines = {}
+    local backgroundLines = {}
+
+    local currentLine = 0
+    local currentColor = "X"
+    local currentBackground = "X"
+
+    local function pickColor(color)
+        local r = colorBox[color]
+        if r == nil then r = "X" end
+        return r
+
+    end
+
+    local function replace(pos, text)
+        local len = utils.strlen(text)
+        textLines[currentLine] = strReplace(
+            textLines[currentLine], pos, text)
+        colorLines[currentLine] = strReplace(
+            colorLines[currentLine], pos, string.rep(currentColor, len))
+        backgroundLines[currentLine] = strReplace(
+            backgroundLines[currentLine], pos, string.rep(currentBackground, len))
+    end
+
+    for cmd, a, b, c in iter do
+        if cmd == Flow.gpuNewLine then
+            currentLine = currentLine + 1
+            textLines[currentLine] = string.rep(" ", screenWidth)
+            colorLines[currentLine] = string.rep(" ", screenWidth)
+            backgroundLines[currentLine] = string.rep(" ", screenWidth)
+        elseif cmd == Flow.gpuSet then
+            replace(a, b)
+        elseif cmd == Flow.gpuFill then
+            replace(a, string.rep(c, b))
+        elseif cmd == Flow.gpuColor then
+            currentColor = pickColor(a)
+        elseif cmd == Flow.gpuBackground then
+            currentBackground = pickColor(a)
+        end
+    end
+
+    return {text=textLines, color=colorLines, background=backgroundLines}
+end
+
+
 local function makeIterTestable(f)
     return function(items)
         return accumulate(f(iterArrayValues(items)))
@@ -43,6 +101,12 @@ end
 
 
 describe("Markup tokenizer", function()
+    describe("test utils", function()
+        it("strReplace", function()
+            assert.are_equal("aaafffccc", strReplace("aaabbbccc", 4, "fff"))
+            assert.are_equal("faabbbccc", strReplace("aaabbbccc", 1, "f"))
+        end)
+    end)
     describe("removeGlueAddWordLengths", function()
         local f = makeIterTestable(mod.testing.removeGlueAddWordLengths)
 
@@ -213,9 +277,7 @@ describe("Markup tokenizer", function()
         it("glues two words with other tokens in the middle", function()
             for _, flowcode in ipairs({
                 {Flow.pushClass, "x"},
-                {Flow.popClass},
-                {Flow.startControl},
-                {Flow.endControl}
+                {Flow.popClass}
             }) do
                 local expected = {
                     {Flow.wordSize, 8},
@@ -285,9 +347,21 @@ describe("Markup tokenizer", function()
         local selectorTable = {
             mod.Selector({"main"}, {marginLeft=3})
         }
+        local function refineResult(iter)
+            return function()
+                local cmd, a, b = iter()
+                if cmd == Flow.blockStart then
+                    return Flow.blockStart, a.contentWidth
+                elseif cmd == Flow.blockEnd then
+                    return Flow.blockEnd, a.contentWidth
+                else
+                    return cmd, a, b
+                end
+            end
+        end
         local f = function(tokens)
             return accumulate(
-                stripToken(
+                refineResult(stripToken(
                     mod.testing.blockContentWidths(
                         mod.testing.classesToStyles(
                             iterArrayValues(tokens), {}, selectorTable
@@ -295,7 +369,7 @@ describe("Markup tokenizer", function()
                         10
                     ),
                     Flow.styleChange
-                )
+                ))
             )
         end
 
@@ -331,21 +405,21 @@ describe("Markup tokenizer", function()
             assert.are_same({
                 {Flow.lineSize, 4, 0},
                 {Flow.string, "abcd"},
-                {Flow.blockStart, 10},
+                {Flow.blockStart, {contentWidth=10}},
                 {Flow.lineSize, 5, 1},
                 {Flow.string, "aa"},
                 {Flow.space},
                 {Flow.string, "bb"},
-                {Flow.blockEnd, 10}
+                {Flow.blockEnd, {contentWidth=10}}
             }, f({
                 {Flow.wordSize, 4},
                 {Flow.string, "abcd"},
-                {Flow.blockStart, 10},
+                {Flow.blockStart, {contentWidth=10}},
                 {Flow.wordSize, 2},
                 {Flow.string, "aa"},
                 {Flow.wordSize, 2},
                 {Flow.string, "bb"},
-                {Flow.blockEnd, 10}
+                {Flow.blockEnd, {contentWidth=10}}
             }))
         end)
         it("splits long lines", function()
@@ -373,22 +447,84 @@ describe("Markup tokenizer", function()
             assert.are_same({
                 {Flow.lineSize, 10, 0},
                 {Flow.string, "exception…"},
-                {Flow.blockStart, 3},
+                {Flow.blockStart, {contentWidth=3}},
                 {Flow.lineSize, 3, 0},
                 {Flow.string, "ex…"},
-                {Flow.blockEnd, 10},
+                {Flow.blockEnd, {contentWidth=10}},
                 {Flow.lineSize, 10, 0},
                 {Flow.string, "exception…"}
             }, f({
                 {Flow.wordSize, 17},
                 {Flow.string, "exceptionallylong"},
-                {Flow.blockStart, 3},
+                {Flow.blockStart, {contentWidth=3}},
                 {Flow.wordSize, 17},
                 {Flow.string, "exceptionallylong"},
-                {Flow.blockEnd, 10},
+                {Flow.blockEnd, {contentWidth=10}},
                 {Flow.wordSize, 17},
                 {Flow.string, "exceptionallylong"}
             }))
+        end)
+    end)
+
+    describe("renderToGpuLines", function()
+        local screenWidth = 10
+        local f = function(tokens)
+            return render(
+                mod.testing.renderToGpuLines(
+                    iterArrayValues(tokens), screenWidth
+                ),
+                screenWidth,
+                {
+                    [0x000000]="B",
+                    [0xFFFFFF]="W"
+                }
+            )
+        end
+        local makeBox = function(props)
+            local box = mod.testing.makeDefaultBox(screenWidth)
+            for k, v in pairs(props) do
+                box[k] = v
+            end
+            return box
+        end
+
+        it("works", function()
+            assert.are_same({
+                "abcde     "
+            }, f{
+                {Flow.lineSize, 5, 0},
+                {Flow.string, "abcde"}
+            }.text)
+        end)
+        it("handles single block", function()
+            assert.are_same({
+                "abcde     "
+            }, f{
+                {Flow.blockStart, makeBox{}},
+                {Flow.lineSize, 5, 0},
+                {Flow.string, "abcde"},
+                {Flow.blockEnd, makeBox{}}
+            }.text)
+        end)
+        it("handles several blocks", function()
+            assert.are_same({
+                "abcde     ",
+                "interblock",
+                "hi bye    "
+            }, f{
+                {Flow.blockStart, makeBox{}},
+                {Flow.lineSize, 5, 0},
+                {Flow.string, "abcde"},
+                {Flow.blockEnd, makeBox{}},
+                {Flow.lineSize, 10, 0},
+                {Flow.string, "interblock"},
+                {Flow.blockStart, makeBox{}},
+                {Flow.lineSize, 6, 0},
+                {Flow.string, "hi"},
+                {Flow.space},
+                {Flow.string, "bye"},
+                {Flow.blockEnd, makeBox{}},
+            }.text)
         end)
     end)
 

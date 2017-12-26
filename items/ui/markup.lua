@@ -1,7 +1,8 @@
 local utils = require("utils")
 local selectorModule = require("ui.selectors")
 local Stack = require("lib.stack").Stack
-local getBorderWidth = require("ui.borders").getBorderWidth
+local getBorderWidth = require("ui.borders").getBorderWidth  -- TODO: need?
+local boxModule = require("ui.boxModel")
 local Flow = {}
 do
     local function makeEnumeration(items)
@@ -22,7 +23,8 @@ do
         "blockStart", "blockEnd",
         -- gpu tokens
         "gpuColor", "gpuBackground",
-        "gpuFill", "gpuSet"
+        "gpuFill", "gpuSet",
+        "gpuNewLine"
     }
 end
 local Glue = {}
@@ -285,7 +287,7 @@ end
 
 
 local function styleTracker(props)
-    local obj = {}
+    local obj = utils.copyTable(selectorModule.DEFAULT_STYLES)
     obj.onStyleChange = function(k, v)
         if props == nil or props[k] then
             obj[k] = v
@@ -295,52 +297,45 @@ local function styleTracker(props)
 end
 
 
+local function makeDefaultBox(screenWidth)
+    return boxModule.makeBox(selectorModule.DEFAULT_STYLES, screenWidth)
+end
+
+
 local function blockContentWidths(markupIter, screenWidth)
     -- requires classesToStyles
     -- extends Flow.blockStart and Flow.blockEnd
-    --     Flow.blockStart, contentWidthOfThisBlock
-    --     Flow.blockEnd, contentWidthAfter
-    local widthStack = Stack()
-    widthStack:push(screenWidth)
-    local styles = styleTracker({
-        marginLeft = true,
-        marginRight = true,
-        paddingLeft = true,
-        paddingRight = true,
-        borderLeft = true,
-        borderRight = true
-    })
+    --     Flow.blockStart, {margin*, padding*, border*, contentWidth}
+    -- TODO: contentWidth can be negative
+
+    local blockStack = Stack()
+    blockStack:push(makeDefaultBox(screenWidth))
+    local styles = styleTracker(boxModule.trackerConfig)
+
     local cmdSwitch = {
         [Flow.styleChange] = function(k, v)
             styles.onStyleChange(k, v)
             return Flow.styleChange, k, v
         end,
         [Flow.blockStart] = function()
-            widthStack:push(
-                widthStack:tip()
-                - styles.marginLeft
-                - styles.marginRight
-                - styles.paddingLeft
-                - styles.paddingRight
-                - getBorderWidth(styles.borderLeft)
-                - getBorderWidth(styles.borderRight)
-            )
-            return Flow.blockStart, widthStack:tip()  -- TODO: can be negative
+            blockStack:push(boxModule.makeBox(
+                styles, blockStack:tip().contentWidth
+            ))
+            return Flow.blockStart, blockStack:tip()
         end,
         [Flow.blockEnd] = function()
-            widthStack:pop()
-            return Flow.blockEnd, widthStack:tip()  -- TODO: can be negative
+            blockStack:pop()
+            return Flow.blockEnd, blockStack:tip()
         end
     }
     return function()
         local cmd, a, b = markupIter()
         if cmd == nil then return end
         local cb = cmdSwitch[cmd]
-        if cb == nil then
-            return cmd, a, b
-        else
+        if cb ~= nil then
             return cb(a, b)
         end
+        return cmd, a, b
     end
 end
 
@@ -372,11 +367,11 @@ local function splitIntoLines(markupIter, screenWidth)
             end
         end
 
-        local function handleBlockBound(token, newWidth)
+        local function handleBlockBound(token, box)
             finishLine()
             needPreSpace = false
-            screenWidth = newWidth
-            append(token, newWidth)
+            screenWidth = box.contentWidth
+            append(token, box)
             -- we can safely flush since block bound always breaks a line
             lineNeedsFlush = true
         end
@@ -405,11 +400,11 @@ local function splitIntoLines(markupIter, screenWidth)
                 end
                 needPreSpace = true
             end,
-            [Flow.blockStart] = function(w)
-                handleBlockBound(Flow.blockStart, w)
+            [Flow.blockStart] = function(box)
+                handleBlockBound(Flow.blockStart, box)
             end,
-            [Flow.blockEnd] = function(w)
-                handleBlockBound(Flow.blockEnd, w)
+            [Flow.blockEnd] = function(box)
+                handleBlockBound(Flow.blockEnd, box)
             end
         }
 
@@ -437,34 +432,34 @@ end
 -- TODO: margin collapsing
 
 
-local function renderBlock(markupIter, fillerStack, result)
-    -- for every block render
-    -- 1. top margin
-    -- 2. top border
-    -- 3. top padding
-    -- 4. content lines, inner blocks
-    -- 5. bottom padding
-    -- 6. bottom border
-    -- 7. bottom margin
-
-    local parentStyles = fillerStack:tip()
-
-
-
-    "gpuColor", "gpuBackground",
-    "gpuFill", "gpuSet"
-
-    repeat
-        local cmd, a, b = markupIter()
-        if cmd == nil then return end
-        local cb = cmdSwitch[cmd]
-        if cb == nil then
-            append(cmd, a, b)
-        else
-            cb(a, b)
-        end
-    until cmd == Flow.blockEnd
+local function textCenterPad(pad)
+    return pad // 2
 end
+
+local function textStartingX(align, pad)
+    local x = 0
+    if align == "right" then
+        x = pad
+    elseif align == "center" then
+        x = textCenterPad(pad)
+    end
+    return x
+end
+
+local textPaddingSwitch = {
+    left=function(w, pad, cmdAppend)
+        cmdAppend(w + 1, pad)
+    end,
+    right=function(w, pad, cmdAppend)
+        cmdAppend(1, pad)
+    end,
+    center=function(w, pad, cmdAppend)
+        local centerPad = textCenterPad(pad)
+        if centerPad > 0 then cmdAppend(1, centerPad) end
+        centerPad = pad - centerPad
+        if centerPad > 0 then cmdAppend(w + 1, centerPad) end
+    end
+}
 
 
 local function renderToGpuLines(markupIter, screenWidth)
@@ -472,72 +467,144 @@ local function renderToGpuLines(markupIter, screenWidth)
     -- outputs lines with gpu commands
     return utils.bufferingIterator(function(append, prepend)
         local fillerStack = Stack()
+        local boxStack = Stack()
         local styleStack = Stack()
-
-        local parentStyles = {}
         local styles = styleTracker()
+        local leftFillerWidth = 0
+        local rightFillerWidth = 0
+        local textPos
 
-        local function renderMarginLine()
-            newLine()
-            renderFillers()
-            append(Flow.gpuColor, parentStyles.paddingColor)
-            append(Flow.gpuBackground, parentStyles.paddingBackground)
-            append(Flow.gpuFill, 1, width, parentStyles.paddingFill)
+        boxStack:push(makeDefaultBox(screenWidth))
+        styleStack:push(utils.copyTable(selectorModule.DEFAULT_STYLES))
+
+        local function pushBox(box)
+            boxStack:push(box)
+            styleStack:push(utils.copyTable(styles))
+        end
+
+        local function popBox()
+            boxStack:pop()
+            styleStack:pop()
+        end
+
+        local function pushFiller(color, background, fill, leftWidth, rightWidth)
+            fillerStack:push({
+                color=color,
+                background=background,
+                fill=fill,
+                leftWidth=leftWidth,
+                rightWidth=rightWidth
+            })
+            leftFillerWidth = leftFillerWidth + leftWidth
+            rightFillerWidth = rightFillerWidth + rightWidth
+        end
+
+        local function popFiller()
+            local f = fillerStack:pop()
+            leftFillerWidth = leftFillerWidth - f.leftWidth
+            rightFillerWidth = rightFillerWidth - f.rightWidth
+        end
+
+        local function newLine()
+            append(Flow.gpuNewLine)
+            -- Rendering fillers
+            local left = 1
+            local right = screenWidth + 1
+            for _, f in fillerStack:iterFromBottom() do
+                right = right - f.rightWidth
+                append(Flow.gpuColor, f.color)
+                append(Flow.gpuBackground, f.background)
+                if f.leftWidth > 0 then
+                    append(Flow.gpuFill, left, f.leftWidth, f.fill)
+                end
+                if f.rightWidth > 0 then
+                    append(Flow.gpuFill, right, f.rightWidth, f.fill)
+                end
+                left = left + f.leftWidth
+            end
+            -- Returning content gap
+            return leftFillerWidth + 1, screenWidth - rightFillerWidth - leftFillerWidth
         end
 
         local function renderBorderLine()
-            newLine()
-            renderFillers()
-            append(Flow.gpuColor, styles.borderColor)
-            append(Flow.gpuBackground, styles.borderBackground)
-            append(Flow.gpuFill, 1, width, styles.borderFill)
+            local s = styleStack:tip()
+            local pos, width = newLine()
+            append(Flow.gpuColor, s.borderColor)
+            append(Flow.gpuBackground, s.borderBackground)
+            append(Flow.gpuFill, pos, width, "-")  -- TODO:
         end
 
         local function renderPaddingLine()
-            newLine()
-            renderFillers()
-            append(Flow.gpuColor, styles.paddingColor)
-            append(Flow.gpuBackground, styles.paddingBackground)
-            append(Flow.gpuFill, 1, width, styles.paddingFill)
+            local s = styleStack:tip()
+            local b = boxStack:tip()
+            local pos, width = newLine()
+            append(Flow.gpuColor, s.paddingColor)
+            append(Flow.gpuBackground, s.paddingBackground)
+            append(Flow.gpuFill, pos, width, s.paddingFill)
         end
 
         local cmdSwitch = {
             [Flow.styleChange] = function(k, v)
                 styles.onStyleChange(k, v)
             end,
-            [Flow.blockStart] = function(w)
-                for i=1,marginTop do
-                    renderMarginLine()
-                end
-                -- fillerStack:push({
-                --     Flow.
-                -- })
-                renderBorderLine()
-                for i=1,paddingTop do
-                    renderPaddingLine()
-                end
+            [Flow.blockStart] = function(box)
+                local parStyles = styleStack:tip()
+                for i=1,box.marginTop do renderPaddingLine() end
+                pushFiller(
+                    parStyles.paddingColor, parStyles.paddingBackground, parStyles.paddingFill,
+                    box.marginLeft, box.marginRight)
+                pushBox(box)
+                for i=1,box.borderTop do renderBorderLine() end
+                pushFiller(
+                    styles.borderColor, styles.borderBackground, "|",  -- TODO: filler
+                    box.borderLeft, box.borderRight)
+                for i=1,box.paddingTop do renderPaddingLine() end
+                pushFiller(
+                    styles.paddingColor, styles.paddingBackground, styles.paddingFill,
+                    box.paddingLeft, box.paddingRight)
             end,
-            [Flow.blockEnd] = function(w)
-                for i=1,paddingBottom do
-                    renderPaddingLine()
-                end
-                renderBorderLine()
-                for i=1,marginBottom do
-                    renderMarginLine()
-                end
-
-                leftFillers:pop()
-                rightFillers:pop()
+            [Flow.blockEnd] = function()
+                local box = boxStack:tip()
+                popFiller()
+                for i=1,box.paddingBottom do renderPaddingLine() end
+                popFiller()
+                for i=1,box.borderBottom do renderBorderLine() end
+                popBox()
+                popFiller()
+                for i=1,box.marginBottom do renderPaddingLine() end
             end,
             [Flow.lineSize] = function(lineWidth, spaceCount)
+                local bs = styleStack:tip()
+                local pos, width = newLine()
+                local pad = width - lineWidth
+                textPos = textStartingX(bs.align, pad) + 1
+                append(Flow.gpuColor, styles.paddingColor)
+                append(Flow.gpuBackground, styles.paddingBackground)
+                textPaddingSwitch[bs.align](lineWidth, pad, function(x, w)
+                    append(Flow.gpuFill, pos + x - 1, w, styles.paddingFill)
+                end)
             end,
-            [Flow.string] = function(s)
+            [Flow.string] = function(str)
+                append(Flow.gpuColor, styles.textColor)
+                append(Flow.gpuBackground, styles.textBackground)
+                append(Flow.gpuSet, textPos, str)
+                textPos = textPos + utils.strlen(str)
             end,
             [Flow.space] = function()
+                local spaceWidth = 1
+                append(Flow.gpuColor, styles.spaceColor)
+                append(Flow.gpuBackground, styles.spaceBackground)
+                append(Flow.gpuFill, textPos, spaceWidth, styles.spaceFill)
+                textPos = textPos + spaceWidth
             end
         }
 
         return function()
+            local cmd, a, b = markupIter()
+            if cmd == nil then return true, nil end
+            local cb = cmdSwitch[cmd]
+            if cb ~= nil then cb(a, b) end
+            return false, nil
         end
     end)
 end
@@ -867,8 +934,10 @@ return {
         removeGlueAddWordLengths=removeGlueAddWordLengths,
         classesToStyles=classesToStyles,
         blockContentWidths=blockContentWidths,
+        splitIntoLines=splitIntoLines,
+        renderToGpuLines=renderToGpuLines,
+        makeDefaultBox=makeDefaultBox,
 
-        iterMarkupTokens=iterMarkupTokens,
-        splitIntoLines=splitIntoLines
+        iterMarkupTokens=iterMarkupTokens
     }
 }
