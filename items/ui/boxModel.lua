@@ -1,4 +1,4 @@
-local getBorderWidth = require("ui.borders").getBorderWidth
+local borderMod = require("ui.borders")
 
 
 local trackerConfig = {}
@@ -23,7 +23,7 @@ local function copyBoxStyles(styles)
         box[k] = styles[k]
     end
     for k, _ in pairs(borderCopyMap) do
-        box[k] = getBorderWidth(styles[k])
+        box[k] = borderMod.getBorderWidth(styles[k])
     end
     return box
 end
@@ -44,6 +44,9 @@ end
 local function makeBox(styles, screenWidth)
     local box = copyBoxStyles(styles)
     box.contentWidth = screenWidth - boxShrink(box)
+    box.borderChars = borderMod.getBorderFillChars(
+        styles.borderTop, styles.borderRight,
+        styles.borderBottom, styles.borderLeft)
     return box
 end
 

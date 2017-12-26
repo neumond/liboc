@@ -1,6 +1,11 @@
 local M = {}
 
 
+function M.isInGame()
+    return _OSVERSION ~= nil
+end
+
+
 function M.copyTable(t)
     local r = {}
     for k, v in pairs(t) do
@@ -27,16 +32,17 @@ function M.removeFromArray(a, val)
 end
 
 
-function M.strlen(s)
-    -- TODO: intended to be replaced by unicode version
-    return #s
+if M.isInGame() then
+    M.string = require("unicode")
+else
+    M.string = require("lua-utf8")
 end
 
 
-function M.strsub(s, from, to)
-    -- TODO: intended to be replaced by unicode version
-    return string.sub(s, from, to)
-end
+-- compatibility
+-- TODO: remove
+M.strlen = M.string.len
+M.strsub = M.string.sub
 
 
 function M.bufferingIterator(createIter)

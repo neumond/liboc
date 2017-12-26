@@ -2,10 +2,87 @@ local utils = require("utils")
 
 
 local BorderTypes = {
-    [0]={width=0, h=" ", v=" "},
-    [1]={width=1, h="─", v="│"},
-    [2]={width=1, h="═", v="║"}
+    [0]={width=0, h=" ", v=" "}
 }
+local jointTable = {}
+local edges = {}
+
+do
+    local hLines = "─═"
+    local vLines = "│║"
+    for i=1,2 do
+        BorderTypes[i] = {
+            width=1,
+            h=utils.strsub(hLines, i, i),
+            v=utils.strsub(vLines, i, i)
+        }
+    end
+
+    local function enst(t, k)
+        if t[k] == nil then
+            t[k] = {}
+        end
+    end
+
+    local function rowcolIdx(row, col)
+        return row * 3 - 3 + col
+    end
+
+    local function cdist(row, col)
+        return math.abs(2 - row) + math.abs(2 - col)
+    end
+
+    local function registerJoints(hChar, vChar, corners)
+        local function attack(targetChar, row, col, maxCDist, byChar, side)
+            if (row < 1) or (row > 3) then return end
+            if (col < 1) or (col > 3) then return end
+            if cdist(row, col) > maxCDist then return end
+            local idx = rowcolIdx(row, col)
+            local becomesChar = utils.strsub(corners, idx, idx)
+
+            enst(jointTable, targetChar)
+            enst(jointTable[targetChar], byChar)
+            jointTable[targetChar][byChar][side] = becomesChar
+        end
+
+        attack(vChar, 2, 3, 100, hChar, "left")
+        attack(vChar, 2, 1, 100, hChar, "right")
+        attack(hChar, 3, 2, 100, vChar, "up")
+        attack(hChar, 1, 2, 100, vChar, "down")
+        for row=1,3 do
+            for col=1,3 do
+                local target = rowcolIdx(row, col)
+                local mc = cdist(row, col)
+                local targetChar = utils.strsub(corners, target, target)
+                attack(targetChar, row, col + 1, mc, hChar, "left")
+                attack(targetChar, row, col - 1, mc, hChar, "right")
+                attack(targetChar, row + 1, col, mc, vChar, "up")
+                attack(targetChar, row - 1, col, mc, vChar, "down")
+            end
+        end
+
+        edges[hChar .. vChar] = {
+            utils.strsub(corners, 1, 1),
+            utils.strsub(corners, 3, 3),
+            utils.strsub(corners, 7, 7),
+            utils.strsub(corners, 9, 9)
+        }
+    end
+    registerJoints("─", "│", "┌┬┐├┼┤└┴┘")
+    registerJoints("═", "│", "╒╤╕╞╪╡╘╧╛")
+    registerJoints("─", "║", "╓╥╖╟╫╢╙╨╜")
+    registerJoints("═", "║", "╔╦╗╠╬╣╚╩╝")
+    -- print(require("inspect")(jointTable))
+
+    edges["─ "] = {"─", "─", "─", "─"}
+    edges["═ "] = {"═", "═", "═", "═"}
+    edges[" │"] = {"│", "│", "│", "│"}
+    edges[" ║"] = {"║", "║", "║", "║"}
+    edges["  "] = {" ", " ", " ", " "}
+end
+
+
+-- border types
 
 
 local function getBorderType(borderType)
@@ -22,7 +99,26 @@ local function getBorderWidth(borderType)
 end
 
 
+local function getBorderFillChars(up, right, down, left)
+    up = getBorderType(up)
+    right = getBorderType(right)
+    down = getBorderType(down)
+    left = getBorderType(left)
+    return {
+        up = up.h,
+        down = down.h,
+        left = left.v,
+        right = right.v,
+        upLeft = edges[up.h .. left.v][1],
+        upRight = edges[up.h .. right.v][2],
+        downLeft = edges[down.h .. left.v][3],
+        downRight = edges[down.h .. right.v][4]
+    }
+end
+
+
 -- BRProxy
+-- TODO: need?
 
 
 local BRProxy = utils.makeClass(function(self, br, x, y)
@@ -62,49 +158,6 @@ local BorderRenderer = utils.makeClass(function(self)
     self.Vjoints = {}
     self:setBorderType(0)
 end)
-
-
-local lineTable = "─═│║"
-local cornerTable = {
-    "┌┬┐ ╔╦╗ ╓╥╖ ╒╤╕",
-    "├┼┤ ╠╬╣ ╟╫╢ ╞╪╡",
-    "└┴┘ ╚╩╝ ╙╨╜ ╘╧╛"
-}
-BorderRenderer.jointTable = {
-    ["│"]={
-        ["─"]={left="┤", right="├"},
-        ["═"]={left="╡", right="╞"}
-    },
-    ["║"]={
-        ["─"]={left="╢", right="╟"},
-        ["═"]={left="╣", right="╠"}
-    },
-    ["┤"]={["─"]={right="┼"}},
-    ["├"]={["─"]={left="┼"}},
-    ["╡"]={["═"]={right="╪"}},
-    ["╞"]={["═"]={left="╪"}},
-    ["╢"]={["─"]={right="╫"}},
-    ["╟"]={["─"]={left="╫"}},
-    ["╣"]={["═"]={right="╬"}},
-    ["╠"]={["═"]={left="╬"}},
-
-    ["─"]={
-        ["│"]={up="┴", down="┬"},
-        ["║"]={up="╨", down="╥"}
-    },
-    ["═"]={
-        ["│"]={up="╧", down="╤"},
-        ["║"]={up="╩", down="╦"}
-    },
-    ["┴"]={["│"]={down="┼"}},
-    ["┬"]={["│"]={up="┼"}},
-    ["╨"]={["║"]={down="╫"}},
-    ["╥"]={["║"]={up="╫"}},
-    ["╧"]={["│"]={down="╪"}},
-    ["╤"]={["│"]={up="╪"}},
-    ["╩"]={["║"]={down="╬"}},
-    ["╦"]={["║"]={up="╬"}}
-}
 
 
 local function isNumber(v)
@@ -311,7 +364,7 @@ end
 function BorderRenderer:applyJoints()
     local function charFunc(jointChar, side)
         return function(borderChar)
-            local r = self.jointTable[borderChar]
+            local r = jointTable[borderChar]
             if r == nil then return end
             r = r[jointChar]
             if r == nil then return end
@@ -358,6 +411,7 @@ end
 
 return {
     getBorderWidth=getBorderWidth,
+    getBorderFillChars=getBorderFillChars,
     BorderRenderer=BorderRenderer,
     testing={
         nextBinTreeIndex=nextBinTreeIndex,

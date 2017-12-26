@@ -2,6 +2,7 @@ require("busted.runner")()
 local utils = require("utils")
 local mod = require("ui.markup")
 local DEFAULT_STYLES = require("ui.selectors").DEFAULT_STYLES
+local boxModule = require("ui.boxModel")
 local Flow = mod.testing.Flow
 
 
@@ -480,12 +481,10 @@ describe("Markup tokenizer", function()
                 }
             )
         end
-        local makeBox = function(props)
-            local box = mod.testing.makeDefaultBox(screenWidth)
-            for k, v in pairs(props) do
-                box[k] = v
-            end
-            return box
+        local makeBox = function(styles)
+            local s = utils.copyTable(DEFAULT_STYLES)
+            for k, v in pairs(styles) do s[k] = v end
+            return boxModule.makeBox(s, screenWidth)
         end
 
         it("works", function()
@@ -524,6 +523,107 @@ describe("Markup tokenizer", function()
                 {Flow.space},
                 {Flow.string, "bye"},
                 {Flow.blockEnd, makeBox{}},
+            }.text)
+        end)
+        it("aligns text", function()
+            for _, t in ipairs{
+                {"left", "right",   "abcd      "},
+                {"right", "left",   "      abcd"},
+                {"center", "right", "   abcd   "},
+            } do
+                local align, badAlign, result = table.unpack(t)
+                assert.are_same({result}, f{
+                    {Flow.styleChange, "align", align},
+                    {Flow.blockStart, makeBox{}},
+                    {Flow.styleChange, "align", badAlign},  -- doesn't affect alignment of current block
+                    {Flow.lineSize, 4, 0},
+                    {Flow.string, "abcd"},
+                    {Flow.blockEnd, makeBox{}}
+                }.text)
+            end
+        end)
+        it("fills block with paddingFill", function()
+            assert.are_same({
+                "abcd......"
+            }, f{
+                {Flow.styleChange, "paddingFill", "."},
+                {Flow.blockStart, makeBox{}},
+                {Flow.lineSize, 4, 0},
+                {Flow.string, "abcd"},
+                {Flow.blockEnd, makeBox{}}
+            }.text)
+        end)
+        for _, t in ipairs{
+            {"marginLeft", 2, {
+                "  abcd...."
+            }},
+            {"marginRight", 2, {
+                "abcd....  "
+            }},
+            {"marginTop", 1, {
+                "          ",
+                "abcd......"
+            }},
+            {"marginBottom", 1, {
+                "abcd......",
+                "          "
+            }},
+            {"paddingLeft", 2, {
+                "..abcd...."
+            }},
+            {"paddingRight", 2, {
+                "abcd......"
+            }},
+            {"paddingTop", 1, {
+                "..........",
+                "abcd......"
+            }},
+            {"paddingBottom", 1, {
+                "abcd......",
+                ".........."
+            }},
+            {"borderLeft", 1, {
+                "│abcd....."
+            }},
+            {"borderRight", 1, {
+                "abcd.....│"
+            }},
+            {"borderTop", 1, {
+                "──────────",
+                "abcd......"
+            }},
+            {"borderBottom", 1, {
+                "abcd......",
+                "──────────"
+            }}
+        } do
+            local styleName, value, result = table.unpack(t)
+            it("applies " .. styleName, function()
+                assert.are_same(result, f{
+                    {Flow.styleChange, "paddingFill", "."},
+                    {Flow.blockStart, makeBox{[styleName]=value}},
+                    {Flow.lineSize, 4, 0},
+                    {Flow.string, "abcd"},
+                    {Flow.blockEnd, makeBox{}}
+                }.text)
+            end)
+        end
+        it("can handle full border box", function()
+            assert.are_same({
+                "╓────────┐",
+                "║abcd....│",
+                "╙────────┘"
+            }, f{
+                {Flow.styleChange, "paddingFill", "."},
+                {Flow.blockStart, makeBox{
+                    borderTop=1,
+                    borderBottom=1,
+                    borderLeft=2,
+                    borderRight=1
+                }},
+                {Flow.lineSize, 4, 0},
+                {Flow.string, "abcd"},
+                {Flow.blockEnd, makeBox{}}
             }.text)
         end)
     end)

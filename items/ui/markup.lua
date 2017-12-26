@@ -487,11 +487,12 @@ local function renderToGpuLines(markupIter, screenWidth)
             styleStack:pop()
         end
 
-        local function pushFiller(color, background, fill, leftWidth, rightWidth)
+        local function pushFiller(color, background, fillLeft, fillRight, leftWidth, rightWidth)
             fillerStack:push({
                 color=color,
                 background=background,
-                fill=fill,
+                fillLeft=fillLeft,
+                fillRight=fillRight,
                 leftWidth=leftWidth,
                 rightWidth=rightWidth
             })
@@ -515,10 +516,10 @@ local function renderToGpuLines(markupIter, screenWidth)
                 append(Flow.gpuColor, f.color)
                 append(Flow.gpuBackground, f.background)
                 if f.leftWidth > 0 then
-                    append(Flow.gpuFill, left, f.leftWidth, f.fill)
+                    append(Flow.gpuFill, left, f.leftWidth, f.fillLeft)
                 end
                 if f.rightWidth > 0 then
-                    append(Flow.gpuFill, right, f.rightWidth, f.fill)
+                    append(Flow.gpuFill, right, f.rightWidth, f.fillRight)
                 end
                 left = left + f.leftWidth
             end
@@ -526,12 +527,26 @@ local function renderToGpuLines(markupIter, screenWidth)
             return leftFillerWidth + 1, screenWidth - rightFillerWidth - leftFillerWidth
         end
 
-        local function renderBorderLine()
+        local function renderTopBorderLine()
+            local bc = boxStack:tip().borderChars
             local s = styleStack:tip()
             local pos, width = newLine()
             append(Flow.gpuColor, s.borderColor)
             append(Flow.gpuBackground, s.borderBackground)
-            append(Flow.gpuFill, pos, width, "-")  -- TODO:
+            append(Flow.gpuFill, pos, 1, bc.upLeft)
+            append(Flow.gpuFill, pos + 1, width - 2, bc.up)
+            append(Flow.gpuFill, pos + width - 1, 1, bc.upRight)
+        end
+
+        local function renderBottomBorderLine()
+            local bc = boxStack:tip().borderChars
+            local s = styleStack:tip()
+            local pos, width = newLine()
+            append(Flow.gpuColor, s.borderColor)
+            append(Flow.gpuBackground, s.borderBackground)
+            append(Flow.gpuFill, pos, 1, bc.downLeft)
+            append(Flow.gpuFill, pos + 1, width - 2, bc.down)
+            append(Flow.gpuFill, pos + width - 1, 1, bc.downRight)
         end
 
         local function renderPaddingLine()
@@ -551,16 +566,19 @@ local function renderToGpuLines(markupIter, screenWidth)
                 local parStyles = styleStack:tip()
                 for i=1,box.marginTop do renderPaddingLine() end
                 pushFiller(
-                    parStyles.paddingColor, parStyles.paddingBackground, parStyles.paddingFill,
+                    parStyles.paddingColor, parStyles.paddingBackground,
+                    parStyles.paddingFill, parStyles.paddingFill,
                     box.marginLeft, box.marginRight)
                 pushBox(box)
-                for i=1,box.borderTop do renderBorderLine() end
+                for i=1,box.borderTop do renderTopBorderLine() end
                 pushFiller(
-                    styles.borderColor, styles.borderBackground, "|",  -- TODO: filler
+                    styles.borderColor, styles.borderBackground,
+                    box.borderChars.left, box.borderChars.right,
                     box.borderLeft, box.borderRight)
                 for i=1,box.paddingTop do renderPaddingLine() end
                 pushFiller(
-                    styles.paddingColor, styles.paddingBackground, styles.paddingFill,
+                    styles.paddingColor, styles.paddingBackground,
+                    styles.paddingFill, styles.paddingFill,
                     box.paddingLeft, box.paddingRight)
             end,
             [Flow.blockEnd] = function()
@@ -568,7 +586,7 @@ local function renderToGpuLines(markupIter, screenWidth)
                 popFiller()
                 for i=1,box.paddingBottom do renderPaddingLine() end
                 popFiller()
-                for i=1,box.borderBottom do renderBorderLine() end
+                for i=1,box.borderBottom do renderBottomBorderLine() end
                 popBox()
                 popFiller()
                 for i=1,box.marginBottom do renderPaddingLine() end
@@ -577,7 +595,7 @@ local function renderToGpuLines(markupIter, screenWidth)
                 local bs = styleStack:tip()
                 local pos, width = newLine()
                 local pad = width - lineWidth
-                textPos = textStartingX(bs.align, pad) + 1
+                textPos = textStartingX(bs.align, pad) + 1 + leftFillerWidth
                 append(Flow.gpuColor, styles.paddingColor)
                 append(Flow.gpuBackground, styles.paddingBackground)
                 textPaddingSwitch[bs.align](lineWidth, pad, function(x, w)

@@ -263,4 +263,38 @@ describe("Border renderer", function()
             X = split + 1
         end
     end)
+    it("getBorderFillChars", function()
+        assert.are_same({
+            up="─",
+            down="─",
+            left="║",
+            right="║",
+            upLeft="╓",
+            upRight="╖",
+            downLeft="╙",
+            downRight="╜"
+        }, mod.getBorderFillChars(1, 2, 1, 2))
+
+        assert.are_same({
+            up=" ",
+            down=" ",
+            left=" ",
+            right=" ",
+            upLeft=" ",
+            upRight=" ",
+            downLeft=" ",
+            downRight=" "
+        }, mod.getBorderFillChars(0, 0, 0, 0))
+
+        assert.are_same({
+            up="─",
+            down="═",
+            left=" ",
+            right=" ",
+            upLeft="─",
+            upRight="─",
+            downLeft="═",
+            downRight="═"
+        }, mod.getBorderFillChars(1, 0, 2, 0))
+    end)
 end)
