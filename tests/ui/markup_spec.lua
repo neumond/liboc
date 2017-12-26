@@ -626,6 +626,59 @@ describe("Markup tokenizer", function()
                 {Flow.blockEnd, makeBox{}}
             }.text)
         end)
+        it("full example", function()
+            local abox = makeBox{
+                borderTop=1,
+                borderLeft=1,
+                paddingLeft=1,
+                paddingRight=1,
+                paddingTop=1,
+                paddingBottom=1
+            }
+            local bbox = makeBox{
+                borderTop=1,
+                borderBottom=1,
+                borderLeft=2,
+                borderRight=1,
+                marginTop=1,
+                marginBottom=2
+            }
+            assert.are_same({
+                "┌─────────",
+                "│*********",
+                "│*abc%def*",
+                "│*****ghi*",
+                "│*********",
+                "│*╓─────┐*",
+                "│*║abcd.│*",
+                "│*╙─────┘*",
+                "│*********",
+                "│*********",
+                "│*********"
+            }, f{
+                {Flow.styleChange, "paddingFill", "*"},
+                {Flow.styleChange, "spaceFill", "%"},
+                {Flow.styleChange, "align", "right"},
+                {Flow.blockStart, abox},
+                {Flow.lineSize, 7, 1},
+                {Flow.string, "abc"},
+                {Flow.space},
+                {Flow.string, "def"},
+                {Flow.lineSize, 3, 0},
+                {Flow.string, "ghi"},
+
+                {Flow.styleChange, "paddingFill", "."},
+                {Flow.styleChange, "align", "left"},
+                {Flow.blockStart, bbox},
+
+                {Flow.lineSize, 4, 0},
+                {Flow.string, "abcd"},
+
+                {Flow.blockEnd, abox},
+
+                {Flow.blockEnd, makeBox{}}
+            }.text)
+        end)
     end)
 
     -- OLD
