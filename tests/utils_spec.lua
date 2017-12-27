@@ -128,6 +128,38 @@ describe("class framework", function()
         assert(o.c == nil)
         assert(o.d == 4)
     end)
+    it("can call superclass methods in simple inheritance", function()
+        local A = M.makeClass()
+        A.method = function(self, a, b)
+            return a + b
+        end
+        local B = M.makeClass(A)
+        B.method = function(self, c)
+            return B.__super.method(self, 4, 3) + c
+        end
+        local o = B()
+        assert(o:method(2) == 9)
+    end)
+    it("can call superclass methods in multiple inheritance", function()
+        local A = M.makeClass()
+        A.method = function(self, a)
+            return a .. "a"
+        end
+        local B = M.makeClass()
+        B.method = function(self, a)
+            return a .. "b"
+        end
+
+        local C = M.makeClass(A, B)
+        C.method = function(self, a)
+            a = C.__super[1].method(self, a)
+            a = C.__super[2].method(self, a)
+            return a
+        end
+
+        local o = C()
+        assert(o:method("x") == "xab")
+    end)
 end)
 
 describe("bufferingIterator", function()

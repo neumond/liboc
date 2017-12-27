@@ -197,9 +197,14 @@ function M.makeClass(...)
             meta[k] = v
         end
     }
-    if isSubclass then
-        cls.__super = a  -- TODO: improve this
+
+    -- TODO: improve this
+    if #parentClasses == 1 then
+        cls.__super = parentClasses[1]
+    elseif #parentClasses > 1 then
+        cls.__super = parentClasses
     end
+
     setmetatable(cls, {
         __index = prototype,
         __newindex = prototype,
