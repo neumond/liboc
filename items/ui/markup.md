@@ -90,3 +90,71 @@ Centered piece of text:
 local hr = m.Div("* * *"):class("hr2")
 local s = m.Selector({"hr2"}, {align="center"})
 ```
+
+### Interactive elements
+
+Interactive elements can't intersect. You _can_ create nested
+clickable elements, but if you hover inner element, outer becomes unhovered.
+
+#### Inlines
+
+Inline elements can be clickable
+(hover coloring, active coloring, onClick callback function),
+but can't change _lengths_ of their tokens.
+E.g. you can implement checkboxes by replacing first character of inline element.
+
+```lua
+local element = m.Span("[ ]", "Checkbox")
+local token = element:getToken(1)
+
+token:getText()
+token:setText("[*]")
+token:setText("[ ]")
+
+-- but you can't change length!
+-- this throws an error
+token:setText(1, "[]")
+```
+
+It is possible to change colors of tokens:
+
+```lua
+token:getInitialColor()
+token:getColor()
+token:setColor(0xFF0000)
+
+token:getInitialBackground()
+token:getBackground()
+token:setBackground(0xFF00FF)
+```
+
+And even refill spacings:
+
+```lua
+local space = element:getSpace(1)
+space:getInitialColor()
+space:getColor()
+space:setColor(0xFF0000)
+
+space:getInitialBackground()
+space:getBackground()
+space:setBackground(0xFF00FF)
+
+space:getInitialFilling()
+space:getFilling()
+space:setFilling(".")
+```
+
+#### Blocks
+
+Block elements can be clickable as well, but can be extended into custom
+controls. Clickable interface works exactly as inline. Additionally you
+can change padding/border colors of whole block.
+
+Custom controls _can't_ contain markup. Instead they
+implement render method,
+implement calcHeight method (when width of markup changes),
+receive keyboard events (when active),
+mouse events (over this element),
+focus/unfocus events
+via methods-callbacks.

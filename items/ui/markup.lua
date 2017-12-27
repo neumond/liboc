@@ -17,7 +17,6 @@ do
         "pushClass", "popClass",
         "wordSize", "lineSize",
         "inlineCtrlStart", "inlineCtrlEnd",
-        "blockCtrlStart", "blockCtrlEnd",
         "styleChange",
         "space",
         "blockStart", "blockEnd",
@@ -38,26 +37,14 @@ local Glue = {}
 local Element = utils.makeClass(function(self, ...)
     self.children = {...}
     self.className = nil
-    self.clickCallback = nil
 end)
 
 
 Element._isElement = true
 
 
-function Element:setContent(...)
-    self.children = {...}
-end
-
-
 function Element:class(s)
     self.className = s
-    return self
-end
-
-
-function Element:clickable(callback)
-    self.clickCallback = callback
     return self
 end
 
@@ -70,18 +57,8 @@ end
 
 
 function Element:iterTokensPopClass()
-    if self.clickCallback ~= nil then
-        coroutine.yield(Flow.endControl)
-    end
     if self.className ~= nil then
         coroutine.yield(Flow.popClass)
-    end
-end
-
-
-function Element:iterTokensControl(token)
-    if self.clickCallback ~= nil then
-        coroutine.yield(token, self.clickCallback)
     end
 end
 
@@ -120,11 +97,7 @@ end)
 
 function Span:iterTokensCoro()
     self:iterTokensPushClass()
-    self:iterTokensControl(Flow.inlineCtrlStart)
-
     self:iterTokensChildren()
-
-    self:iterTokensControl(Flow.inlineCtrlEnd)
     self:iterTokensPopClass()
 end
 
@@ -140,14 +113,93 @@ end)
 
 function Div:iterTokensCoro()
     self:iterTokensPushClass()
-    self:iterTokensControl(Flow.blockCtrlStart)
     coroutine.yield(Flow.blockStart)
-
     self:iterTokensChildren()
-
     coroutine.yield(Flow.blockEnd)
-    self:iterTokensControl(Flow.blockCtrlEnd)
     self:iterTokensPopClass()
+end
+
+
+--
+
+
+local InlineControl = utils.makeClass(Span, function(super, ...)
+    local self = super(...)
+end)
+
+
+--
+
+
+local BlockControl = utils.makeClass(Div, function(super, ...)
+    local self = super(...)
+end)
+
+
+-- these methods must be implemented in subclasses
+
+
+function BlockControl:render(gpu, width, height)
+    error("Not implemented")
+end
+
+
+function BlockControl:calcHeight(width)
+    error("Not implemented")
+end
+
+
+-- ControlMixin
+
+
+local ControlMixin = {}
+
+
+-- returning false from following methods means
+-- parent element/UI must process this event
+-- returning true captures the event in this control
+
+
+function ControlMixin:onKeyDown(char, code, playerName)
+    return false
+end
+
+
+function ControlMixin:onKeyUp(char, code, playerName)
+    return false
+end
+
+
+function ControlMixin:onTouch(x, y, button, playerName)
+    return false
+end
+
+
+function ControlMixin:onDrag(x, y, button, playerName)
+    return false
+end
+
+
+function ControlMixin:onDrop(x, y, button, playerName)
+    return false
+end
+
+
+function ControlMixin:onScroll(x, y, direction, playerName)
+    return false
+end
+
+
+function ControlMixin:isFocusable()
+    return false
+end
+
+
+function ControlMixin:onFocus()
+end
+
+
+function ControlMixin:onBlur()
 end
 
 
