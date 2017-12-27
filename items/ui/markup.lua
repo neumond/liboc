@@ -120,23 +120,137 @@ function Div:iterTokensCoro()
 end
 
 
---
+-- Control
 
 
-local InlineControl = utils.makeClass(Span, function(super, ...)
+local Control = utils.makeClass(function(self)
+end)
+
+
+-- returning false from following methods means
+-- parent element/UI must process this event
+-- returning true captures the event in this control
+
+
+function Control:onKeyDown(char, code, playerName)
+    return false
+end
+
+
+function Control:onKeyUp(char, code, playerName)
+    return false
+end
+
+
+function Control:onTouch(x, y, button, playerName)
+    return false
+end
+
+
+function Control:onDrag(x, y, button, playerName)
+    return false
+end
+
+
+function Control:onDrop(x, y, button, playerName)
+    return false
+end
+
+
+function Control:onScroll(x, y, direction, playerName)
+    return false
+end
+
+
+function Control:isFocusable()
+    return false
+end
+
+
+function Control:onFocus()
+end
+
+
+function Control:onBlur()
+end
+
+
+-- InlineControlToken
+
+
+local InlineControlToken = utils.makeClass(function(self)
+end)
+
+
+function InlineControlToken:getInitialText()
+end
+
+
+function InlineControlToken:getText()
+end
+
+
+function InlineControlToken:setText(text)
+end
+
+
+function InlineControlToken:getInitialColor()
+end
+
+
+function InlineControlToken:getColor()
+end
+
+
+function InlineControlToken:setColor(color)
+end
+
+
+function InlineControlToken:getInitialBackground()
+end
+
+
+function InlineControlToken:getBackground()
+end
+
+
+function InlineControlToken:setBackground(color)
+end
+
+
+-- InlineControl
+
+
+local InlineControl = utils.makeClass(Control, function(super, ...)
     local self = super(...)
 end)
 
 
+function InlineControl:getToken(n)
+    -- returns InlineControlToken
+end
+
+
+function InlineControl:getTokenCount()
+end
+
+
+function InlineControl:getSpaceBeforeToken(n)
+    -- returns InlineControlToken or nil
+end
+
+
+function InlineControl:getSpaceAfterToken(n)
+    -- returns InlineControlToken or nil
+end
+
+
 --
 
 
-local BlockControl = utils.makeClass(Div, function(super, ...)
+local BlockControl = utils.makeClass(Control, function(super, ...)
     local self = super(...)
 end)
-
-
--- these methods must be implemented in subclasses
 
 
 function BlockControl:render(gpu, width, height)
@@ -146,60 +260,6 @@ end
 
 function BlockControl:calcHeight(width)
     error("Not implemented")
-end
-
-
--- ControlMixin
-
-
-local ControlMixin = {}
-
-
--- returning false from following methods means
--- parent element/UI must process this event
--- returning true captures the event in this control
-
-
-function ControlMixin:onKeyDown(char, code, playerName)
-    return false
-end
-
-
-function ControlMixin:onKeyUp(char, code, playerName)
-    return false
-end
-
-
-function ControlMixin:onTouch(x, y, button, playerName)
-    return false
-end
-
-
-function ControlMixin:onDrag(x, y, button, playerName)
-    return false
-end
-
-
-function ControlMixin:onDrop(x, y, button, playerName)
-    return false
-end
-
-
-function ControlMixin:onScroll(x, y, direction, playerName)
-    return false
-end
-
-
-function ControlMixin:isFocusable()
-    return false
-end
-
-
-function ControlMixin:onFocus()
-end
-
-
-function ControlMixin:onBlur()
 end
 
 
