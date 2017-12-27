@@ -107,14 +107,21 @@ function M.stock.put(stock, item_id, amount)
 end
 
 
-function _callConstructor(constructor, ...)
-
+local function defaultNoParentConstructor(self)
 end
 
 
-function _defaultConstructor(self, ...)
-    for i, super in ipairs{...} do
-        super()
+local function defaultSingleParentConstructor(self, super, ...)
+    super(...)
+end
+
+
+local function defaultMultiParentConstructor(nParents)
+    return function(self, ...)
+        for i, super in ipairs{...} do
+            if i > nParents then break end
+            super()
+        end
     end
 end
 
@@ -149,7 +156,15 @@ function M.makeClass(...)
             table.insert(parentCons, cons)
         end
     end
-    if constructor == nil then constructor = _defaultConstructor end
+    if constructor == nil then
+        if #parentClasses == 0 then
+            constructor = defaultNoParentConstructor
+        elseif #parentClasses == 1 then
+            constructor = defaultSingleParentConstructor
+        else
+            constructor = defaultMultiParentConstructor(#parentClasses)
+        end
+    end
 
     local prototype = {}
 

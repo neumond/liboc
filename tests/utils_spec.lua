@@ -160,6 +160,43 @@ describe("class framework", function()
         local o = C()
         assert(o:method("x") == "xab")
     end)
+    describe("proper default constructors", function()
+        it("no parent case", function()
+            local A = M.makeClass()
+            A()
+            A(1, 2, 3)
+        end)
+        it("single parent case", function()
+            local A = M.makeClass(function(self, a, b, c)
+                self.a = a
+                self.b = b
+                self.c = c
+            end)
+            local B = M.makeClass(A)
+            local o = B(1, 2, 3)
+            assert(o.a == 1)
+            assert(o.b == 2)
+            assert(o.c == 3)
+        end)
+        it("multi parent case", function()
+            -- assumes all constructors have no parameters
+            local A = M.makeClass(function(self, ...)
+                self.a = {...}
+            end)
+            local B = M.makeClass(function(self, ...)
+                self.b = {...}
+            end)
+            local C = M.makeClass(function(self, ...)
+                self.c = {...}
+            end)
+
+            local D = M.makeClass(A, B, C)
+            local o = D(1, 2, 3)
+            assert(#o.a == 0)
+            assert(#o.b == 0)
+            assert(#o.c == 0)
+        end)
+    end)
 end)
 
 describe("bufferingIterator", function()
