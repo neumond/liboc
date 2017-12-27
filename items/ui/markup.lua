@@ -613,13 +613,13 @@ local function execGpuCommands(gpu, commands, shiftX, shiftY)
 end
 
 
-local function tokenDebug(markup)
+local function tokenDebug(markupIter)
     local RevFlow = {}
     for k, v in pairs(Flow) do
         RevFlow[v] = k
     end
 
-    for cmd, value in iterMarkupTokens(markup) do
+    for cmd, value in markupIter do
         print(RevFlow[cmd], value)
     end
 end
@@ -630,7 +630,6 @@ return {
     Div=Div,
     Glue=Glue,
     Selector=selectorModule.Selector,
-    markupToGpuCommands=markupToGpuCommands,
     execGpuCommands=execGpuCommands,
     testing={
         tokenDebug=tokenDebug,
@@ -639,9 +638,6 @@ return {
         classesToStyles=classesToStyles,
         blockContentWidths=blockContentWidths,
         splitIntoLines=splitIntoLines,
-        renderToGpuLines=renderToGpuLines,
-        makeDefaultBox=makeDefaultBox,
-
-        iterMarkupTokens=iterMarkupTokens
+        renderToGpuLines=renderToGpuLines
     }
 }
