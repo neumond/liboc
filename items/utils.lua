@@ -108,11 +108,18 @@ end
 
 
 function _callConstructor(constructor, ...)
-    assert(constructor(...) == nil, "Don't return anything in constructor")
+
 end
 
 
-function M.makeClass(a, b)
+function _defaultConstructor(self, ...)
+    for i, super in ipairs{...} do
+        super()
+    end
+end
+
+
+function M.makeClass(...)
     -- cls = makeClass(function(self, params...)
     --     modifying self...
     -- end)
@@ -127,42 +134,64 @@ function M.makeClass(a, b)
     -- obj = cls(params...)
     -- sobj = subcls(params...)
 
-    local prototype = {}
-    local isSubclass = b ~= nil
-    local constructor = isSubclass and b or a
-    local parentMeta, parentConstructor
+    local constructor
+    local parentClasses = {}
+    local parentProtos = {}
+    local parentCons = {}
+    for _, v in ipairs{...} do
+        if type(v) == "function" then
+            assert(constructor == nil, "Class can't have multiple constructors")
+            constructor = v
+        else
+            table.insert(parentClasses, v)
+            local proto, cons = v.getMetaForSubclass()
+            table.insert(parentProtos, proto)
+            table.insert(parentCons, cons)
+        end
+    end
+    if constructor == nil then constructor = _defaultConstructor end
 
-    if isSubclass then
-        parentMeta, parentConstructor = a.__getMetaForSubclass()
-        setmetatable(prototype, parentMeta)
+    local prototype = {}
+
+    if #parentClasses == 1 then
+        setmetatable(prototype, {__index = parentProtos[1]})
+    elseif #parentClasses > 1 then
+        setmetatable(prototype, {__index = function(t, k)
+            local i = 1
+            local value
+            repeat
+                local p = parentProtos[i]
+                if p == nil then break end
+                value = p[k]
+                i = i + 1
+            until value ~= nil
+            return value
+        end})
     end
 
     local meta = {__index = prototype}
-    local classMeta = {
-        __index = prototype,
-        __newindex = prototype
-    }
-
-    local preparedConstructor = constructor
-    if isSubclass then
-        preparedConstructor = function(self, ...)
-            constructor(function(...)
-                _callConstructor(parentConstructor, self, ...)
-                return self
-            end, ...)
+    local function preparedConstructor(self, ...)
+        local ags = {}
+        local i = 0
+        for _, pcons in ipairs(parentCons) do
+            i = i + 1
+            ags[i] = function(...) pcons(self, ...) end
         end
+        -- hacky, but works
+        local pa = {...}
+        for k=1,#pa do  -- warm-up the sequence to set the length
+            ags[i + k] = false
+        end
+        for k=1,#pa do  -- write actual values including nils
+            ags[i + k] = pa[k]
+        end
+        assert(
+            constructor(self, table.unpack(ags)) == nil,
+            "Don't return anything from constructor")
     end
-
-    classMeta.__call = function(_, ...)
-        local self = {}
-        setmetatable(self, meta)
-        _callConstructor(preparedConstructor, self, ...)
-        return self
-    end
-
     local cls = {
-        __getMetaForSubclass = function()
-            return meta, preparedConstructor
+        getMetaForSubclass = function()
+            return prototype, preparedConstructor
         end,
         registerMetaMethod = function(k, v)
             meta[k] = v
@@ -171,7 +200,16 @@ function M.makeClass(a, b)
     if isSubclass then
         cls.__super = a  -- TODO: improve this
     end
-    setmetatable(cls, classMeta)
+    setmetatable(cls, {
+        __index = prototype,
+        __newindex = prototype,
+        __call = function(_, ...)
+            local self = {}
+            setmetatable(self, meta)
+            preparedConstructor(self, ...)
+            return self
+        end
+    })
     return cls
 end
 

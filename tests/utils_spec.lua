@@ -32,8 +32,8 @@ describe("class framework", function()
         end)
         cls.x = 5
 
-        subcls = M.makeClass(cls, function(super, p1, p2, p3, p4)
-            local self = super(p1, p2)
+        subcls = M.makeClass(cls, function(self, super, p1, p2, p3, p4)
+            super(p1, p2)
             self.p3 = p3
             self.p4 = p4
         end)
@@ -50,14 +50,83 @@ describe("class framework", function()
     it("doesn't fail with subsubclassing", function()
         local A = M.makeClass(function(self)
         end)
-        local B = M.makeClass(A, function(super)
-            local self = super()
+        A.method = function(self, x) return x + 1 end
+        local B = M.makeClass(A, function(self, super)
+            super()
         end)
-        local C = M.makeClass(B, function(super)
-            local self = super()
+        local C = M.makeClass(B, function(self, super)
+            super()
         end)
 
         local o = C()
+        assert(o:method(3) == 4)
+    end)
+    it("creates default constructors", function()
+        local A = M.makeClass()
+        A.method = function(self, x) return x + 1 end
+        local B = M.makeClass(A)
+        local C = M.makeClass(B)
+
+        for i, cls in ipairs{A, B, C} do
+            local o = cls()
+            assert(o:method(4) == 5)
+        end
+    end)
+    it("supports multiple inheritance with default constructors", function()
+        local A = M.makeClass()
+        A.ma = function(self, x) return x + 1 end
+        local B = M.makeClass()
+        B.mb = function(self, x) return x + 2 end
+        local C = M.makeClass()
+        C.mc = function(self, x) return x + 3 end
+
+        local D = M.makeClass(A, B, C)
+        local o = D()
+        assert(o:ma(1) == 2)
+        assert(o:mb(1) == 3)
+        assert(o:mc(1) == 4)
+    end)
+    it("supports multiple inheritance with custom constructors", function()
+        local A = M.makeClass(function(self, a1)
+            self.a1 = a1
+        end)
+        local B = M.makeClass(function(self, b1, b2)
+            self.b1 = b1
+            self.b2 = b2
+        end)
+        local C = M.makeClass(function(self, c1, c2, c3)
+            self.c1 = c1
+            self.c2 = c2
+            self.c3 = c3
+        end)
+
+        local D = M.makeClass(A, B, C, function(self, superA, superB, superC, a1, b1, b2, c1, c2, c3, d1)
+            superA(a1)
+            superB(b1, b2)
+            superC(c1, c2, c3)
+            self.d1 = d1
+        end)
+        local o = D("a1", "b1", "b2", "c1", "c2", "c3", "d1")
+        assert(o.a1 == "a1")
+        assert(o.b1 == "b1")
+        assert(o.b2 == "b2")
+        assert(o.c1 == "c1")
+        assert(o.c2 == "c2")
+        assert(o.c3 == "c3")
+        assert(o.d1 == "d1")
+    end)
+    it("can handle nil constructor parameters", function()
+        local A = M.makeClass(function(self, a, b, c, d)
+            self.a = a
+            self.b = b
+            self.c = c
+            self.d = d
+        end)
+        local o = A(1, nil, nil, 4)
+        assert(o.a == 1)
+        assert(o.b == nil)
+        assert(o.c == nil)
+        assert(o.d == 4)
     end)
 end)
 

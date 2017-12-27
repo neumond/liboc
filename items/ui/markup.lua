@@ -90,9 +90,7 @@ end
 -- consequent Spans follow on the same line
 
 
-local Span = utils.makeClass(Element, function(super, ...)
-    local self = super(...)
-end)
+local Span = utils.makeClass(Element)
 
 
 function Span:iterTokensCoro()
@@ -106,9 +104,7 @@ end
 -- consequent Divs always start from a new line
 
 
-local Div = utils.makeClass(Element, function(super, ...)
-    local self = super(...)
-end)
+local Div = utils.makeClass(Element)
 
 
 function Div:iterTokensCoro()
@@ -125,6 +121,9 @@ end
 
 local Control = utils.makeClass(function(self)
 end)
+
+
+Control._isControl = true
 
 
 -- returning false from following methods means
@@ -175,87 +174,109 @@ function Control:onBlur()
 end
 
 
--- InlineControlToken
+-- TokenControl
 
 
-local InlineControlToken = utils.makeClass(function(self)
+local TokenControl = utils.makeClass(function(self)
 end)
 
 
-function InlineControlToken:getInitialText()
+function TokenControl:getInitialText()
 end
 
 
-function InlineControlToken:getText()
+function TokenControl:getText()
 end
 
 
-function InlineControlToken:setText(text)
+function TokenControl:setText(text)
 end
 
 
-function InlineControlToken:getInitialColor()
+function TokenControl:getInitialColor()
 end
 
 
-function InlineControlToken:getColor()
+function TokenControl:getColor()
 end
 
 
-function InlineControlToken:setColor(color)
+function TokenControl:setColor(color)
 end
 
 
-function InlineControlToken:getInitialBackground()
+function TokenControl:getInitialBackground()
 end
 
 
-function InlineControlToken:getBackground()
+function TokenControl:getBackground()
 end
 
 
-function InlineControlToken:setBackground(color)
+function TokenControl:setBackground(color)
+end
+
+
+-- SimpleInlineControl
+-- can span across multiple lines, just like usual Span
+-- have limited control over its tokens
+-- without ability to change their length
+-- suitable for checkboxes, radiobuttons, clickable links
+
+
+local SimpleInlineControl = utils.makeClass(Control)
+
+
+function SimpleInlineControl:getToken(n)
+    -- returns TokenControl
+end
+
+
+function SimpleInlineControl:getTokenCount()
+end
+
+
+function SimpleInlineControl:getSpaceBeforeToken(n)
+    -- returns TokenControl or nil
+end
+
+
+function SimpleInlineControl:getSpaceAfterToken(n)
+    -- returns TokenControl or nil
+end
+
+
+-- RenderableControl
+-- occupies contiguous block
+-- has gpu proxy to render arbitrary contents
+
+
+local RenderableControl = utils.makeClass(Control)
+
+
+function RenderableControl:render(gpu, width, height)
+    error("Not implemented")
 end
 
 
 -- InlineControl
+-- full weight inline control
+-- suitable for textual inputs, comboboxes, buttons
+-- has fixed width and height of 1
 
 
-local InlineControl = utils.makeClass(Control, function(super, ...)
-    local self = super(...)
+InlineControl = utils.makeClass(RenderableControl, function(self, super, width)
+    super()
+    self.width = width
 end)
 
 
-function InlineControl:getToken(n)
-    -- returns InlineControlToken
-end
+-- BlockControl
+-- can have any height
+-- can be resized when width of parent layout changes
 
 
-function InlineControl:getTokenCount()
-end
-
-
-function InlineControl:getSpaceBeforeToken(n)
-    -- returns InlineControlToken or nil
-end
-
-
-function InlineControl:getSpaceAfterToken(n)
-    -- returns InlineControlToken or nil
-end
-
-
---
-
-
-local BlockControl = utils.makeClass(Control, function(super, ...)
-    local self = super(...)
-end)
-
-
-function BlockControl:render(gpu, width, height)
-    error("Not implemented")
-end
+local BlockControl = utils.makeClass(RenderableControl)
 
 
 function BlockControl:calcHeight(width)

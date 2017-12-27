@@ -8,7 +8,7 @@ describe("LinkedList", function()
         for item in l:iter() do
             table.insert(t, item:getPayload())
         end
-        assert.are_same(t, ref)
+        assert.are_same(ref, t)
     end
 
     it("can append things", function()

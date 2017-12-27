@@ -199,8 +199,8 @@ end
 -- ContentFrame
 
 
-local ContentFrame = utils.makeClass(BaseFrame, function(super)
-    local self = super()
+local ContentFrame = utils.makeClass(BaseFrame, function(self, super)
+    super()
     self.scrollX = 1
     self.scrollY = 1
     self.scrollMaxX = math.huge
@@ -236,8 +236,8 @@ end
 -- MarkupFrame
 
 
-local MarkupFrame = utils.makeClass(ContentFrame, function(super, markup, defaultStyles, selectorTable)
-    local self = super()
+local MarkupFrame = utils.makeClass(ContentFrame, function(self, super, markup, defaultStyles, selectorTable)
+    super()
 
     self.markup = markup
     self.defaultStyles = defaultStyles
@@ -359,8 +359,8 @@ end
 -- ContainerFrame
 
 
-local ContainerFrame = utils.makeClass(BaseFrame, function(super)
-    local self = super()
+local ContainerFrame = utils.makeClass(BaseFrame, function(self, super)
+    super()
     self.children = LinkedList(function(event, item)
         self:onChange(event, item)
     end)
@@ -387,8 +387,8 @@ end
 -- TODO: rewrite for LinkedList children
 
 
-local SwitcherFrame = utils.makeClass(ContainerFrame, function(super)
-    local self = super()
+local SwitcherFrame = utils.makeClass(ContainerFrame, function(self, super)
+    super()
     self.activeFrameId = nil
 end)
 
@@ -446,8 +446,8 @@ end
 -- BaseSplitFrame
 
 
-local BaseSplitFrame = utils.makeClass(ContainerFrame, function(super)
-    local self = super()
+local BaseSplitFrame = utils.makeClass(ContainerFrame, function(self, super)
+    super()
     self:setBorderType(0)
 end)
 
@@ -569,12 +569,8 @@ end
 -- HSplitFrame, VSplitFrame
 
 
-local HSplitFrame = utils.makeClass(BaseSplitFrame, function(super)
-    local self = super()
-end)
-local VSplitFrame = utils.makeClass(BaseSplitFrame, function(super)
-    local self = super()
-end)  -- TODO: make this empty constructor automatically
+local HSplitFrame = utils.makeClass(BaseSplitFrame)
+local VSplitFrame = utils.makeClass(BaseSplitFrame)
 
 
 function HSplitFrame:setWindowInner(x, y, width, height)
