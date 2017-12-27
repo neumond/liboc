@@ -16,10 +16,19 @@ local function iterArrayValues(t)
 end
 
 
+local function wrapTupleIter(iter)
+    return function()
+        local v = {iter()}
+        if #v == 0 then return end
+        return v
+    end
+end
+
+
 local function accumulate(iter)
     local result = {}
-    for a, b, c, d, e in iter do
-        table.insert(result, {a, b, c, d, e})
+    for item in wrapTupleIter(iter) do
+        table.insert(result, item)
     end
     return result
 end
