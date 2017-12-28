@@ -3,6 +3,10 @@ local RegionGpu = require("ui.windows").RegionGpu  -- for handling border cases
 local M = {}
 
 
+local PREFILL = "¶"
+assert(utils.strlen(PREFILL) == 1)
+
+
 local function strReplace(line, pos, text)
     assert(pos > 0)
     local len = utils.strlen(text)
@@ -42,18 +46,18 @@ end
 
 
 function M.createGPU(width, height, colorBox)
-    local currentColor = "X"
-    local currentBackground = "X"
+    local currentColor = PREFILL
+    local currentBackground = PREFILL
     local currentColorValue
     local currentBackgroundValue
 
-    local textLines = createFilledPlane(width, height, "¶")
-    local colorLines = createFilledPlane(width, height, currentColor)
-    local backgroundLines = createFilledPlane(width, height, currentBackground)
+    local textLines = createFilledPlane(width, height, PREFILL)
+    local colorLines = createFilledPlane(width, height, PREFILL)
+    local backgroundLines = createFilledPlane(width, height, PREFILL)
 
     local function pickColor(color)
         local r = colorBox[color]
-        if r == nil then r = "X" end
+        if r == nil then r = PREFILL end
         assert(utils.strlen(r) == 1)
         return r
     end
@@ -111,7 +115,7 @@ function M.createGPU(width, height, colorBox)
 
     gpu.getTextResult=function(stripTail)
         if not stripTail then return textLines end
-        local m = string.rep("¶", width)
+        local m = string.rep(PREFILL, width)
         local cutter = height
         for y=height,1,-1 do
             if textLines[y] == m then

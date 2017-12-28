@@ -15,14 +15,14 @@ describe("renderTest", function()
             "¶¶¶",
         }, gpu.getTextResult())
         assert.are_same({
-            "XXX",
-            "XXX",
-            "XXX",
+            "¶¶¶",
+            "¶¶¶",
+            "¶¶¶",
         }, gpu.getColorResult())
         assert.are_same({
-            "XXX",
-            "XXX",
-            "XXX",
+            "¶¶¶",
+            "¶¶¶",
+            "¶¶¶",
         }, gpu.getBackgroundResult())
     end)
     it("fill method", function()
@@ -39,14 +39,14 @@ describe("renderTest", function()
             "¶¶¶",
         }, gpu.getTextResult())
         assert.are_same({
-            "XXX",
-            "X#X",
-            "XXX",
+            "¶¶¶",
+            "¶#¶",
+            "¶¶¶",
         }, gpu.getColorResult())
         assert.are_same({
-            "XXX",
-            "X.X",
-            "XXX",
+            "¶¶¶",
+            "¶.¶",
+            "¶¶¶",
         }, gpu.getBackgroundResult())
     end)
     it("set method", function()
@@ -63,14 +63,14 @@ describe("renderTest", function()
             "¶¶¶",
         }, gpu.getTextResult())
         assert.are_same({
-            "XXX",
-            "X##",
-            "XXX",
+            "¶¶¶",
+            "¶##",
+            "¶¶¶",
         }, gpu.getColorResult())
         assert.are_same({
-            "XXX",
-            "X..",
-            "XXX",
+            "¶¶¶",
+            "¶..",
+            "¶¶¶",
         }, gpu.getBackgroundResult())
     end)
     it("copy method", function()
@@ -88,14 +88,14 @@ describe("renderTest", function()
             "¶¶¶",
         }, gpu.getTextResult())
         assert.are_same({
-            "##X",
-            "XX#",
-            "XXX",
+            "##¶",
+            "¶¶#",
+            "¶¶¶",
         }, gpu.getColorResult())
         assert.are_same({
-            "..X",
-            "XX.",
-            "XXX",
+            "..¶",
+            "¶¶.",
+            "¶¶¶",
         }, gpu.getBackgroundResult())
     end)
 end)
