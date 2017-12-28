@@ -419,8 +419,8 @@ local textPaddingSwitch = {
     center=function(w, pad, cmdAppend)
         local centerPad = textCenterPad(pad)
         if centerPad > 0 then cmdAppend(1, centerPad) end
-        centerPad = pad - centerPad
-        if centerPad > 0 then cmdAppend(w + 1, centerPad) end
+        local rest = pad - centerPad
+        if rest > 0 then cmdAppend(w + 1 + centerPad, rest) end
     end
 }
 
@@ -591,7 +591,35 @@ local function renderToGpuLines(markupIter, screenWidth)
 end
 
 
+local function execGpuTokens(gpu, iter)
+    local currentLine = 0
+
+    local cmdSwitch = {
+        [Flow.gpuColor] = function(v)
+            gpu.setForeground(v)
+        end,
+        [Flow.gpuBackground] = function(v)
+            gpu.setBackground(v)
+        end,
+        [Flow.gpuFill] = function(x, w, char)
+            gpu.fill(x, currentLine, w, 1, char)
+        end,
+        [Flow.gpuSet] = function(x, text)
+            gpu.set(x, currentLine, text)
+        end,
+        [Flow.gpuNewLine] = function()
+            currentLine = currentLine + 1
+        end
+    }
+
+    for cmd, a, b, c in iter do
+        cmdSwitch[cmd](a, b, c)
+    end
+end
+
+
 local function execGpuCommands(gpu, commands, shiftX, shiftY)
+    -- TODO: remove
     if shiftX == nil then shiftX = 0 end
     if shiftY == nil then shiftY = 0 end
 
@@ -638,6 +666,7 @@ return {
         classesToStyles=classesToStyles,
         blockContentWidths=blockContentWidths,
         splitIntoLines=splitIntoLines,
-        renderToGpuLines=renderToGpuLines
+        renderToGpuLines=renderToGpuLines,
+        execGpuTokens=execGpuTokens
     }
 }

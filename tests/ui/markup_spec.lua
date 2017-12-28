@@ -4,99 +4,8 @@ local mod = require("ui.markup")
 local DEFAULT_STYLES = require("ui.selectors").DEFAULT_STYLES
 local boxModule = require("ui.boxModel")
 local Flow = mod.testing.Flow
-
-
-local function iterArrayValues(t)
-    local ptr = 0
-    return function()
-        ptr = ptr + 1
-        if t[ptr] == nil then return end
-        return table.unpack(t[ptr])
-    end
-end
-
-
-local function wrapTupleIter(iter)
-    return function()
-        local v = {iter()}
-        if #v == 0 then return end
-        return v
-    end
-end
-
-
-local function accumulate(iter)
-    local result = {}
-    for item in wrapTupleIter(iter) do
-        table.insert(result, item)
-    end
-    return result
-end
-
-
-local function strReplace(line, pos, text)
-    assert(pos > 0)
-    local len = utils.strlen(text)
-    return (
-        utils.strsub(line, 1, pos - 1) ..
-        text ..
-        utils.strsub(line, pos + len)
-    )
-end
-
-
-local function render(iter, screenWidth, colorBox)
-    local textLines = {}
-    local colorLines = {}
-    local backgroundLines = {}
-
-    local currentLine = 0
-    local currentColor = "X"
-    local currentBackground = "X"
-
-    local function pickColor(color)
-        local r = colorBox[color]
-        if r == nil then r = "X" end
-        return r
-
-    end
-
-    local function replace(pos, text)
-        local len = utils.strlen(text)
-        textLines[currentLine] = strReplace(
-            textLines[currentLine], pos, text)
-        colorLines[currentLine] = strReplace(
-            colorLines[currentLine], pos, string.rep(currentColor, len))
-        backgroundLines[currentLine] = strReplace(
-            backgroundLines[currentLine], pos, string.rep(currentBackground, len))
-    end
-
-    for cmd, a, b, c in iter do
-        if cmd == Flow.gpuNewLine then
-            currentLine = currentLine + 1
-            textLines[currentLine] = string.rep(" ", screenWidth)
-            colorLines[currentLine] = string.rep(" ", screenWidth)
-            backgroundLines[currentLine] = string.rep(" ", screenWidth)
-        elseif cmd == Flow.gpuSet then
-            replace(a, b)
-        elseif cmd == Flow.gpuFill then
-            replace(a, string.rep(c, b))
-        elseif cmd == Flow.gpuColor then
-            currentColor = pickColor(a)
-        elseif cmd == Flow.gpuBackground then
-            currentBackground = pickColor(a)
-        end
-    end
-
-    return {text=textLines, color=colorLines, background=backgroundLines}
-end
-
-
-local function makeIterTestable(f)
-    return function(items)
-        return accumulate(f(iterArrayValues(items)))
-    end
-end
+local tu = require("lib.testing")
+local renderTest = require("lib.renderTest")
 
 
 local function stripToken(iter, token)
@@ -111,14 +20,9 @@ end
 
 
 describe("Markup tokenizer", function()
-    describe("test utils", function()
-        it("strReplace", function()
-            assert.are_equal("aaafffccc", strReplace("aaabbbccc", 4, "fff"))
-            assert.are_equal("faabbbccc", strReplace("aaabbbccc", 1, "f"))
-        end)
-    end)
+
     describe("removeGlueAddWordLengths", function()
-        local f = makeIterTestable(mod.testing.removeGlueAddWordLengths)
+        local f = tu.makeIterTestable(mod.testing.removeGlueAddWordLengths)
 
         local function beforeAfter()
             local i = 0
@@ -317,8 +221,8 @@ describe("Markup tokenizer", function()
             if not dontUseHack then
                 defaultStyles._testingReset = true
             end
-            return accumulate(mod.testing.classesToStyles(
-                iterArrayValues(tokens), defaultStyles, selectorTable
+            return tu.accumulate(mod.testing.classesToStyles(
+                tu.iterArrayValues(tokens), defaultStyles, selectorTable
             ))
         end
 
@@ -370,11 +274,11 @@ describe("Markup tokenizer", function()
             end
         end
         local f = function(tokens)
-            return accumulate(
+            return tu.accumulate(
                 refineResult(stripToken(
                     mod.testing.blockContentWidths(
                         mod.testing.classesToStyles(
-                            iterArrayValues(tokens), {}, selectorTable
+                            tu.iterArrayValues(tokens), {}, selectorTable
                         ),
                         10
                     ),
@@ -406,8 +310,8 @@ describe("Markup tokenizer", function()
     end)
     describe("splitIntoLines", function()
         local f = function(tokens)
-            return accumulate(mod.testing.splitIntoLines(
-                iterArrayValues(tokens), 10
+            return tu.accumulate(mod.testing.splitIntoLines(
+                tu.iterArrayValues(tokens), 10
             ))
         end
 
@@ -479,16 +383,14 @@ describe("Markup tokenizer", function()
     describe("renderToGpuLines", function()
         local screenWidth = 10
         local f = function(tokens)
-            return render(
-                mod.testing.renderToGpuLines(
-                    iterArrayValues(tokens), screenWidth
-                ),
-                screenWidth,
-                {
-                    [0x000000]="B",
-                    [0xFFFFFF]="W"
-                }
-            )
+            local gpu = renderTest.createGPU(screenWidth, 20, {
+                [0x000000]="B",
+                [0xFFFFFF]="W"
+            })
+            mod.testing.execGpuTokens(gpu, mod.testing.renderToGpuLines(
+                tu.iterArrayValues(tokens), screenWidth
+            ))
+            return gpu.getTextResult(true)
         end
         local makeBox = function(styles)
             local s = utils.copyTable(DEFAULT_STYLES)
@@ -502,7 +404,7 @@ describe("Markup tokenizer", function()
             }, f{
                 {Flow.lineSize, 5, 0},
                 {Flow.string, "abcde"}
-            }.text)
+            })
         end)
         it("handles single block", function()
             assert.are_same({
@@ -512,7 +414,7 @@ describe("Markup tokenizer", function()
                 {Flow.lineSize, 5, 0},
                 {Flow.string, "abcde"},
                 {Flow.blockEnd, makeBox{}}
-            }.text)
+            })
         end)
         it("handles several blocks", function()
             assert.are_same({
@@ -532,7 +434,7 @@ describe("Markup tokenizer", function()
                 {Flow.space},
                 {Flow.string, "bye"},
                 {Flow.blockEnd, makeBox{}},
-            }.text)
+            })
         end)
         it("aligns text", function()
             for _, t in ipairs{
@@ -548,7 +450,7 @@ describe("Markup tokenizer", function()
                     {Flow.lineSize, 4, 0},
                     {Flow.string, "abcd"},
                     {Flow.blockEnd, makeBox{}}
-                }.text)
+                })
             end
         end)
         it("fills block with paddingFill", function()
@@ -560,7 +462,7 @@ describe("Markup tokenizer", function()
                 {Flow.lineSize, 4, 0},
                 {Flow.string, "abcd"},
                 {Flow.blockEnd, makeBox{}}
-            }.text)
+            })
         end)
         for _, t in ipairs{
             {"marginLeft", 2, {
@@ -614,7 +516,7 @@ describe("Markup tokenizer", function()
                     {Flow.lineSize, 4, 0},
                     {Flow.string, "abcd"},
                     {Flow.blockEnd, makeBox{}}
-                }.text)
+                })
             end)
         end
         it("can handle full border box", function()
@@ -633,7 +535,7 @@ describe("Markup tokenizer", function()
                 {Flow.lineSize, 4, 0},
                 {Flow.string, "abcd"},
                 {Flow.blockEnd, makeBox{}}
-            }.text)
+            })
         end)
         it("full example", function()
             local abox = makeBox{
@@ -686,7 +588,7 @@ describe("Markup tokenizer", function()
                 {Flow.blockEnd, abox},
 
                 {Flow.blockEnd, makeBox{}}
-            }.text)
+            })
         end)
     end)
 
@@ -694,7 +596,7 @@ describe("Markup tokenizer", function()
 
     describe("iterMarkupTokens #skip", function()
         local f = function(markup)
-            return accumulate(mod.testing.iterMarkupTokens(markup))
+            return tu.accumulate(mod.testing.iterMarkupTokens(markup))
         end
 
         it("returns no tokens for empty markups", function()
