@@ -1,5 +1,5 @@
 local utils = require("utils")
-local RegionGpu = require("ui.windows").RegionGpu  -- for handling border cases
+local RegionGpu = require("ui.regionGpu").RegionGpu  -- for handling border cases
 local M = {}
 
 

@@ -1,10 +1,10 @@
 require("busted.runner")()
-local mod = require("ui.windows")
+local mod = require("ui.regionGpu")
 
 
 describe("windows framework", function()
     it("has correct intersection function", function()
-        local f = mod.testing.intersection
+        local f = mod.intersection
 
         -- a inside b
         assert.are.same({f(2, 5, 1, 10)}, {2, 5})
