@@ -108,7 +108,10 @@ end
 -- suitable for checkboxes, radiobuttons, clickable links
 
 
-local SimpleInlineControl = utils.makeClass(Control, markupModule.Span)
+local SimpleInlineControl = utils.makeClass(Control, markupModule.Span, function(self, ctrlSuper, spanSuper, ...)
+    ctrlSuper()
+    spanSuper(...)
+end)
 
 
 function SimpleInlineControl:getToken(n)
@@ -121,11 +124,6 @@ end
 
 
 function SimpleInlineControl:getSpaceBeforeToken(n)
-    -- returns TokenControl or nil
-end
-
-
-function SimpleInlineControl:getSpaceAfterToken(n)
     -- returns TokenControl or nil
 end
 
@@ -161,9 +159,8 @@ end)
 -- can be resized when width of parent layout changes
 
 
-local BlockControl = utils.makeClass(RenderableControl, markupModule.Div)
-
-
-function BlockControl:calcHeight(width)
-    error("Not implemented")
-end
+local BlockControl = utils.makeClass(RenderableControl, markupModule.Div, function(self, rcSuper, divSuper, height)
+    rcSuper()
+    divSuper()
+    self.height = height
+end)
