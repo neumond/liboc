@@ -618,29 +618,6 @@ local function execGpuTokens(gpu, iter)
 end
 
 
-local function execGpuCommands(gpu, commands, shiftX, shiftY)
-    -- TODO: remove
-    if shiftX == nil then shiftX = 0 end
-    if shiftY == nil then shiftY = 0 end
-
-    for Y, lineCmds in ipairs(commands) do
-        Y = Y - shiftY
-        for _, cmd in ipairs(lineCmds) do
-            cmd, a, b, c = table.unpack(cmd)
-            if cmd == "set" then
-                gpu.set(a - shiftX, Y, b)
-            elseif cmd == "fill" then
-                gpu.fill(a - shiftX, Y, b, 1, c)
-            elseif cmd == "setForeground" then
-                gpu.setForeground(a)
-            elseif cmd == "setBackground" then
-                gpu.setBackground(a)
-            end
-        end
-    end
-end
-
-
 local function tokenDebug(markupIter)
     local RevFlow = {}
     for k, v in pairs(Flow) do
@@ -658,7 +635,6 @@ return {
     Div=Div,
     Glue=Glue,
     Selector=selectorModule.Selector,
-    execGpuCommands=execGpuCommands,
     testing={
         tokenDebug=tokenDebug,
         Flow=Flow,
