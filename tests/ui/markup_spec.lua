@@ -6,6 +6,7 @@ local boxModule = require("ui.boxModel")
 local Flow = mod.testing.Flow
 local tu = require("lib.testing")
 local renderTest = require("lib.renderTest")
+local C = renderTest.shortColors
 
 
 local function stripToken(iter, token)
@@ -595,15 +596,7 @@ describe("Markup rendering", function()
     local function performTest(markup, defaultStyles, selectorTable)
         local width = 10
         local height = 20
-        local gpu = renderTest.createGPU(width, height, {
-            [0x000000]="B",
-            [0xFFFFFF]="W",
-            [0xFF0000]="R",
-            [0x00FF00]="G",
-            [0xFFFF00]="Y",
-            [0xFF8000]="O",
-            [0xFF00FF]="P"
-        })
+        local gpu = renderTest.createGPU(width, height, renderTest.colorBox)
 
         mod.renderMarkup(gpu, width, markup, defaultStyles, selectorTable)
         return gpu
@@ -645,9 +638,9 @@ describe("Markup rendering", function()
             ),
             {},
             {
-                mod.Selector({"tc"}, {textColor=0xFF0000}),
-                mod.Selector({"bc"}, {textBackground=0x00FF00}),
-                mod.Selector({"sp"}, {spaceColor=0xFFFF00, spaceBackground=0xFFFFFF})
+                mod.Selector({"tc"}, {textColor=C.R}),
+                mod.Selector({"bc"}, {textBackground=C.G}),
+                mod.Selector({"sp"}, {spaceColor=C.Y, spaceBackground=C.W})
             }
         )
         assert.are_same({
@@ -676,11 +669,11 @@ describe("Markup rendering", function()
             {},
             {
                 mod.Selector({"hl"}, {
-                    textColor=0xFF0000,
-                    textBackground=0xFFFFFF,
-                    spaceColor=0xFF8000,
-                    spaceBackground=0xFFFF00,
-                    paddingBackground=0xFF00FF
+                    textColor=C.R,
+                    textBackground=C.W,
+                    spaceColor=C.O,
+                    spaceBackground=C.Y,
+                    paddingBackground=C.P
                 })
             }
         )

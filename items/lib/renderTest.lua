@@ -88,9 +88,34 @@ local function createGPU(width, height, colorBox)
 end
 
 
+local colors = {
+    black=0x000000,
+    white=0xFFFFFF,
+    red=0xFF0000,
+    green=0x00FF00,
+    yellow=0xFFFF00,
+    orange=0xFF8000,
+    purple=0xFF00FF
+}
+local shortColors = {}
+local colorBox = {}
+do
+    local unique = {}
+    for name, value in pairs(colors) do
+        local char = name:sub(1, 1):upper()
+        assert(shortColors[char] == nil)
+        shortColors[char] = value
+        colorBox[value] = char
+    end
+end
+
+
 -- Module
 
 
 return {
-    createGPU=createGPU
+    createGPU=createGPU,
+    colorBox=colorBox,
+    colors=colors,
+    shortColors=shortColors
 }
