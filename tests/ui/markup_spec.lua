@@ -693,4 +693,45 @@ describe("Markup rendering", function()
             "BBBBBBBBBB"
         }, gpu.getBackgroundResult(true))
     end)
+    it("block coloring", function()
+        local gpu = performTest(
+            mod.Div(
+                "before",
+                mod.Div("aaaa"):class("x"),
+                "after"
+            ),
+            {},
+            {
+                mod.Selector({"x"}, {
+                    borderLeft=1,
+                    borderRight=1,
+                    borderTop=1,
+                    borderBottom=1,
+                    borderColor=C.R,
+                    borderBackground=C.Y
+                })
+            }
+        )
+        assert.are_same({
+            "before    ",
+            "┌────────┐",
+            "│aaaa    │",
+            "└────────┘",
+            "after     "
+        }, gpu.getTextResult(true))
+        assert.are_same({
+            "WWWWWWWWWW",
+            "RRRRRRRRRR",
+            "RWWWWWWWWR",
+            "RRRRRRRRRR",
+            "WWWWWWWWWW"
+        }, gpu.getColorResult(true))
+        assert.are_same({
+            "BBBBBBBBBB",
+            "YYYYYYYYYY",
+            "YBBBBBBBBY",
+            "YYYYYYYYYY",
+            "BBBBBBBBBB"
+        }, gpu.getBackgroundResult(true))
+    end)
 end)

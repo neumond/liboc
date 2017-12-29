@@ -13,7 +13,7 @@ assert(utils.charWidth(PREFILL) == 1)
 local function createGPU(width, height, colorBox)
     local gpu = Buffer():getGpuInterface()
 
-    -- gpu.setResolution(width, height)
+    gpu.setResolution(width, height)
     gpu.setForeground(0x888888)
     gpu.setBackground(0x888888)
     gpu.fill(1, 1, width, height, PREFILL)

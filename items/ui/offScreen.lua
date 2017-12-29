@@ -6,6 +6,8 @@ local defaultPalette = require("lib.gpu.gpuPalette_auto")
 
 
 local NaiveBuffer = utils.makeClass(function(self)
+    self.width = 160  -- tier 3 screen resolution by default
+    self.height = 50
     self.textBuf = {}
     self.colorBuf = {}
     self.backgroundBuf = {}
@@ -16,7 +18,13 @@ end)
 
 
 function NaiveBuffer:getResolution()
-    return 160, 50
+    return self.width, self.height
+end
+
+
+function NaiveBuffer:setResolution(width, height)
+    self.width = width
+    self.height = height
 end
 
 
@@ -158,6 +166,9 @@ function NaiveBuffer:getGpuInterface()
     return {
         getResolution=function(...)
             return self:getResolution(...)
+        end,
+        setResolution=function(...)
+            return self:setResolution(...)
         end,
         setForeground=function(...)
             return self:setForeground(...)
