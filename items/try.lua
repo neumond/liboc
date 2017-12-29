@@ -219,3 +219,4 @@ end
 -- keycodes()
 -- renderBigWallOfText()
 require("lib.renderTest").consistency.gatherGpuResults()
+require("lib.renderTest").consistency.gatherGpuPalette()

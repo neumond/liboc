@@ -98,15 +98,4 @@ describe("renderTest", function()
             "¶¶¶",
         }, gpu.getBackgroundResult())
     end)
-    describe("consistency with real GPU", function()
-        local ref = require("gpuResult_auto")
-        local gpu = mod.createGPU(160, 50, {})
-        for testName, realResult in pairs(ref) do
-            it(testName, function()
-                local testFunc = mod.consistency.testFuncs[testName]
-                local result = mod.consistency.getGpuResult(gpu, testFunc)
-                assert.are_same(realResult, result)
-            end)
-        end
-    end)
 end)
