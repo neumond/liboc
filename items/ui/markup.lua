@@ -618,6 +618,35 @@ local function execGpuTokens(gpu, iter)
 end
 
 
+local function gpuTokensIntoCallableLines(iter)
+    local result = {}
+    local currentLine
+
+    local cmdSwitch = {
+        [Flow.gpuColor] = function(v)
+            table.insert(currentLine, {"setForeground", v})
+        end,
+        [Flow.gpuBackground] = function(v)
+            table.insert(currentLine, {"setBackground", v})
+        end,
+        [Flow.gpuFill] = function(x, w, char)
+            table.insert(currentLine, {"fill", x, currentLine, w, 1, char})
+        end,
+        [Flow.gpuSet] = function(x, text)
+            gpu.set(x, currentLine, text)
+        end,
+        [Flow.gpuNewLine] = function()
+            currentLine = {}
+            table.insert(result, currentLine)
+        end
+    }
+
+    for cmd, a, b, c in iter do
+        cmdSwitch[cmd](a, b, c)
+    end
+end
+
+
 local function tokenDebug(markupIter)
     local RevFlow = {}
     for k, v in pairs(Flow) do

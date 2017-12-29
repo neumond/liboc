@@ -3,6 +3,33 @@ local RegionGpu = require("ui.regionGpu").RegionGpu  -- for handling border case
 local M = {}
 
 
+-- Colors
+
+
+local MAX_COLOR = 0x1000000
+
+
+function M.packColor(color, isPalette)
+    if isPalette then
+        return MAX_COLOR + color
+    else
+        return color
+    end
+end
+
+
+function M.unpackColor(pcolor)
+    if pcolor >= MAX_COLOR then
+        return pcolor - MAX_COLOR, true
+    else
+        return pcolor, false
+    end
+end
+
+
+-- Test gpu
+
+
 local PREFILL = "¶"
 assert(utils.strlen(PREFILL) == 1)
 
@@ -83,6 +110,9 @@ function M.createGPU(width, height, colorBox)
             end
             return true
         end,
+        get=function(x, y)
+            return utils.strsub(textLines[y], x, x), 0xFFFFFF, 0x000000
+        end,
         set=function(x, y, s)
             replace(x, y, s)
             return true
@@ -138,8 +168,99 @@ function M.createGPU(width, height, colorBox)
 end
 
 
+-- Consistency test functions
+
+
+local testFuncs = {
+    fillWide=function(gpu)
+        gpu.fill(1, 1, 3, 3, "シ")
+        return 6, 3
+    end,
+    fillUnaligned=function(gpu)
+        gpu.fill(1, 1, 3, 3, "シ")
+        gpu.fill(2, 1, 2, 3, "ネ")
+        return 6, 3
+    end,
+    setWide=function(gpu)
+        gpu.set(1, 1, "abc")
+        gpu.set(1, 1, "シ")
+        return 4, 1
+    end,
+    setWideUnaligned=function(gpu)
+        gpu.set(1, 1, "シシシシ")
+        gpu.set(1, 2, "シシシシ")
+
+        gpu.set(2, 1, "abcdef")
+        gpu.set(2, 2, "ネエミ")
+        return 8, 2
+    end,
+    copyWideUnaligned=function(gpu)
+        for y=1,4 do
+            gpu.set(2, y, "カタカナ")
+        end
+        gpu.copy(2, 1, 4, 1, -1, 0)
+        gpu.copy(2, 2, 8, 1, -1, 0)
+        gpu.copy(2, 3, 4, 1, 1, 0)
+        gpu.copy(2, 4, 8, 1, 1, 0)
+        return 10, 4
+    end
+}
+
+
+-- Consistency with real GPU
+
+
+local function getGpuRegion(gpu, w, h)
+    local textBuf, fgBuf, bgBuf = {}, {}, {}
+    for y=1,h do
+        textBuf[y] = {}
+        fgBuf[y] = {}
+        bgBuf[y] = {}
+        for x=1,w do
+            local char, fc, bc, fpal, bpal = gpu.get(x, y)
+            textBuf[y][x] = char
+            fgBuf[y][x] = fpal ~= nil and M.packColor(fpal, true) or M.packColor(fc, false)
+            bgBuf[y][x] = bpal ~= nil and M.packColor(bpal, true) or M.packColor(bc, false)
+        end
+    end
+    return textBuf, fgBuf, bgBuf
+end
+
+
+local function getGpuResult(gpu, testFunc)
+    local w, h = gpu.getResolution()
+    gpu.setForeground(0xFFFFFF)
+    gpu.setBackground(0x000000)
+    gpu.fill(1, 1, w, h, " ")
+    return getGpuRegion(gpu, testFunc(gpu))
+end
+
+
+local function gatherGpuResults()
+    local gpu = require("component").gpu
+    local r = {}
+    for k, func in pairs(testFuncs) do
+        r[k] = {getGpuResult(gpu, func)}
+    end
+    local f = assert(io.open("gpuResult_auto.lua", "w"))
+    f:write("return ")
+    f:write(require("serialization").serialize(r, false))
+    f:close()
+end
+
+
+-- require("lib.renderTest").consistency.gatherGpuResults()
+
+
+-- Module
+
+
 M.testing = {
     strReplace=strReplace
 }
-
+M.consistency = {
+    testFuncs=testFuncs,
+    getGpuResult=getGpuResult,
+    gatherGpuResults=gatherGpuResults
+}
 return M

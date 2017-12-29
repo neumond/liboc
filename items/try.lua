@@ -217,4 +217,5 @@ end
 
 
 -- keycodes()
-renderBigWallOfText()
+-- renderBigWallOfText()
+require("lib.renderTest").consistency.gatherGpuResults()

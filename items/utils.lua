@@ -34,15 +34,27 @@ end
 
 if M.isInGame() then
     M.string = require("unicode")
+    M.strWidth = M.string.wlen
+    M.charWidth = M.string.charWidth
 else
     M.string = require("lua-utf8")
+    M.strWidth = M.string.width
+    M.charWidth = function(ch) return M.string.width(M.string.sub(ch, 1, 1)) end
 end
-
-
--- compatibility
--- TODO: remove
 M.strlen = M.string.len
 M.strsub = M.string.sub
+
+
+function M.iterChars(text)
+    local i = 0
+    local len = M.strlen(text)
+    return function()
+        i = i + 1
+        if i > len then return end
+        local char = M.strsub(text, i, i)
+        return char, M.charWidth(char)
+    end
+end
 
 
 function M.bufferingIterator(createIter)

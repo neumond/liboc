@@ -611,8 +611,5 @@ end
 
 
 return {
-    FrameRoot=FrameRoot,
-    testing={
-        intersection=intersection
-    }
+    FrameRoot=FrameRoot
 }

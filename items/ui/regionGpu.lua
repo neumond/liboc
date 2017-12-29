@@ -50,6 +50,9 @@ local function RegionGpu(gpu, winX, winY, winWidth, winHeight)
             end
             return gpu.set(ox + winX - 1, oy + winY - 1, text)
         end,
+        get = function(x, y)
+            return gpu.get(x + winX - 1, y + winY - 1)
+        end,
         fill = function(x, y, w, h, fillchar)
             flushColors()
             local ox, ow = intersectionWH(1, winWidth, x, w)
