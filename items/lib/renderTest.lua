@@ -204,10 +204,16 @@ local testFuncs = {
         gpu.copy(2, 4, 8, 1, 1, 0)
         return 10, 4
     end,
-    copyThenSet=function(gpu)
+    copyBackwardThenSet=function(gpu)
         gpu.set(2, 1, "シ")
         gpu.copy(2, 1, 1, 1, -1, 0)
         gpu.set(3, 1, "カ")
+        return 5, 1
+    end,
+    copyForwardThenSet=function(gpu)
+        gpu.set(1, 1, "シ")
+        gpu.copy(1, 1, 1, 1, 1, 0)
+        gpu.set(3, 1, "abc")
         return 5, 1
     end
 }
