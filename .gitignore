@@ -1,2 +1,2 @@
-/items/gpuPalette_auto.lua
-/items/gpuResult_auto.lua
+/items/lib/gpu/gpuPalette_auto.lua
+/items/lib/gpu/gpuResult_auto.lua

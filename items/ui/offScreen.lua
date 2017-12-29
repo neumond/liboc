@@ -1,8 +1,8 @@
 local utils = require("utils")
-local rtMod = require("lib.renderTest")
-local packColor = rtMod.packColor
-local unpackColor = rtMod.unpackColor
-local defaultPalette = require("gpuPalette_auto")
+local colorMod = require("lib.gpu.color")
+local packColor = colorMod.packColor
+local unpackColor = colorMod.unpackColor
+local defaultPalette = require("lib.gpu.gpuPalette_auto")
 
 
 local NaiveBuffer = utils.makeClass(function(self)
@@ -86,6 +86,7 @@ end
 
 
 function NaiveBuffer:get(x, y)
+    if (x <= 0) or (y <= 0) then error("index out of bounds") end
     local char = self.textBuf[y][x]
     if char == false then char = " " end
     local fc, fpal = unpackColor(self.colorBuf[y][x])

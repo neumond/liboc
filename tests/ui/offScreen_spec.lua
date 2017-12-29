@@ -1,16 +1,17 @@
 require("busted.runner")()
 local mod = require("ui.offScreen")
-local rtMod = require("lib.renderTest")
+local testFuncs = require("lib.gpu.consTests")
+local gatherMod = require("lib.gpu.gather")
+local expectedResults = require("lib.gpu.gpuResult_auto")
 
 
 local function makeGpuTests(createGpuFunc)
     describe("consistency with real GPU", function()
-        local ref = require("gpuResult_auto")
         local gpu = createGpuFunc()
-        for testName, realResult in pairs(ref) do
+        for testName, realResult in pairs(expectedResults) do
             it(testName, function()
-                local testFunc = rtMod.consistency.testFuncs[testName]
-                local result = {rtMod.consistency.getGpuResult(gpu, testFunc)}
+                local testFunc = testFuncs[testName]
+                local result = {gatherMod.getGpuResult(gpu, testFunc)}
                 assert.are_same(realResult, result)
             end)
         end

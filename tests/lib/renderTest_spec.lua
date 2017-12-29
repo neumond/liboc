@@ -3,10 +3,6 @@ local mod = require("lib.renderTest")
 
 
 describe("renderTest", function()
-    it("strReplace", function()
-        assert.are_equal("aaafffccc", mod.testing.strReplace("aaabbbccc", 4, "fff"))
-        assert.are_equal("faabbbccc", mod.testing.strReplace("aaabbbccc", 1, "f"))
-    end)
     it("creates prefilled planes", function()
         local gpu = mod.createGPU(3, 3, {})
         assert.are_same({
