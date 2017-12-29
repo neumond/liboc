@@ -55,6 +55,7 @@ end
 
 
 function NaiveBuffer:setChar(x, y, char, charWidth)
+    if x + charWidth - 1 > self.width then return false end
     if self.textBuf[y] == nil then
         self.textBuf[y] = {}
         self.colorBuf[y] = {}

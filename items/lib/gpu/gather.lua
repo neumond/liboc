@@ -28,7 +28,9 @@ local function getGpuResult(gpu, testFunc)
     gpu.setForeground(0xFFFFFF)
     gpu.setBackground(0x000000)
     gpu.fill(1, 1, w, h, " ")
-    return getGpuRegion(gpu, testFunc(gpu))
+    local textBuf, fgBuf, bgBuf = getGpuRegion(gpu, testFunc(gpu))
+    gpu.setResolution(w, h)  -- restore resolution
+    return textBuf, fgBuf, bgBuf
 end
 
 

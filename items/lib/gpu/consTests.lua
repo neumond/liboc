@@ -62,7 +62,19 @@ function M.copyForwardThenSet(gpu)
 end
 
 
--- TODO: uneven resolutions/changing resolutions and wide chars
+function M.fillWideChangeResolution(gpu)
+    gpu.setResolution(10, 10)
+    gpu.fill(1, 1, 5, 1, "シ")
+    gpu.setResolution(9, 9)
+    return 9, 1
+end
+
+
+function M.wideCharAtEdge(gpu)
+    gpu.setResolution(3, 3)
+    gpu.set(3, 1, "シ")
+    return 3, 1
+end
 
 
 return M
