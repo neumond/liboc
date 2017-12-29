@@ -163,6 +163,19 @@ function NaiveBuffer:copy(x, y, w, h, tx, ty)
 end
 
 
+function NaiveBuffer:reproduce(targetGpu)
+    for y, row in pairs(self.textBuf) do
+        for x, char in pairs(row) do
+            if char ~= false then
+                targetGpu.setForeground(self.colorBuf[y][x])
+                targetGpu.setBackground(self.backgroundBuf[y][x])
+                targetGpu.set(x, y, char)
+            end
+        end
+    end
+end
+
+
 function NaiveBuffer:getGpuInterface()
     return {
         getResolution=function(...)
@@ -194,6 +207,10 @@ function NaiveBuffer:getGpuInterface()
         end,
         copy=function(...)
             return self:copy(...)
+        end,
+        --
+        reproduce=function(...)
+            return self:reproduce(...)
         end
     }
 end

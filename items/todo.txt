@@ -1,3 +1,4 @@
 - Remove trailing empty line in MarkupFrame
 - Fill empty space in MarkupFrame
 - ContentFrame → TerminalFrame for console output
+- Markup can't work with wide chars
