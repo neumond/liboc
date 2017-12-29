@@ -188,5 +188,6 @@ end
 
 
 return {
-    NaiveBuffer=NaiveBuffer
+    NaiveBuffer=NaiveBuffer,
+    Buffer=NaiveBuffer  -- primary
 }

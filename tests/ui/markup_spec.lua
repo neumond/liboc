@@ -20,7 +20,6 @@ end
 
 
 describe("Markup tokenizer", function()
-
     describe("removeGlueAddWordLengths", function()
         local f = tu.makeIterTestable(mod.testing.removeGlueAddWordLengths)
 
@@ -590,5 +589,115 @@ describe("Markup tokenizer", function()
                 {Flow.blockEnd, makeBox{}}
             })
         end)
+    end)
+end)
+describe("Markup rendering", function()
+    local function performTest(markup, defaultStyles, selectorTable)
+        local width = 10
+        local height = 20
+        local gpu = renderTest.createGPU(width, height, {
+            [0x000000]="B",
+            [0xFFFFFF]="W",
+            [0xFF0000]="R",
+            [0x00FF00]="G",
+            [0xFFFF00]="Y",
+            [0xFF8000]="O",
+            [0xFF00FF]="P"
+        })
+
+        mod.renderMarkup(gpu, width, markup, defaultStyles, selectorTable)
+        return gpu
+    end
+
+    it("simplest case", function()
+        local gpu = performTest(
+            mod.Div("Lorem", "ipsum", "dolor", "sit", "amet"),
+            {},
+            {}
+        )
+        assert.are_same({
+            "Lorem     ",
+            "ipsum     ",
+            "dolor sit ",
+            "amet      "
+        }, gpu.getTextResult(true))
+        assert.are_same({
+            "WWWWWWWWWW",
+            "WWWWWWWWWW",
+            "WWWWWWWWWW",
+            "WWWWWWWWWW"
+        }, gpu.getColorResult(true))
+        assert.are_same({
+            "BBBBBBBBBB",
+            "BBBBBBBBBB",
+            "BBBBBBBBBB",
+            "BBBBBBBBBB"
+        }, gpu.getBackgroundResult(true))
+    end)
+    it("inline coloring", function()
+        local gpu = performTest(
+            mod.Div(
+                "aaa",
+                mod.Span("bbb"):class("tc"),
+                "ccc",
+                mod.Span("ddd"):class("bc"),
+                mod.Span("ee", "ff", "gg"):class("sp")
+            ),
+            {},
+            {
+                mod.Selector({"tc"}, {textColor=0xFF0000}),
+                mod.Selector({"bc"}, {textBackground=0x00FF00}),
+                mod.Selector({"sp"}, {spaceColor=0xFFFF00, spaceBackground=0xFFFFFF})
+            }
+        )
+        assert.are_same({
+            "aaa bbb   ",
+            "ccc ddd ee",
+            "ff gg     "
+        }, gpu.getTextResult(true))
+        assert.are_same({
+            "WWWWRRRWWW",
+            "WWWWWWWWWW",
+            "WWYWWWWWWW"
+        }, gpu.getColorResult(true))
+        assert.are_same({
+            "BBBBBBBBBB",
+            "BBBBGGGBBB",
+            "BBWBBBBBBB"
+        }, gpu.getBackgroundResult(true))
+    end)
+    it("block coloring", function()
+        local gpu = performTest(
+            mod.Div(
+                "aaa",
+                mod.Div("bbb", "d"):class("hl"),
+                "ccc"
+            ),
+            {},
+            {
+                mod.Selector({"hl"}, {
+                    textColor=0xFF0000,
+                    textBackground=0xFFFFFF,
+                    spaceColor=0xFF8000,
+                    spaceBackground=0xFFFF00,
+                    paddingBackground=0xFF00FF
+                })
+            }
+        )
+        assert.are_same({
+            "aaa       ",
+            "bbb d     ",
+            "ccc       "
+        }, gpu.getTextResult(true))
+        assert.are_same({
+            "WWWWWWWWWW",
+            "RRRORWWWWW",
+            "WWWWWWWWWW"
+        }, gpu.getColorResult(true))
+        assert.are_same({
+            "BBBBBBBBBB",
+            "WWWYWPPPPP",
+            "BBBBBBBBBB"
+        }, gpu.getBackgroundResult(true))
     end)
 end)

@@ -117,14 +117,6 @@ end
 -- Token iteration
 
 
-local function makeIterChain(func, ...)
-    for _, iter in ipairs({...}) do
-        func = iter(func)
-    end
-    return func
-end
-
-
 local function removeGlueAddWordLengths(iter)
     -- removes Flow.glue
     -- adds Flow.wordSize
@@ -196,7 +188,6 @@ end
 
 
 local function pushclassAfterWordsize(iter)
-    -- TODO: need?
     -- repositions Flow.pushClass and Flow.wordSize
     return utils.bufferingIterator(function(append, prepend)
         return function()
@@ -559,10 +550,10 @@ local function renderToGpuLines(markupIter, screenWidth)
                 local pos, width = newLine()
                 local pad = width - lineWidth
                 textPos = textStartingX(bs.align, pad) + 1 + leftFillerWidth
-                append(Flow.gpuColor, styles.paddingColor)
-                append(Flow.gpuBackground, styles.paddingBackground)
+                append(Flow.gpuColor, bs.paddingColor)
+                append(Flow.gpuBackground, bs.paddingBackground)
                 textPaddingSwitch[bs.align](lineWidth, pad, function(x, w)
-                    append(Flow.gpuFill, pos + x - 1, w, styles.paddingFill)
+                    append(Flow.gpuFill, pos + x - 1, w, bs.paddingFill)
                 end)
             end,
             [Flow.string] = function(str)
@@ -618,32 +609,28 @@ local function execGpuTokens(gpu, iter)
 end
 
 
-local function gpuTokensIntoCallableLines(iter)
-    local result = {}
-    local currentLine
-
-    local cmdSwitch = {
-        [Flow.gpuColor] = function(v)
-            table.insert(currentLine, {"setForeground", v})
-        end,
-        [Flow.gpuBackground] = function(v)
-            table.insert(currentLine, {"setBackground", v})
-        end,
-        [Flow.gpuFill] = function(x, w, char)
-            table.insert(currentLine, {"fill", x, currentLine, w, 1, char})
-        end,
-        [Flow.gpuSet] = function(x, text)
-            gpu.set(x, currentLine, text)
-        end,
-        [Flow.gpuNewLine] = function()
-            currentLine = {}
-            table.insert(result, currentLine)
-        end
-    }
-
-    for cmd, a, b, c in iter do
-        cmdSwitch[cmd](a, b, c)
-    end
+local function renderMarkup(gpu, width, markup, defaultStyles, selectorTable)
+    execGpuTokens(
+        gpu,
+        renderToGpuLines(
+            splitIntoLines(
+                blockContentWidths(
+                    classesToStyles(
+                        pushclassAfterWordsize(
+                            removeGlueAddWordLengths(
+                                markup:iterTokens()
+                            )
+                        ),
+                        defaultStyles,
+                        selectorTable
+                    ),
+                    width
+                ),
+                width
+            ),
+            width
+        )
+    )
 end
 
 
@@ -664,6 +651,7 @@ return {
     Div=Div,
     Glue=Glue,
     Selector=selectorModule.Selector,
+    renderMarkup=renderMarkup,
     testing={
         tokenDebug=tokenDebug,
         Flow=Flow,

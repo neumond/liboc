@@ -1,5 +1,5 @@
 local utils = require("utils")
-local Buffer = require("ui.offScreen").NaiveBuffer
+local Buffer = require("ui.offScreen").Buffer
 
 
 -- Test gpu
@@ -25,6 +25,21 @@ local function createGPU(width, height, colorBox)
         return r
     end
 
+    local function cutResult(rows)
+        local m = string.rep(PREFILL, width)
+        local cutter = height
+        for y=height,1,-1 do
+            if rows[y] == m then
+                cutter = y - 1
+            else
+                break
+            end
+        end
+        local rout = {}
+        for y=1,cutter do table.insert(rout, rows[y]) end
+        return rout
+    end
+
     gpu.getTextResult = function(stripTail)
         local r = {}
         for y=1,height do
@@ -37,23 +52,11 @@ local function createGPU(width, height, colorBox)
             end
             r[y] = table.concat(row, "")
         end
-
         if not stripTail then return r end
-        local m = string.rep(PREFILL, width)
-        local cutter = height
-        for y=height,1,-1 do
-            if r[y] == m then
-                cutter = y - 1
-            else
-                break
-            end
-        end
-        local rout = {}
-        for y=1,cutter do table.insert(rout, r[y]) end
-        return rout
+        return cutResult(r)
     end
 
-    gpu.getColorResult = function()
+    gpu.getColorResult = function(stripTail)
         local r = {}
         for y=1,height do
             local row = {}
@@ -63,10 +66,11 @@ local function createGPU(width, height, colorBox)
             end
             r[y] = table.concat(row, "")
         end
-        return r
+        if not stripTail then return r end
+        return cutResult(r)
     end
 
-    gpu.getBackgroundResult = function()
+    gpu.getBackgroundResult = function(stripTail)
         local r = {}
         for y=1,height do
             local row = {}
@@ -76,7 +80,8 @@ local function createGPU(width, height, colorBox)
             end
             r[y] = table.concat(row, "")
         end
-        return r
+        if not stripTail then return r end
+        return cutResult(r)
     end
 
     return gpu
