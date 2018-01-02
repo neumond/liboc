@@ -216,7 +216,37 @@ local function renderBigWallOfText()
 end
 
 
+local function calcCrafts(itemId, amountNeeded)
+    local planCrafting = require("roomBot.crafterBot").testing.planCrafting
+
+    local _, stock = planCrafting({}, itemId, amountNeeded)
+
+    print("Stock")
+    print(require("inspect")(stock))
+    print()
+
+    local s, log = planCrafting(stock, itemId, amountNeeded)
+
+    local db = require("recipedb")
+    for _, action in ipairs(log) do
+        print(action.item, action.times)
+        local rec = db.items[action.item].recipe
+        for row=1,3 do
+            local rowstr = {}
+            for col=1,3 do
+                local item = rec[row * 3 - 3 + col]
+                if item == nil then item = "" end
+                table.insert(rowstr, item)
+            end
+            print(table.concat(rowstr, " | "))
+        end
+        print()
+    end
+end
+
+
 -- keycodes()
 -- renderBigWallOfText()
-require("lib.gpu.gather").gatherGpuResults()
-require("lib.gpu.gather").gatherGpuPalette()
+-- require("lib.gpu.gather").gatherGpuResults()
+-- require("lib.gpu.gather").gatherGpuPalette()
+calcCrafts("powerconverter", 1)

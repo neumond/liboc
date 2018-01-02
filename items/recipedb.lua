@@ -1616,6 +1616,36 @@ M.items = {
         damage=0,
         stack=64
     },
+    -- ["geolyzer"]={
+    --     recipe={
+    --         "gold_ingot", "compass", "gold_ingot",
+    --         "ender_eye", "chip2", "ender_eye",
+    --         "gold_ingot", "pcb", "gold_ingot"
+    --     }
+    --     -- TODO:
+    -- },
+    ["powerconverter"]={
+        name="Power Converter",
+        recipe={
+            "iron_ingot", "cable", "iron_ingot",
+            "gold_ingot", "chip1", "gold_ingot",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:powerconverter",
+        damage=0,
+        stack=64
+    },
+    ["charger"]={
+        name="Charger",
+        recipe={
+            "iron_ingot", "gold_ingot", "iron_ingot",
+            "capacitor", "chip2", "capacitor",
+            "iron_ingot", "pcb", "iron_ingot"
+        },
+        ident="opencomputers:charger",
+        damage=0,
+        stack=64
+    },
 
 
     -- PRINTER
