@@ -57,6 +57,20 @@ function M.iterChars(text)
 end
 
 
+if M.isInGame() then
+    M.sides = require("sides")
+else
+    M.sides = {
+        bottom = 0,
+        top = 1,
+        back = 2,
+        front = 3,
+        right = 4,
+        left = 5
+    }
+end
+
+
 function M.bufferingIterator(createIter)
     local buf = {}
     local front = 0

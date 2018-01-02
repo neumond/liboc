@@ -1,12 +1,11 @@
-local makeClass = require("utils").makeClass
+local utils = require("utils")
 local PlaneNav = require("roomBot.planeNav").PlaneNav
 
 
--- TODO: debug axes
--- TODO: ability to find and use axes in chest
--- TODO: ability to take saplings from chest
 -- TODO: sleep if no wood acquired
 
+
+local DEFAULT_SAPLING_TYPE = 0  -- oak
 
 local SAPLING_SLOT = 1
 
@@ -148,7 +147,7 @@ local function enumInitialIntrusion(w)
 end
 
 
-local JackBot = makeClass(function(self, robot, waitCharging, config, invController)
+local JackBot = utils.makeClass(function(self, robot, waitCharging, config, invController)
     self.robot = robot
     self.waitCharging = waitCharging
     self.config = config
@@ -162,24 +161,95 @@ function JackBot:requiredSaplings()
 end
 
 
-function JackBot:preCheck()
-    assert(self.robot.inventorySize() >= 8, "Required: inventory upgrade")
+function JackBot:tryTaking(slot, requiredAmount, recognizeFunc)
+    if self.invController == nil then return false end
 
-    assert(
-        self.robot.count(SAPLING_SLOT) >= self:requiredSaplings(),
-        "Required: " .. self:requiredSaplings() .. " saplings in slot " .. SAPLING_SLOT)
-    assert(
-        self.robot.count(WOOD_SLOT) >= 1,
-        "Required: Wood log in slot " .. WOOD_SLOT)
+    local side = utils.sides.front
+    local isize = self.invController.getInventorySize(side)
+    if isize == nil then return false end
 
-    self.equipped = NO_AXE
+    self.robot.select(slot)
+    for i=1,isize do
+        local stack = self.invController.getStackInSlot(side, i)
+        if stack ~= nil and recognizeFunc(stack) then
+            self.invController.suckFromSlot(
+                side, i, requiredAmount - self.robot.count(slot))
+            if self.robot.count(slot) >= requiredAmount then return true end
+        end
+    end
+    return false
+end
+
+
+function JackBot:checkStackInfo(slot, recognizeFunc)
+    local amount = self.robot.count(slot)  -- tier 1 compatibility
+    if amount == 0 then return amount end
+    if self.invController == nil then
+        -- impossible to check, user must be careful
+        return
+    end
+    local stack = self.invController.getStackInInternalSlot(slot)
+    local r, data = recognizeFunc(stack)
+    assert(r, "Wrong items in slot " .. slot)
+    return amount, data
+end
+
+
+function JackBot:preCheckSaplings()
+    local amount, saplingType = self:checkStackInfo(SAPLING_SLOT, function(stack)
+        return stack.name == "minecraft:sapling", stack.damage
+    end)
+    if saplingType == nil then saplingType = DEFAULT_SAPLING_TYPE end
     if (
-        self.invController ~= nil  -- ability to equip
-        and
-        self.robot.durability() ~= nil  -- we have an axe!
+        amount < self:requiredSaplings() and
+        not self:tryTaking(SAPLING_SLOT, self:requiredSaplings(), function(stack)
+            return stack.name == "minecraft:sapling" and stack.damage == saplingType
+        end)
     ) then
+        error("Unable to acquire enough saplings: " .. self:requiredSaplings() .. " needed.")
+    end
+    return saplingType
+end
+
+
+function JackBot:preCheckWood(woodType)
+    local function checkStack(stack)
+        return stack.name == "minecraft:log", stack.damage == woodType
+    end
+    local amount = self:checkStackInfo(WOOD_SLOT, checkStack)
+    if (
+        amount < 1 and
+        not self:tryTaking(WOOD_SLOT, 1, checkStack)
+    ) then
+        error("Unable to acquire sample wood log of type " .. woodType)
+    end
+end
+
+
+function JackBot:preCheckAxe()
+    self.equipped = NO_AXE
+    if self.invController == nil then return end  -- ability to equip
+    if self.robot.durability() ~= nil then
+        self.equipped = true  -- we have an axe!
+        return
+    end
+    self.robot.select(SAPLING_SLOT)
+    assert(self.invController.equip())
+    assert(self.robot.count(SAPLING_SLOT) == 0, "Wrong thing equipped")
+    if self:tryTaking(SAPLING_SLOT, 1, function(stack)
+        return stack.name == "minecraft:stone_axe"
+    end) then
         self.equipped = true
     end
+    assert(self.invController.equip())
+end
+
+
+function JackBot:preCheck()
+    assert(self.robot.inventorySize() >= 8, "Required: inventory upgrade")
+    local woodType = self:preCheckSaplings()
+    self:preCheckWood(woodType)
+    self:preCheckAxe()
 end
 
 
@@ -316,7 +386,7 @@ function JackBot:farmSessionInner()
 end
 
 
-function JackBot:unloadInner()
+function JackBot:unload()
     for slot=1,self.robot.inventorySize() do
         local keepAmount = 0
         if slot == SAPLING_SLOT then
@@ -336,16 +406,11 @@ end
 
 
 function JackBot:farmSession()
+    self.robot.turnLeft()
     assert(self.robot.forward())
     self:farmSessionInner()
     assert(self.robot.back())
-end
-
-
-function JackBot:unload()
     self.robot.turnRight()
-    self:unloadInner()
-    self.robot.turnLeft()
 end
 
 

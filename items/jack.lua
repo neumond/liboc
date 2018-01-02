@@ -13,7 +13,7 @@ end
 
 
 JackBot(robot, waitCharging, {
-    width=1,
-    height=1,
+    width=5,
+    height=2,
     step=6
 }, component.inventory_controller):main()
