@@ -5,26 +5,13 @@ from string import Template
 import requests
 from zipfile import ZipFile
 from collections import OrderedDict
+from copy import deepcopy
+from uuid import uuid4
 # from sys import argv
 
 
-MINECRAFT_DIR = expanduser('~/.minecraft_ltest')
-
-VERSIONS_DIR = join(MINECRAFT_DIR, 'versions')
-ASSETS_DIR = join(MINECRAFT_DIR, 'assets')
-LIBRARIES_DIR = join(MINECRAFT_DIR, 'libraries')
 OS = 'linux'
 ARCH = 'x86_64'
-
-PARAMETERS = {
-    'auth_player_name': 'neumond',
-    'auth_uuid': '8e689e36-2044-4061-bf12-bb6215732cf2',  # http://mcuuid.net/?q=neumond
-    'game_directory': MINECRAFT_DIR,
-    'assets_root': ASSETS_DIR,
-    'auth_access_token': '1685aeec-f1f2-4f5f-be41-cc4ec97f55f9',  # random uuid4
-    'user_type': 'mojang',
-    'user_properties': '{}',
-}
 
 
 def assert_keys(dct, *keys):
@@ -113,11 +100,63 @@ def execute_rules(rule_cfg):
     return act
 
 
+class PathManager:
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+
+    @property
+    def versions_dir(self):
+        return join(self.base_dir, 'versions')
+
+    @property
+    def assets_dir(self):
+        return join(self.base_dir, 'assets')
+
+    @property
+    def libraries_dir(self):
+        return join(self.base_dir, 'libraries')
+
+
+class Bootstrapper:
+    def __init__(self, path_manager, ver):
+        self.path_manager = path_manager
+        self.ver = ver
+
+    @property
+    def jar_dir(self):
+        return join(self.path_manager.versions_dir, self.ver)
+
+    def download(self, **kw):
+        dq = DownloadQueue()
+        makedirs(self.jar_dir, exist_ok=True)
+
+        base_url = 'http://s3.amazonaws.com/Minecraft.Download/versions/{}'.format(self.ver)
+        dq.add(
+            '{}/{}.jar'.format(base_url, self.ver),
+            join(self.jar_dir, '{}.jar'.format(self.ver))
+        )
+        dq.add(
+            '{}/{}.json'.format(base_url, self.ver),
+            join(self.jar_dir, '{}.json'.format(self.ver))
+        )
+        dq.add(
+            '{}/minecraft_server.{}.jar'.format(base_url, self.ver),
+            join(self.jar_dir, 'minecraft_server.{}.jar'.format(self.ver))
+        )
+        dq.execute(**kw)
+
+    def precreate_dirs(self):
+        for k in ('saves', 'logs', 'resourcepacks'):
+            makedirs(join(self.path_manager.base_dir, k), exist_ok=True)
+
+
 class LaunchCommand:
-    @staticmethod
-    def load_config(ver):
-        VER_DIR = join(VERSIONS_DIR, ver)
-        with open(join(VER_DIR, '{}.json'.format(ver))) as f:
+    def load_config(self):
+        with open(join(
+            self.path_manager.versions_dir,
+            self.ver,
+            '{}.json'.format(self.ver)
+        )) as f:
             return json.load(f)
 
     @property
@@ -125,12 +164,16 @@ class LaunchCommand:
         return self.config.get('jar', self.ver)
 
     @property
+    def primary_jar_dir(self):
+        return join(self.path_manager.versions_dir, self.jar_version)
+
+    @property
     def primary_jar_path(self):
-        return join(VERSIONS_DIR, self.jar_version, '{}.jar'.format(self.jar_version))
+        return join(self.primary_jar_dir, '{}.jar'.format(self.jar_version))
 
     @property
     def natives_dir(self):
-        return join(VERSIONS_DIR, self.jar_version, '{}-natives'.format(self.jar_version))
+        return join(self.primary_jar_dir, '{}-natives'.format(self.jar_version))
 
     @property
     def natives_dirs(self):
@@ -152,7 +195,11 @@ class LaunchCommand:
 
     @property
     def asset_index_file(self):
-        return join(ASSETS_DIR, 'indexes', '{}.json'.format(self.config['assetIndex']['id']))
+        return join(
+            self.path_manager.assets_dir,
+            'indexes',
+            '{}.json'.format(self.config['assetIndex']['id'])
+        )
 
     @property
     def main_class(self):
@@ -164,13 +211,24 @@ class LaunchCommand:
             version_name=self.jar_version,
             assets_index_name=self.config['assets'] if 'assets' in self.config else self.parent.config['assets'],
             version_type=self.config['type'],
-            **PARAMETERS
+            game_directory=self.path_manager.base_dir,
+            assets_root=self.path_manager.assets_dir,
+            **self.aparams
         )
 
-    def __init__(self, ver):
+    def __init__(self, path_manager, ver, nickname, auth_uuid):
+        self.path_manager = path_manager
         self.ver = ver
+        self.aparams = {
+            'auth_player_name': nickname,
+            'auth_uuid': auth_uuid,
+            'auth_access_token': str(uuid4()),
+            'user_type': 'mojang',
+            'user_properties': '{}'
+        }
+
         self.parent = None
-        self.config = self.load_config(ver)
+        self.config = self.load_config()
         assert isfile(self.primary_jar_path)
         self.jars = [self.primary_jar_path]
 
@@ -208,13 +266,13 @@ class LaunchCommand:
 
         if 'downloads' in lib_cfg:
             if 'artifact' in lib_cfg['downloads']:
-                jar_path = join(LIBRARIES_DIR, lib_cfg['downloads']['artifact']['path'])
+                jar_path = join(self.path_manager.libraries_dir, lib_cfg['downloads']['artifact']['path'])
                 jar_url = lib_cfg['downloads']['artifact']['url']
                 yield jar_path, jar_url, None
 
             if 'natives' in lib_cfg:
                 nat = lib_cfg['downloads']['classifiers'][lib_cfg['natives'][OS]]
-                native_jar_path = join(LIBRARIES_DIR, nat['path'])
+                native_jar_path = join(self.path_manager.libraries_dir, nat['path'])
                 native_jar_url = nat['url']
                 yield native_jar_path, native_jar_url, lib_cfg.get('extract')
         else:
@@ -222,7 +280,13 @@ class LaunchCommand:
             if not lib_cfg.get('clientreq', True):
                 return
             lns, lname, lver = lib_cfg['name'].split(':')
-            jar_path = join(LIBRARIES_DIR, *lns.split('.'), lname, lver, '{}-{}.jar'.format(lname, lver))
+            jar_path = join(
+                self.path_manager.libraries_dir,
+                *lns.split('.'),
+                lname,
+                lver,
+                '{}-{}.jar'.format(lname, lver)
+            )
 
             default_maven = 'http://repo1.maven.org/maven2/'
             if lns.startswith('net.minecraft'):
@@ -245,7 +309,7 @@ class LaunchCommand:
         )
 
     def download_libraries(self, **kw):
-        makedirs(LIBRARIES_DIR, exist_ok=True)
+        makedirs(self.path_manager.libraries_dir, exist_ok=True)
         self.download_queue.execute(**kw)
 
     def extract_natives(self, **kw):
@@ -255,7 +319,7 @@ class LaunchCommand:
         assert(isfile(self.asset_index_file))
         with open(self.asset_index_file, 'r') as f:
             index = json.load(f)
-        makedirs(ASSETS_DIR, exist_ok=True)
+        makedirs(self.path_manager.assets_dir, exist_ok=True)
         dq = DownloadQueue()
         for folder, items in index.items():
             for name, item in items.items():
@@ -263,41 +327,62 @@ class LaunchCommand:
                 hf = item['hash']
                 dq.add(
                     'http://resources.download.minecraft.net/{}/{}'.format(h2, hf),
-                    join(ASSETS_DIR, folder, h2, hf)
+                    join(self.path_manager.assets_dir, folder, h2, hf)
                 )
         dq.execute(**kw)
 
 
-def bootstrap_version(ver, **kw):
+class LauncherProfiles:
+    @property
+    def pfile(self):
+        return join(self.path_manager.base_dir, 'launcher_profiles.json')
+
+    def __init__(self, path_manager):
+        self.path_manager = path_manager
+        self.prev_data = None
+        if isfile(self.pfile):
+            with open(self.pfile, 'r') as f:
+                self.data = json.load(f)
+                self.prev_data = deepcopy(self.data)
+        else:
+            self.data = {
+                'profiles': {},
+                'selectedProfile': None
+            }
+
+    def add_profile(self, ver):
+        self.data['profiles'][ver] = {
+            'name': ver,
+            'lastVersionId': ver
+        }
+
+    def select_profile(self, ver):
+        assert(ver in self.data['profiles'])
+        self.data['selectedProfile'] = ver
+
+    def flush(self):
+        if self.data == self.prev_data:
+            return
+        with open(self.pfile, 'w') as f:
+            json.dump(self.data, f)
+        self.prev_data = deepcopy(self.data)
+
+
+def bootstrap_version(base_dir, ver, nickname, auth_uuid, **kw):
     # keyword parameters
     # force: bool  -- redownload everything
+    pm = PathManager(base_dir)
 
-    dq = DownloadQueue()
-    jar_dir = join(VERSIONS_DIR, ver)
-    makedirs(jar_dir, exist_ok=True)
-    for k in ('saves', 'logs', 'resourcepacks'):
-        makedirs(join(MINECRAFT_DIR, k), exist_ok=True)
+    b = Bootstrapper(pm, ver)
+    b.precreate_dirs()
+    b.download(**kw)
 
-    with open(join(MINECRAFT_DIR, 'launcher_profiles.json'), 'w') as f:
-        json.dump({
-            'profiles': {
-                ver: {
-                    'name': ver,
-                    'lastVersionId': ver,
-                }
-            },
-            'selectedProfile': ver,
-        }, f)
+    pf = LauncherProfiles(pm)
+    pf.add_profile(ver)
+    pf.select_profile(ver)
+    pf.flush()
 
-    base_url = 'http://s3.amazonaws.com/Minecraft.Download/versions/{}'.format(ver)
-    dq.add('{}/{}.jar'.format(base_url, ver), join(jar_dir, '{}.jar'.format(ver)))
-    dq.add('{}/{}.json'.format(base_url, ver), join(jar_dir, '{}.json'.format(ver)))
-    dq.add(
-        '{}/minecraft_server.{}.jar'.format(base_url, ver), join(jar_dir, 'minecraft_server.{}.jar'.format(ver))
-    )
-    dq.execute(**kw)
-
-    lc = LaunchCommand(ver)
+    lc = LaunchCommand(pm, ver, nickname, auth_uuid)
     lc.download_libraries(**kw)
     lc.extract_natives(**kw)
     lc.download_assets(**kw)
@@ -305,4 +390,9 @@ def bootstrap_version(ver, **kw):
 
 
 if __name__ == '__main__':
-    print(bootstrap_version('1.12.2'))
+    print(bootstrap_version(
+        expanduser('~/.minecraft_ltest'),
+        '1.12.2',
+        'neumond',
+        '8e689e36-2044-4061-bf12-bb6215732cf2'  # http://mcuuid.net/?q=neumond'
+    ))
