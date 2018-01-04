@@ -7,11 +7,6 @@ from zipfile import ZipFile
 # from sys import argv
 
 
-# http://s3.amazonaws.com/Minecraft.Download/versions/1.10.2/1.10.2.jar
-# http://s3.amazonaws.com/Minecraft.Download/versions/1.10.2/1.10.2.json
-# http://s3.amazonaws.com/Minecraft.Download/versions/1.10.2/minecraft_server.1.10.2.jar
-
-
 MINECRAFT_DIR = expanduser('~/.minecraft_ltest')
 
 VERSIONS_DIR = join(MINECRAFT_DIR, 'versions')
@@ -90,12 +85,23 @@ class ExtractQueue(BaseQueue):
         return fnamelist
 
     @classmethod
-    def extract_jar(cls, path, targetdir, extractcfg):
-        print('Extracting', path)
+    def extract_jar(cls, path, targetdir, extractcfg, force=False):
         with open(path, 'rb') as f:
             with ZipFile(f) as jar:
                 makedirs(targetdir, exist_ok=True)
-                jar.extractall(path=targetdir, members=cls.filter_zip_filenames(jar, extractcfg))
+                fnamelist = cls.filter_zip_filenames(jar, extractcfg)
+
+                # check all files exist
+                extract = True
+                for fname in fnamelist:
+                    if not isfile(join(targetdir, fname)):
+                        break
+                else:
+                    extract = False
+
+                if extract:
+                    print('Extracting', path)
+                    jar.extractall(path=targetdir, members=fnamelist)
 
     def __init__(self, natives_dir):
         super().__init__()
@@ -113,7 +119,6 @@ def execute_rules(rule_cfg):
     for rule in rule_cfg:
         assert_keys(rule, 'action', 'os')
         if 'os' in rule and rule['os']['name'] != OS:
-            # print('skip rule', rule)
             continue  # skip this rule
         act = rule['action']
     assert act in ('allow', 'disallow')
@@ -259,14 +264,20 @@ class LaunchCommand:
     def extract_natives(self):
         self.extract_queue.execute()
 
-    def download_assets(self, index):
-        with open(self.asset_index_file, 'rb') as f:
+    def download_assets(self):
+        assert(isfile(self.asset_index_file))
+        with open(self.asset_index_file, 'r') as f:
             index = json.load(f)
+        dq = DownloadQueue()
         for folder, items in index.items():
             for name, item in items.items():
-                filename = join(ASSETS_DIR, folder, item['hash'][:2], item['hash'])
-                print(filename)
-                # TODO:
+                h2 = item['hash'][:2]
+                hf = item['hash']
+                dq.add(
+                    'http://resources.download.minecraft.net/{}/{}'.format(h2, hf),
+                    join(ASSETS_DIR, folder, h2, hf)
+                )
+        dq.execute()
 
 
 def bootstrap_version(ver):
@@ -304,8 +315,4 @@ if __name__ == '__main__':
     lc = LaunchCommand('1.12.2')
     lc.download_libraries()
     lc.extract_natives()
-    # lc.download_queue.dump()
-    # print()
-    # lc.extract_queue.dump()
-    # print()
-    # print(lc)
+    lc.download_assets()
