@@ -4,6 +4,7 @@ import json
 from string import Template
 import requests
 from zipfile import ZipFile
+from collections import OrderedDict
 # from sys import argv
 
 
@@ -34,20 +35,20 @@ class BaseQueue:
     def __init__(self):
         self.q = []
 
-    def add(self, *a):
-        self.q.append(a)
+    def add(self, *a, **kw):
+        self.q.append((a, kw))
 
     def extend_from(self, ext_q):
         self.q.extend(ext_q)
 
-    def execute(self):
-        for item in self.q:
-            self.execute_item(*item)
+    def execute(self, **okw):
+        for a, kw in self.q:
+            self.execute_item(*a, **kw, **okw)
         self.q.clear()
 
     def dump(self):
-        for item in self.q:
-            self.dump_item(*item)
+        for a, kw in self.q:
+            print('{} {}'.format(a, kw))
 
 
 class DownloadQueue(BaseQueue):
@@ -59,20 +60,13 @@ class DownloadQueue(BaseQueue):
         c = r.content
         return c
 
-    @classmethod
-    def download_to_file(cls, url, targetpath, force=False):
+    def execute_item(self, url, targetpath, force=False):
         if isfile(targetpath) and not force:
             return
-        content = cls.download_item(url)
+        content = self.download_item(url)
         makedirs(dirname(targetpath), exist_ok=True)
         with open(targetpath, 'wb') as f:
             f.write(content)
-
-    def execute_item(self, url, targetpath):
-        self.download_to_file(url, targetpath)
-
-    def dump_item(self, url, targetpath):
-        print('{} → {}'.format(url, targetpath))
 
 
 class ExtractQueue(BaseQueue):
@@ -84,34 +78,28 @@ class ExtractQueue(BaseQueue):
             fnamelist = [p for p in fnamelist if not p.startswith(exp)]
         return fnamelist
 
-    @classmethod
-    def extract_jar(cls, path, targetdir, extractcfg, force=False):
-        with open(path, 'rb') as f:
-            with ZipFile(f) as jar:
-                makedirs(targetdir, exist_ok=True)
-                fnamelist = cls.filter_zip_filenames(jar, extractcfg)
-
-                # check all files exist
-                extract = True
-                for fname in fnamelist:
-                    if not isfile(join(targetdir, fname)):
-                        break
-                else:
-                    extract = False
-
-                if extract:
-                    print('Extracting', path)
-                    jar.extractall(path=targetdir, members=fnamelist)
-
     def __init__(self, natives_dir):
         super().__init__()
         self.natives_dir = natives_dir
 
-    def execute_item(self, path, extract_cfg):
-        self.extract_jar(path, self.natives_dir, extract_cfg)
+    def execute_item(self, path, extractcfg, force=False):
+        with open(path, 'rb') as f:
+            with ZipFile(f) as jar:
+                fnamelist = self.filter_zip_filenames(jar, extractcfg)
 
-    def dump_item(self, path, extract_cfg):
-        print('{} {}'.format(path, extract_cfg))
+                extract = True
+                if not force:
+                    # check all files exist
+                    for fname in fnamelist:
+                        if not isfile(join(self.natives_dir, fname)):
+                            break
+                    else:
+                        extract = False
+
+                if extract:
+                    print('Extracting', path)
+                    makedirs(self.natives_dir, exist_ok=True)
+                    jar.extractall(path=self.natives_dir, members=fnamelist)
 
 
 def execute_rules(rule_cfg):
@@ -152,15 +140,13 @@ class LaunchCommand:
         if isdir(self.natives_dir):
             r.append(self.natives_dir)
 
-        u, r2 = set(), []
+        r2 = OrderedDict()
         for item in r:
-            if item in u:
-                continue
-            u.add(item)
-            r2.append(item)
+            r2[item] = True
 
-        return ':'.join(r2)
+        return [k for k in r2.keys()]
 
+    @property
     def natives_line(self):
         return ':'.join(self.natives_dirs)
 
@@ -258,16 +244,18 @@ class LaunchCommand:
             self.argline,
         )
 
-    def download_libraries(self):
-        self.download_queue.execute()
+    def download_libraries(self, **kw):
+        makedirs(LIBRARIES_DIR, exist_ok=True)
+        self.download_queue.execute(**kw)
 
-    def extract_natives(self):
-        self.extract_queue.execute()
+    def extract_natives(self, **kw):
+        self.extract_queue.execute(**kw)
 
-    def download_assets(self):
+    def download_assets(self, **kw):
         assert(isfile(self.asset_index_file))
         with open(self.asset_index_file, 'r') as f:
             index = json.load(f)
+        makedirs(ASSETS_DIR, exist_ok=True)
         dq = DownloadQueue()
         for folder, items in index.items():
             for name, item in items.items():
@@ -277,16 +265,16 @@ class LaunchCommand:
                     'http://resources.download.minecraft.net/{}/{}'.format(h2, hf),
                     join(ASSETS_DIR, folder, h2, hf)
                 )
-        dq.execute()
+        dq.execute(**kw)
 
 
-def bootstrap_version(ver):
+def bootstrap_version(ver, **kw):
+    # keyword parameters
+    # force: bool  -- redownload everything
+
     dq = DownloadQueue()
     jar_dir = join(VERSIONS_DIR, ver)
     makedirs(jar_dir, exist_ok=True)
-    makedirs(ASSETS_DIR, exist_ok=True)
-    makedirs(LIBRARIES_DIR, exist_ok=True)
-
     for k in ('saves', 'logs', 'resourcepacks'):
         makedirs(join(MINECRAFT_DIR, k), exist_ok=True)
 
@@ -307,12 +295,14 @@ def bootstrap_version(ver):
     dq.add(
         '{}/minecraft_server.{}.jar'.format(base_url, ver), join(jar_dir, 'minecraft_server.{}.jar'.format(ver))
     )
-    dq.execute()
+    dq.execute(**kw)
+
+    lc = LaunchCommand(ver)
+    lc.download_libraries(**kw)
+    lc.extract_natives(**kw)
+    lc.download_assets(**kw)
+    return str(lc)
 
 
 if __name__ == '__main__':
-    bootstrap_version('1.12.2')
-    lc = LaunchCommand('1.12.2')
-    lc.download_libraries()
-    lc.extract_natives()
-    lc.download_assets()
+    print(bootstrap_version('1.12.2'))
