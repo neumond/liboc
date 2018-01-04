@@ -1,14 +1,13 @@
 from os.path import expanduser, join, isfile, isdir, dirname, getsize
-from os import makedirs
+from os import makedirs, chmod, stat as file_stat
+from stat import S_IXUSR, S_IXGRP, S_IXOTH
 import json
 from string import Template
 import requests
 from zipfile import ZipFile
 from collections import OrderedDict
 from copy import deepcopy
-from uuid import uuid4
 from hashlib import sha1 as sha1_hash
-# from sys import argv
 
 
 OS = 'linux'
@@ -223,13 +222,13 @@ class LaunchCommand:
             **self.aparams
         )
 
-    def __init__(self, path_manager, ver, nickname, auth_uuid):
+    def __init__(self, path_manager, ver):
         self.path_manager = path_manager
         self.ver = ver
         self.aparams = {
-            'auth_player_name': nickname,
-            'auth_uuid': auth_uuid,
-            'auth_access_token': str(uuid4()),
+            'auth_player_name': '$1',
+            'auth_uuid': '$AUTH_UUID',
+            'auth_access_token': '00000000-0000-0000-0000-000000000000',
             'user_type': 'mojang',
             'user_properties': '{}'
         }
@@ -344,6 +343,22 @@ class LaunchCommand:
                 )
         dq.execute(**kw)
 
+    def write_launch_script(self, name, force=False):
+        start_sh = join(self.path_manager.base_dir, 'start.sh')
+        if force or not isfile(start_sh):
+            with open(start_sh, 'w') as f:
+                f.write('#!/bin/bash\n')
+                f.write('cd $(dirname $0)\n')
+                f.write('H="$(echo "$1" | sha1sum)"\n')
+                f.write('AUTH_UUID="${H:0:8}-${H:8:4}-${H:12:4}-${H:16:4}-${H:20:12}"\n')
+                f.write(str(self))
+            chmod(start_sh, file_stat(start_sh).st_mode | S_IXUSR | S_IXGRP | S_IXOTH)  # chmod +x
+
+        name_txt = join(self.path_manager.base_dir, 'NAME.txt')
+        if force or not isfile(name_txt):
+            with open(name_txt, 'w') as f:
+                f.write(name)
+
 
 class LauncherProfiles:
     @property
@@ -381,7 +396,7 @@ class LauncherProfiles:
         self.prev_data = deepcopy(self.data)
 
 
-def bootstrap_version(base_dir, ver, nickname, auth_uuid, **kw):
+def bootstrap_version(base_dir, ver, name, **kw):
     # keyword parameters
     # force: bool  -- redownload everything
     pm = PathManager(base_dir)
@@ -395,17 +410,16 @@ def bootstrap_version(base_dir, ver, nickname, auth_uuid, **kw):
     pf.select_profile(ver)
     pf.flush()
 
-    lc = LaunchCommand(pm, ver, nickname, auth_uuid)
+    lc = LaunchCommand(pm, ver)
     lc.download_libraries(**kw)
     lc.extract_natives(**kw)
     lc.download_assets(**kw)
-    return str(lc)
+    lc.write_launch_script(name, **kw)
 
 
 if __name__ == '__main__':
-    print(bootstrap_version(
+    bootstrap_version(
         expanduser('~/.minecraft_ltest'),
         '1.12.2',
-        'neumond',
-        '8e689e36-2044-4061-bf12-bb6215732cf2'  # http://mcuuid.net/?q=neumond'
-    ))
+        '1.12.2 testing bootstrap'
+    )
