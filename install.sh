@@ -15,32 +15,23 @@ function failmark() {
 for D in $BASEDIR/* ; do
     if [[ $(basename $D) != "state" ]] ; then
         if [ -f $D/init.lua ] && [ -d $D/bin ] && [ -d $D/etc ] && [ -d $D/usr ] && [ -d $D/home ] ; then  # skip floppy disks
-            D="$D/home/liboc"
+            D="$D/home"
             echo $D
-            MUSTSYMLINK="no"
+            MUSTSYNC="no"
             if [ -L $D ] ; then
-                if [[ $(readlink $D) == $TARGETDIR ]] ; then
-                    echo "    $(okmark)Already a symlink, proper target set, skipping"
-                else
-                    echo "    $(failmark)Already a symlink, bad target: $(readlink $D), skipping"
-                fi
+                echo "    $(failmark)Symlink found, skipping"
             elif [ -d $D ] ; then
-                if [ -z "$(ls -A $D)" ] ; then  # empty dir
-                    echo "    $(okmark)Empty directory found, symlinking"
-                    rmdir $D
-                    MUSTSYMLINK="yes"
-                else
-                    echo "    $(failmark)Directory is not empty, skipping"
-                    ls -A $D
-                fi
+                echo "    $(okmark)Directory found"
+                MUSTSYNC="yes"
             elif [ ! -e $D ] ; then
-                echo "    $(okmark)Directory doesn't exist, symlinking"
-                MUSTSYMLINK="yes"
+                mkdir $D
+                echo "    $(okmark)Directory doesn't exist, creating"
+                MUSTSYNC="yes"
             else
                 echo "    $(failmark)Unknown thing, skipping"
             fi
-            if [[ $MUSTSYMLINK == "yes" ]] ; then
-                ln -s $TARGETDIR $D
+            if [[ $MUSTSYNC == "yes" ]] ; then
+                rsync -av $TARGETDIR/ $D
             fi
         fi
     fi
