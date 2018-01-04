@@ -1,4 +1,4 @@
-from os.path import expanduser, join, isfile, isdir, dirname
+from os.path import expanduser, join, isfile, isdir, dirname, getsize
 from os import makedirs
 import json
 from string import Template
@@ -7,6 +7,7 @@ from zipfile import ZipFile
 from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
+from hashlib import sha1 as sha1_hash
 # from sys import argv
 
 
@@ -47,9 +48,15 @@ class DownloadQueue(BaseQueue):
         c = r.content
         return c
 
-    def execute_item(self, url, targetpath, force=False):
-        if isfile(targetpath) and not force:
-            return
+    def execute_item(self, url, targetpath, force=False, size=None, sha1=None):
+        if isfile(targetpath):
+            if size is not None:
+                assert size == getsize(targetpath)
+            if sha1 is not None:
+                with open(targetpath, 'rb') as f:
+                    assert sha1_hash(f.read()).hexdigest() == sha1
+            if not force:
+                return
         content = self.download_item(url)
         makedirs(dirname(targetpath), exist_ok=True)
         with open(targetpath, 'wb') as f:
@@ -242,13 +249,13 @@ class LaunchCommand:
             self.extract_queue.extend_from(self.parent.extract_queue)
 
         for lib_cfg in self.config['libraries']:
-            for path, url, extract_cfg in self.find_lib(lib_cfg):
-                if not isfile(path):
-                    self.download_queue.add(url, path)
-                if extract_cfg is None:
+            for item in self.find_lib(lib_cfg):
+                path = join(self.path_manager.libraries_dir, item['path'])
+                self.download_queue.add(item['url'], path, sha1=item['sha1'], size=item['size'])
+                if item['extract'] is None:
                     self.jars.append(path)
                 else:
-                    self.extract_queue.add(path, extract_cfg)
+                    self.extract_queue.add(path, item['extract'])
 
         if 'assetIndex' in self.config:
             self.download_queue.add(self.config['assetIndex']['url'], self.asset_index_file)
@@ -266,27 +273,26 @@ class LaunchCommand:
 
         if 'downloads' in lib_cfg:
             if 'artifact' in lib_cfg['downloads']:
-                jar_path = join(self.path_manager.libraries_dir, lib_cfg['downloads']['artifact']['path'])
-                jar_url = lib_cfg['downloads']['artifact']['url']
-                yield jar_path, jar_url, None
+                jar = lib_cfg['downloads']['artifact']
+                yield {
+                    'extract': None,
+                    **{k: jar.get(k) for k in ('path', 'url', 'sha1', 'size')}
+                }
 
             if 'natives' in lib_cfg:
                 nat = lib_cfg['downloads']['classifiers'][lib_cfg['natives'][OS]]
-                native_jar_path = join(self.path_manager.libraries_dir, nat['path'])
-                native_jar_url = nat['url']
-                yield native_jar_path, native_jar_url, lib_cfg.get('extract')
+                assert lib_cfg.get('extract') is not None
+                yield {
+                    'extract': lib_cfg['extract'],
+                    **{k: nat.get(k) for k in ('path', 'url', 'sha1', 'size')}
+                }
         else:
             # old style for forge
+            # TODO
             if not lib_cfg.get('clientreq', True):
                 return
             lns, lname, lver = lib_cfg['name'].split(':')
-            jar_path = join(
-                self.path_manager.libraries_dir,
-                *lns.split('.'),
-                lname,
-                lver,
-                '{}-{}.jar'.format(lname, lver)
-            )
+            parts = [*lns.split('.'), lname, lver, '{}-{}.jar'.format(lname, lver)]
 
             default_maven = 'http://repo1.maven.org/maven2/'
             if lns.startswith('net.minecraft'):
@@ -294,11 +300,15 @@ class LaunchCommand:
             elif lns == 'lzma':
                 default_maven = 'https://repo.spongepowered.org/maven/'
             maven_url = lib_cfg.get('url', default_maven).rstrip('/') + '/'
-            jar_url = maven_url + '/'.join([*lns.split('.'), lname, lver, '{}-{}.jar'.format(lname, lver)])
 
-            yield jar_path, jar_url, lib_cfg.get('extract')
-
-        return
+            assert lib_cfg.get('extract') is None
+            yield {
+                'extract': None,
+                'path': join(*parts),
+                'url': maven_url + '/'.join(parts),
+                'sha1': None,
+                'size': None
+            }
 
     def __str__(self):
         return 'java -cp "{}" -Djava.library.path="{}" {} {}'.format(
@@ -323,11 +333,14 @@ class LaunchCommand:
         dq = DownloadQueue()
         for folder, items in index.items():
             for name, item in items.items():
+                # print(item)
                 h2 = item['hash'][:2]
                 hf = item['hash']
                 dq.add(
                     'http://resources.download.minecraft.net/{}/{}'.format(h2, hf),
-                    join(self.path_manager.assets_dir, folder, h2, hf)
+                    join(self.path_manager.assets_dir, folder, h2, hf),
+                    size=item['size'],
+                    sha1=item['hash']
                 )
         dq.execute(**kw)
 
