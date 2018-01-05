@@ -1,3 +1,4 @@
+local utils = require("utils")
 local event = require("event")
 local component = require("component")
 local gpu = component.gpu
@@ -9,22 +10,6 @@ local KEYS = {
     ["back"]=203
 }
 local CURSOR = ">"
-
-
--- gpu mock object
-
--- local gpu_w, gpu_h = gpu.getResolution()
--- local gpu = {
---     set=function(x, y, text)
---         print("set", x, y, text)
---     end,
---     fill=function(x, y, w, h, char)
---         print("fill", x, y, w, h, char)
---     end,
---     getResolution=function()
---         return gpu_w, gpu_h
---     end
--- }
 
 
 function stringLines(lines)
@@ -78,14 +63,7 @@ function M.clearScreen()
 end
 
 
-local Menu = {}
-Menu.__index = Menu
-M.Menu = Menu
-
-
-function Menu.new(allowBack, preSelect)
-    local self = setmetatable({}, Menu)
-
+local Menu = utils.makeClass(function(self, allowBack, preSelect)
     M.clearScreen()
     self.planeX, self.planeY = 1, 1
     self.planeWidth, self.planeHeight = gpu.getResolution()
@@ -98,11 +76,11 @@ function Menu.new(allowBack, preSelect)
     self.choiceCount = 0
     self.choicePoints = {}
     self.choiceValues = {}
-    return self
-end
+end)
+M.Menu = Menu
 
 
-function Menu._writeText(self, text)
+function Menu:_writeText(text)
     return outputTextToWindow(
         text,
         self.planeX, self.planeY + self.yOffset,
@@ -110,14 +88,14 @@ function Menu._writeText(self, text)
 end
 
 
-function Menu.addText(self, text)
+function Menu:addText(text)
     local dy = self:_writeText(text)
     self.yOffset = self.yOffset + dy
     return self
 end
 
 
-function Menu.addSelectable(self, text, value)
+function Menu:addSelectable(text, value)
     table.insert(self.choicePoints, self.yOffset)
     table.insert(self.choiceValues, value)
     self.choiceCount = self.choiceCount + 1
@@ -132,7 +110,7 @@ function Menu.addSelectable(self, text, value)
 end
 
 
-function Menu.addSeparator(self)
+function Menu:addSeparator()
     gpu.fill(
         self.planeX, self.planeY + self.yOffset,
         self.planeWidth, 1,
@@ -142,7 +120,7 @@ function Menu.addSeparator(self)
 end
 
 
-function Menu.run(self)
+function Menu:run()
     local select = nil
 
     function drawSelection(position, visible)

@@ -245,8 +245,24 @@ local function calcCrafts(itemId, amountNeeded)
 end
 
 
+function trySimpleMenu()
+    local term = require("term")
+    local Menu = require("lib.simpleMenu").Menu
+    local result = Menu(false)
+        :addText("Heading")
+        :addSeparator()
+        :addSelectable("Option 1", 1)
+        :addSelectable("Option 2", 2)
+        :addSelectable("Option 3", 3)
+        :run()
+    term.clear()
+    print("Selected", result)
+end
+
+
 -- keycodes()
 -- renderBigWallOfText()
 -- require("lib.gpu.gather").gatherGpuResults()
 -- require("lib.gpu.gather").gatherGpuPalette()
-calcCrafts("powerconverter", 1)
+-- calcCrafts("keyboard", 1)
+trySimpleMenu()
