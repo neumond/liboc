@@ -137,9 +137,9 @@ function CrafterMenu:runItem(itemId, titlePrefix)
         if db.getRecipe(itemId) ~= nil then
             local ab = {}
             local function asmN(n)
+                n = n - n % db.getRecipeOutput(itemId)
                 if n < 1 then n = 1 end
                 if n > db.getItemStack(itemId) then return end
-                n = n - n % db.getRecipeOutput(itemId)
                 if ab[n] then return end
                 menu:addSelectable("Assemble " .. n, n)
                 ab[n] = true
