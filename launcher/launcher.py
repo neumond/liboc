@@ -245,6 +245,9 @@ class LaunchCommand:
             self.jars.extend(self.parent.jars)
             self.download_queue.extend_from(self.parent.download_queue)
             self.extract_queue.extend_from(self.parent.extract_queue)
+            for k in ('assets', 'assetIndex'):
+                if k not in self.config:
+                    self.config[k] = self.parent.config[k]
 
         for lib_cfg in self.config['libraries']:
             for item in self.find_lib(lib_cfg):
@@ -285,8 +288,7 @@ class LaunchCommand:
                     **{k: nat.get(k) for k in ('path', 'url', 'sha1', 'size')}
                 }
         else:
-            # old style for forge
-            # TODO
+            # forge
             if not lib_cfg.get('clientreq', True):
                 return
             lns, lname, lver = lib_cfg['name'].split(':')
@@ -341,7 +343,7 @@ class LaunchCommand:
                 )
         dq.execute(**kw)
 
-    def write_launch_script(self, name, force=False):
+    def write_launch_script(self, force=False):
         start_sh = join(self.path_manager.base_dir, 'start.sh')
         if force or not isfile(start_sh):
             with open(start_sh, 'w') as f:
@@ -352,6 +354,7 @@ class LaunchCommand:
                 f.write(str(self))
             chmod(start_sh, file_stat(start_sh).st_mode | S_IXUSR | S_IXGRP | S_IXOTH)  # chmod +x
 
+    def write_name_token(self, name, force=False):
         name_txt = join(self.path_manager.base_dir, 'NAME.txt')
         if force or not isfile(name_txt):
             with open(name_txt, 'w') as f:
@@ -416,21 +419,24 @@ def bootstrap_version(base_dir, ver, name, **kw):
     pf.select_profile(ver)
     pf.flush()
 
-    lc = LaunchCommand(pm, ver)
+    lc = LaunchCommand(pm, pf.get_profile_version_id())
     lc.download_libraries(**kw)
     lc.extract_natives(**kw)
     lc.download_assets(**kw)
-    lc.write_launch_script(name, **kw)
+    lc.write_launch_script(**kw)
+    lc.write_name_token(name, **kw)
 
 
-def generate_forge_script(base_dir):
+def generate_forge_script(base_dir, **kw):
     pm = PathManager(base_dir)
 
-    lc = LaunchCommand(pm, '1.12.2-forge1.12.2-14.23.1.2555')
-    # lc.download_libraries(**kw)
-    # lc.extract_natives(**kw)
-    # lc.download_assets(**kw)
-    print(lc)
+    pf = LauncherProfiles(pm)
+
+    lc = LaunchCommand(pm, pf.get_profile_version_id('forge'))
+    lc.download_libraries(**kw)
+    lc.extract_natives(**kw)
+    lc.download_assets(**kw)
+    lc.write_launch_script(force=True, **kw)
 
 
 if __name__ == '__main__':
