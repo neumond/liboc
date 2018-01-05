@@ -1,4 +1,4 @@
-from os.path import expanduser, join, isfile, isdir, dirname, getsize
+from os.path import expanduser, join, isfile, isdir, dirname, getsize, relpath
 from os import makedirs, chmod, stat as file_stat
 from stat import S_IXUSR, S_IXGRP, S_IXOTH
 import json
@@ -26,7 +26,7 @@ class BaseQueue:
         self.q.append((a, kw))
 
     def extend_from(self, ext_q):
-        self.q.extend(ext_q)
+        self.q.extend(ext_q.q)
 
     def execute(self, **okw):
         for a, kw in self.q:
@@ -122,6 +122,9 @@ class PathManager:
     def libraries_dir(self):
         return join(self.base_dir, 'libraries')
 
+    def relpath(self, path):
+        return relpath(path, start=self.base_dir)
+
 
 class Bootstrapper:
     def __init__(self, path_manager, ver):
@@ -196,10 +199,6 @@ class LaunchCommand:
         return [k for k in r2.keys()]
 
     @property
-    def natives_line(self):
-        return ':'.join(self.natives_dirs)
-
-    @property
     def asset_index_file(self):
         return join(
             self.path_manager.assets_dir,
@@ -217,8 +216,8 @@ class LaunchCommand:
             version_name=self.jar_version,
             assets_index_name=self.config['assets'] if 'assets' in self.config else self.parent.config['assets'],
             version_type=self.config['type'],
-            game_directory=self.path_manager.base_dir,
-            assets_root=self.path_manager.assets_dir,
+            game_directory=self.path_manager.relpath(self.path_manager.base_dir),
+            assets_root=self.path_manager.relpath(self.path_manager.assets_dir),
             **self.aparams
         )
 
@@ -242,7 +241,7 @@ class LaunchCommand:
         self.extract_queue = ExtractQueue(self.natives_dir)
 
         if 'inheritsFrom' in self.config:
-            self.parent = LaunchCommand(self.config['inheritsFrom'])
+            self.parent = LaunchCommand(self.path_manager, self.config['inheritsFrom'])
             self.jars.extend(self.parent.jars)
             self.download_queue.extend_from(self.parent.download_queue)
             self.extract_queue.extend_from(self.parent.extract_queue)
@@ -311,8 +310,8 @@ class LaunchCommand:
 
     def __str__(self):
         return 'java -cp "{}" -Djava.library.path="{}" {} {}'.format(
-            ':'.join(self.jars),
-            self.natives_line,
+            ':'.join(self.path_manager.relpath(j) for j in self.jars),
+            ':'.join(self.path_manager.relpath(j) for j in self.natives_dirs),
             self.main_class,
             self.argline,
         )
@@ -332,7 +331,6 @@ class LaunchCommand:
         dq = DownloadQueue()
         for folder, items in index.items():
             for name, item in items.items():
-                # print(item)
                 h2 = item['hash'][:2]
                 hf = item['hash']
                 dq.add(
@@ -378,15 +376,23 @@ class LauncherProfiles:
                 'selectedProfile': None
             }
 
-    def add_profile(self, ver):
-        self.data['profiles'][ver] = {
-            'name': ver,
-            'lastVersionId': ver
+    def add_profile(self, key, name, version_id):
+        self.data['profiles'][key] = {
+            'name': name,
+            'lastVersionId': version_id
         }
 
-    def select_profile(self, ver):
-        assert(ver in self.data['profiles'])
-        self.data['selectedProfile'] = ver
+    def select_profile(self, key):
+        assert(key in self.data['profiles'])
+        self.data['selectedProfile'] = key
+
+    def get_all_profiles(self):
+        return {k: v['name'] for k, v in self.data['profiles'].items()}
+
+    def get_profile_version_id(self, key=None):
+        if key is None:
+            key = self.data['selectedProfile']
+        return self.data['profiles'][key]['lastVersionId']
 
     def flush(self):
         if self.data == self.prev_data:
@@ -406,7 +412,7 @@ def bootstrap_version(base_dir, ver, name, **kw):
     b.download(**kw)
 
     pf = LauncherProfiles(pm)
-    pf.add_profile(ver)
+    pf.add_profile(ver, ver, ver)
     pf.select_profile(ver)
     pf.flush()
 
@@ -417,9 +423,20 @@ def bootstrap_version(base_dir, ver, name, **kw):
     lc.write_launch_script(name, **kw)
 
 
+def generate_forge_script(base_dir):
+    pm = PathManager(base_dir)
+
+    lc = LaunchCommand(pm, '1.12.2-forge1.12.2-14.23.1.2555')
+    # lc.download_libraries(**kw)
+    # lc.extract_natives(**kw)
+    # lc.download_assets(**kw)
+    print(lc)
+
+
 if __name__ == '__main__':
-    bootstrap_version(
-        expanduser('~/.minecraft_ltest'),
-        '1.12.2',
-        '1.12.2 testing bootstrap'
-    )
+    # bootstrap_version(
+    #     expanduser('~/.minecraft_1.12.2_newmods'),
+    #     '1.12.2',
+    #     '1.12.2 mods (new)'
+    # )
+    generate_forge_script(expanduser('~/.minecraft_1.12.2_newmods'))
