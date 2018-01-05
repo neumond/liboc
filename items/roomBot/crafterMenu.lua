@@ -91,16 +91,21 @@ local MenuStructure = {title="Recipe assembler", children={
             "upgrade_container3"
         }}
     }},
-    {title="Misc", children={
-        "keyboard",
-        "floppy_drive",
-        "diskette",
-        "eeprom",
-        "cable",
+    {title="Devices", children={
         "adapter",
         "assembler",
         "disassembler",
-        "printer",
+        "powerconverter",
+        "charger",
+        "capacitor",
+        "floppy_drive",
+        "printer"
+    }},
+    {title="Misc", children={
+        "keyboard",
+        "diskette",
+        "eeprom",
+        "cable",
         "cartridge_full"
     }},
     {title="Test", children={

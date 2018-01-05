@@ -16,22 +16,30 @@ end
 
 
 local function main()
-    assert(robot.forward())
+    assert(robot.forward())  -- go inside navplane 0,0 point to correctly initialize
 
     local nav = CrafterNav(robot, 2)  -- 2 cascades of chests
     local storage = CrafterStorage(robot, component.inventory_controller, nav)
     local bot = CrafterBot(storage, component.crafting)
-    nav:gotoBase()
+
+    local function gotoUserWindow()
+        nav:gotoBase()
+        assert(robot.forward())
+    end
+
+    gotoUserWindow()
 
     local function assembleFunc(itemId, amount)
         term.clear()
+        assert(robot.back())  -- back to navplane 0,0 again
         storage:reindexLocalInventory()  -- check what user has changed in robot's inventory
-        if bot:assemble(itemId, amount, print) then
+        local success = bot:assemble(itemId, amount, print)
+        if success then
             storage:cleanLocalInventory()
             storage:takeResult(itemId, amount)
         end
-        nav:gotoBase()
-        waitForKey()
+        gotoUserWindow()
+        if not success then waitForKey() end  -- user able to read messages
     end
 
     local success, err = pcall(function()
