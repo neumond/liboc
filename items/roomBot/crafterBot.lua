@@ -157,7 +157,7 @@ function CrafterBot:assemble(itemId, amount, logger)
     for i, v in ipairs(clog) do
         local q = v.times * db.getRecipeOutput(v.item)
         logger(string.format("Assembling %i of %s", q, db.getItemName(v.item)))
-        self:assembleRecipe(self, v.item, q)
+        self:assembleRecipe(v.item, q)
     end
     logger("Finished successfully.")
     return true

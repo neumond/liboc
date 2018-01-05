@@ -24,15 +24,8 @@ local function getChestPosition(n)
 end
 
 
-function CrafterNav:gotoInput()
-    self.nav:gotoPosition(-1, -1)
-    self.nav:rotate("Z-")
-    return sides.front
-end
-
-
-function CrafterNav:gotoOutput()
-    self.nav:gotoPosition(1, -1)
+function CrafterNav:gotoBase()
+    self.nav:gotoPosition(0, 0)
     self.nav:rotate("Z-")
     return sides.front
 end

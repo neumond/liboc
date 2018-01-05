@@ -249,6 +249,10 @@ end
 
 
 function IntegratedIndex:refill(slotId, itemId, size, maxSize)
+    local existingItem = self.slots:get(slotId)
+    if existingItem ~= itemId then
+        self.itemToSlot:empty(existingItem, slotId)
+    end
     self.itemToSlot:refill(itemId, slotId, size < maxSize)
     self.emptyIndex:fill(slotId)
     self.slots:fill(slotId, itemId, size)

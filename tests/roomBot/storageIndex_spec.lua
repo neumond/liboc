@@ -212,5 +212,19 @@ describe("Storage Index module intended for tracking set of slots in inventories
             local slotId = x:findInputSlot("planks")
             assert(slotId == 1)
         end)
+        it("can handle stub items", function()
+            local x = mod.IntegratedIndex()
+            for i=1,27 do
+                x:registerSlot(nil)
+            end
+            x:refill(1, "iron_nugget", 9, 64)
+            for i=1,9 do
+                x:refill(i, "__stub__", 1, 1)
+            end
+            local slotId = x:findOutputSlot("iron_nugget")
+            -- print(require("inspect")(x.itemToSlot))
+            assert.is_nil(x.itemToSlot:findForOutput("iron_nugget"))
+            assert.are_equal(10, slotId)
+        end)
     end)
 end)

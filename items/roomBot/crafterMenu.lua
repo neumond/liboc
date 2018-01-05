@@ -1,14 +1,6 @@
 local Menu = require("lib.simpleMenu").Menu
 local db = require("recipedb")
-local term = require("term")
-local event = require("event")
-
-
-function waitForKey()
-    repeat
-        local _, _, _, key = event.pull("key_down")
-    until key == 28
-end
+local utils = require("utils")
 
 
 local MenuStructure = {title="Recipe assembler", children={
@@ -132,27 +124,45 @@ local function runMenuWrap(fillMenuFunc, handleChoiceFunc, titlePrefix)
 end
 
 
-local function runItem(itemId, titlePrefix)
+local CrafterMenu = utils.makeClass(function(self, assembleFunc)
+    self.assembleFunc = assembleFunc
+    self:runMenu(MenuStructure)
+end)
+
+
+function CrafterMenu:runItem(itemId, titlePrefix)
     runMenuWrap(function(menu)
         menu:addText(db.getItemName(itemId))
         menu:addSeparator()
         if db.getRecipe(itemId) ~= nil then
-            menu:addSelectable("Assemble", true)
+            local ab = {}
+            local function asmN(n)
+                if n < 1 then n = 1 end
+                if n > db.getItemStack(itemId) then return end
+                n = n - n % db.getRecipeOutput(itemId)
+                if ab[n] then return end
+                menu:addSelectable("Assemble " .. n, n)
+                ab[n] = true
+            end
+
+            x = 1
+            while x <= 64 do
+                asmN(x)
+                x = x * 2
+            end
+
             menu:addText("Recipe:\n")
             menu:addText(db.formatRecipe(db.getRecipe(itemId)))
         else
             menu:addText("No recipe available.")
         end
-    end, function(choice)
-        if choice ~= true then return end
-        term.clear()
-        print(itemId)
-        waitForKey()
+    end, function(n)
+        self.assembleFunc(itemId, n)
     end, titlePrefix)
 end
 
 
-local function runMenu(description, titlePrefix)
+function CrafterMenu:runMenu(description, titlePrefix)
     local titlePrefixInner = (titlePrefix or "") .. "\n" .. description.title
     runMenuWrap(function(menu)
         menu:addText(description.title)
@@ -166,13 +176,14 @@ local function runMenu(description, titlePrefix)
         end
     end, function(choice)
         if type(choice) == "string" then
-            runItem(choice, titlePrefixInner)
+            self:runItem(choice, titlePrefixInner)
         else
-            runMenu(choice, titlePrefixInner)
+            self:runMenu(choice, titlePrefixInner)
         end
     end, titlePrefix)
 end
 
 
-runMenu(MenuStructure)
-term.clear()
+return {
+    CrafterMenu=CrafterMenu
+}
