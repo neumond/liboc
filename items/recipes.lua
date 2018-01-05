@@ -11,204 +11,168 @@ function waitForKey()
 end
 
 
-function makeMenu(mcons)
-    return function(titlePrefix)
-        local choice = nil
-        while true do
-            choice = mcons(
-                Menu(true, choice)
-                    :addText(titlePrefix)
-                    :addSeparator()
-            ):run()
-            if choice == nil then break end
-            choice.run(titlePrefix .. "\n" .. choice.title)
+local MenuStructure = {title="Recipe assembler", children={
+    {title="Tier 1", children={
+        {title="Components", children={
+            "case1",
+            "screen1",
+            "cpu1",
+            "ram1",
+            "ram1_plus",
+            "hdd1"
+        }},
+        {title="Cards", children={
+            "gpu1",
+            "lancard",
+            "redstonecard1",
+            "datacard1"
+        }},
+        {title="Upgrades", children={
+            "battery_upgrade1",
+            "database_upgrade1",
+            "hover_upgrade1",
+            "inventory_upgrade",
+            "leash_upgrade",
+            "piston_upgrade",
+            "sign_upgrade",
+            "tank_upgrade"
+        }},
+        {title="Slots", children={
+            "card_upgrade1",
+            "upgrade_container1"
+        }}
+    }},
+    {title="Tier 2", children={
+        {title="Components", children={
+            "case2",
+            "screen2",
+            "cpu2",
+            "ram2",
+            "ram2_plus",
+            "hdd2"
+        }},
+        {title="Cards", children={
+            "gpu2",
+            "wlancard",
+            "redstonecard2",
+            "internet_card",
+            "datacard2"
+        }},
+        {title="Upgrades", children={
+            "angel_upgrade",
+            "battery_upgrade2",
+            "crafting_upgrade",
+            "database_upgrade2",
+            "generator_upgrade",
+            "inventory_controller_upgrade",
+            "solar_upgrade",
+            "tank_controller_upgrade",
+            "trading_upgrade"
+        }},
+        {title="Slots", children={
+            "card_upgrade2",
+            "upgrade_container2"
+        }}
+    }},
+    {title="Tier 3", children={
+        {title="Components", children={
+            "case3",
+            "screen3",
+            "cpu3",
+            "ram3",
+            "ram3_plus",
+            "hdd3"
+        }},
+        {title="Cards", children={
+            "gpu3",
+            "datacard3"
+        }},
+        {title="Upgrades", children={
+            "battery_upgrade3",
+            "chunkloader_upgrade",
+            "database_upgrade3",
+            "experience_upgrade",
+            "tractor_beam_upgrade"
+        }},
+        {title="Slots", children={
+            "card_upgrade3",
+            "upgrade_container3"
+        }}
+    }},
+    {title="Misc", children={
+        "keyboard",
+        "floppy_drive",
+        "diskette",
+        "eeprom",
+        "cable",
+        "adapter",
+        "assembler",
+        "disassembler",
+        "printer",
+        "cartridge_full"
+    }},
+    {title="Test", children={
+        "iron_nugget"
+    }}
+}}
+
+
+local function runMenuWrap(fillMenuFunc, handleChoiceFunc, titlePrefix)
+    local choice = nil
+    while true do
+        local menu = Menu(true, choice)
+        if titlePrefix ~= nil then
+            menu:addText(titlePrefix)
         end
+        fillMenuFunc(menu)
+        choice = menu:run()
+        if choice == nil then break end
+        handleChoiceFunc(choice)
     end
 end
 
 
-Menu.addCategory = function(self, c)
-    return self:addSelectable(c.title, c)
+local function runItem(itemId, titlePrefix)
+    runMenuWrap(function(menu)
+        menu:addText(db.getItemName(itemId))
+        menu:addSeparator()
+        if db.getRecipe(itemId) ~= nil then
+            menu:addSelectable("Assemble", true)
+            menu:addText("Recipe:\n")
+            menu:addText(db.formatRecipe(db.getRecipe(itemId)))
+        else
+            menu:addText("No recipe available.")
+        end
+    end, function(choice)
+        if choice ~= true then return end
+        term.clear()
+        print(itemId)
+        waitForKey()
+    end, titlePrefix)
 end
 
 
-Menu.addItem = function(self, item_id)
-    return self:addCategory{
-        title=db.getItemName(item_id),
-        run=makeMenu(function(menu)
-            if db.getRecipe(item_id) ~= nil then
-                menu:addText("Recipe:\n")
-                menu:addText(db.formatRecipe(db.getRecipe(item_id)))
-                menu:addCategory({
-                    title="Assemble",
-                    run=function()
-                        term.clear()
-                        print(item_id)
-                        waitForKey()
-                    end
-                })
+local function runMenu(description, titlePrefix)
+    local titlePrefixInner = (titlePrefix or "") .. "\n" .. description.title
+    runMenuWrap(function(menu)
+        menu:addText(description.title)
+        menu:addSeparator()
+        for i, cat in ipairs(description.children) do
+            if type(cat) == "string" then
+                menu:addSelectable(db.getItemName(cat), cat)
             else
-                menu:addText("No recipe available.")
+                menu:addSelectable(cat.title, cat)
             end
-            return menu
-        end)
-    }
+        end
+    end, function(choice)
+        if type(choice) == "string" then
+            runItem(choice, titlePrefixInner)
+        else
+            runMenu(choice, titlePrefixInner)
+        end
+    end, titlePrefix)
 end
 
 
-function main(af)
-    local menuFunc = makeMenu(function(menu)
-        return menu
-            :addCategory{
-                title="Cases, screens, keyboards",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("case1")
-                        :addItem("case2")
-                        :addItem("case3")
-                        :addItem("screen1")
-                        :addItem("screen2")
-                        :addItem("screen3")
-                        :addItem("keyboard")
-                end)
-            }
-            :addCategory{
-                title="CPUs",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("cpu1")
-                        :addItem("cpu2")
-                        :addItem("cpu3")
-                end)
-            }
-            :addCategory{
-                title="RAM modules",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("ram1")
-                        :addItem("ram1_plus")
-                        :addItem("ram2")
-                        :addItem("ram2_plus")
-                        :addItem("ram3")
-                        :addItem("ram3_plus")
-                end)
-            }
-            :addCategory{
-                title="Storage",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("diskette")
-                        :addItem("floppy_drive")
-                        :addItem("eeprom")
-                        :addItem("hdd1")
-                        :addItem("hdd2")
-                        :addItem("hdd3")
-                end)
-            }
-            :addCategory{
-                title="Cards",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("gpu1")
-                        :addItem("gpu2")
-                        :addItem("gpu3")
-                        :addItem("lancard")
-                        :addItem("cable")
-                        :addItem("wlancard")
-                        :addItem("redstonecard1")
-                        :addItem("redstonecard2")
-                        :addItem("internet_card")
-                        :addItem("datacard1")
-                        :addItem("datacard2")
-                        :addItem("datacard3")
-                end)
-            }
-            :addCategory{
-                title="Upgrades",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addCategory{
-                            title="Tier 1",
-                            run=makeMenu(function(menu)
-                                return menu
-                                    :addItem("battery_upgrade1")
-                                    :addItem("database_upgrade1")
-                                    :addItem("hover_upgrade1")
-                                    :addItem("inventory_upgrade")
-                                    :addItem("leash_upgrade")
-                                    :addItem("piston_upgrade")
-                                    :addItem("sign_upgrade")
-                                    :addItem("tank_upgrade")
-                            end)
-                        }
-                        :addCategory{
-                            title="Tier 2",
-                            run=makeMenu(function(menu)
-                                return menu
-                                    :addItem("angel_upgrade")
-                                    :addItem("battery_upgrade2")
-                                    :addItem("crafting_upgrade")
-                                    :addItem("database_upgrade2")
-                                    :addItem("generator_upgrade")
-                                    :addItem("inventory_controller_upgrade")
-                                    :addItem("solar_upgrade")
-                                    :addItem("tank_controller_upgrade")
-                                    :addItem("trading_upgrade")
-                            end)
-                        }
-                        :addCategory{
-                            title="Tier 3",
-                            run=makeMenu(function(menu)
-                                return menu
-                                    :addItem("battery_upgrade3")
-                                    :addItem("chunkloader_upgrade")
-                                    :addItem("database_upgrade3")
-                                    :addItem("experience_upgrade")
-                                    :addItem("tractor_beam_upgrade")
-                            end)
-                        }
-                end)
-            }
-            :addCategory{
-                title="Slots",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("card_upgrade1")
-                        :addItem("card_upgrade2")
-                        :addItem("card_upgrade3")
-                        :addItem("upgrade_container1")
-                        :addItem("upgrade_container2")
-                        :addItem("upgrade_container3")
-                end)
-            }
-            :addCategory{
-                title="Devices",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("adapter")
-                        :addItem("assembler")
-                        :addItem("disassembler")
-                end)
-            }
-            :addCategory{
-                title="Printing",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("printer")
-                        :addItem("cartridge_full")
-                end)
-            }
-            :addCategory{
-                title="Test",
-                run=makeMenu(function(menu)
-                    return menu
-                        :addItem("iron_nugget")
-                end)
-            }
-    end)
-    menuFunc("Recipe assembler")
-    term.clear()
-end
-
-
-main()
+runMenu(MenuStructure)
+term.clear()
