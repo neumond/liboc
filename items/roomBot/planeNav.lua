@@ -1,56 +1,12 @@
 local makeClass = require("utils").makeClass
+local RotationNav = require("roomBot.rotationNav").RotationNav
 
 
-local rotationMap = {}
-for i, v in ipairs({"Z+", "X+", "Z-", "X-"}) do
-    rotationMap[v] = i
-end
-
-
-local PlaneNav = makeClass(function(self, robot)
-    self.robot = robot
+local PlaneNav = makeClass(RotationNav, function(self, super, robot)
+    super(robot)
     self.currentX = 0
     self.currentZ = 0
-    self.currentRotation = "Z+"
 end)
-
-
-function PlaneNav:planRotation(from, to)
-    from = self.currentRotation
-    if from == to then return nil end
-
-    from = rotationMap[from] - 1
-    to = rotationMap[to] - 1
-    self.currentRotation = to
-
-    if math.abs(from - to) == 2 then return "around" end
-
-    if from - to >= 3 then
-        to = to + 4
-    elseif to - from >= 3 then
-        from = from + 4
-    end
-    assert(math.abs(from - to) == 1)
-
-    if to > from then
-        return "right"
-    else
-        return "left"
-    end
-end
-
-
-function PlaneNav:rotate(to)
-    local r = self:planRotation(self.currentRotation, to)
-    if r == "around" then
-        self.robot.turnAround()
-    elseif r == "left" then
-        self.robot.turnLeft()
-    elseif r == "right" then
-        self.robot.turnRight()
-    end
-    self.currentRotation = to
-end
 
 
 function PlaneNav:gotoPosition(x, z)
