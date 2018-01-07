@@ -1,8 +1,10 @@
 local function keycodes()
+    local keyboard = require("keyboard")
     local event = require("event")
     for i=1,10 do
         local evt, adr, char, code, player = event.pull("key_down")
         print(evt, adr, char, code, player)
+        print(keyboard.keys[code])
     end
 end
 
@@ -260,9 +262,9 @@ function trySimpleMenu()
 end
 
 
--- keycodes()
+keycodes()
 -- renderBigWallOfText()
 -- require("lib.gpu.gather").gatherGpuResults()
 -- require("lib.gpu.gather").gatherGpuPalette()
 -- calcCrafts("keyboard", 1)
-trySimpleMenu()
+-- trySimpleMenu()

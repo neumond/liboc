@@ -1,5 +1,6 @@
 local robot = require("robot")
 local keyboard = require("keyboard")
+local waypointNav = require("roomBot.waypointNav")
 
 
 local reverseActions = {
@@ -22,7 +23,7 @@ end
 local function reverseAction(logData)
     if #logData <= 0 then return end
     local action = logData[#logData]
-    if robot[reverseActions[action]] then
+    if robot[reverseActions[action]]() then
         logData[#logData] = nil
     end
 end
@@ -42,44 +43,6 @@ for k, v in pairs(keyMap) do
 end
 
 
-local encodeTable = {
-    forward="F",
-    back="B",
-    turnLeft="L",
-    turnRight="R",
-    up="U",
-    down="D"
-}
-
-
-local function encode(logData)
-    local result = {}
-    local lastAction
-    local counter = 0
-
-    local function flush()
-        if counter <= 0 then return end
-        if counter == 1 then
-            table.insert(result, lastAction)
-        end
-        table.insert(result, lastAction .. counter)
-        counter = 0
-    end
-
-    for _, action in ipairs(logData) do
-        if action ~= lastAction then
-            flush()
-            lastAction = action
-        else
-            counter = counter + 1
-        end
-    end
-    flush()
-
-    return table.concat(result)
-end
-
-
 local function main()
     local logData = {}
     local event = require("event")
@@ -93,9 +56,8 @@ local function main()
             reverseAction(logData)
         end
     until key == keyboard.keys.enter
-    print(encode(logData))
     return logData
 end
 
 
-main()
+print(waypointNav.encode(main()))
