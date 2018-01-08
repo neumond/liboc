@@ -32,6 +32,14 @@ function M.removeFromArray(a, val)
 end
 
 
+function M.reverseArray(a)
+    -- in-place
+    for i=1,#a // 2 do
+        a[i], a[#a - i + 1] = a[#a - i + 1], a[i]
+    end
+end
+
+
 if M.isInGame() then
     M.string = require("unicode")
     M.strWidth = M.string.wlen

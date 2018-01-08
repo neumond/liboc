@@ -97,7 +97,7 @@ end
 
 function TrackingBinaryHeap:insert(priority, payload)
     assert(self.tracking[payload] == nil, "Payload must be unique")
-    self.tracking[payload] = self.ptr
+    self.tracking[payload] = self.ptr + 1
     TrackingBinaryHeap.__super.insert(self, priority, payload)
 end
 
@@ -109,7 +109,7 @@ function TrackingBinaryHeap:pop()
 end
 
 
-function TrackingBinaryHeap:decrease(payload, newPriority)
+function TrackingBinaryHeap:decrease(newPriority, payload)
     local i = self.tracking[payload]
     assert(i ~= nil, "Payload must exist in heap")
     assert(self.prios[i] >= newPriority, "You can only decrease priority")
