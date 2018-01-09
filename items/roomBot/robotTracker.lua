@@ -1,4 +1,5 @@
 local makeClass = require("utils").makeClass
+local Stack = require("lib.stack").Stack
 
 
 local DXMap = {
@@ -26,19 +27,15 @@ end
 
 local RetryPolicies={
     ["AsIs"]=function(robotFunc, trackFunc)
-        return function()
-            local r, a = robotFunc()
-            if r then trackFunc() end
-            return r, a
-        end
+        local r, a = robotFunc()
+        if r then trackFunc() end
+        return r, a
     end,
-    ["RepeatUntilSuccess"]=function(robotFunc, trackFunc)
-        return function()
-            while not robotFunc() do
-            end
-            trackFunc()
-            return true
+    ["RetryUntilSuccess"]=function(robotFunc, trackFunc)
+        while not robotFunc() do
         end
+        trackFunc()
+        return true
     end
 }
 
@@ -121,42 +118,56 @@ function planMovement(rot, cx, cy, cz, x, y, z)
 end
 
 
-local function createTracker(robot, initX, initY, initZ, initRot, retryPolicy)
+local function createTracker(robot, initX, initY, initZ, initRot)
     local rot = 0
     local x, y, z = 0, 0, 0
+    local policyStack = Stack()
+
 
     if initX ~= nil then x = initX end
     if initY ~= nil then y = initY end
     if initZ ~= nil then z = initZ end
     if initRot ~= nil then rot = ReverseRotMap[initRot] end
-    if retryPolicy == nil then retryPolicy = "AsIs" end
 
-    local makeWrap = RetryPolicies[retryPolicy]
-
-    local tracker = {
-        forward=makeWrap(robot.forward, function()
+    local trackFuncs = {
+        forward=function()
             x = x + DXMap[rot]
             y = y + DYMap[rot]
-        end),
-        back=makeWrap(robot.back, function()
+        end,
+        back=function()
             x = x - DXMap[rot]
             y = y - DYMap[rot]
-        end),
-        up=makeWrap(robot.up, function()
+        end,
+        up=function()
             z = z + 1
-        end),
-        down=makeWrap(robot.down, function()
+        end,
+        down=function()
             z = z - 1
-        end),
-        turnLeft=makeWrap(robot.turnLeft, function()
+        end,
+        turnLeft=function()
             rot = (rot + 3) % 4
-        end),
-        turnRight=makeWrap(robot.turnRight, function()
+        end,
+        turnRight=function()
             rot = (rot + 1) % 4
-        end),
-        turnAround=makeWrap(robot.turnAround, function()
+        end,
+        turnAround=function()
             rot = (rot + 2) % 4
-        end),
+        end
+    }
+
+    local function makeWrap(robotFunc, trackFunc)
+        return function()
+            return policyStack:tip()(robotFunc, trackFunc)
+        end
+    end
+
+    local tracker = {
+        pushPolicy=function(policy)
+            policyStack:push(RetryPolicies[policy])
+        end,
+        popPolicy=function()
+            policyStack:pop()
+        end,
         getPosition=function()
             return x, y, z
         end,
@@ -167,6 +178,12 @@ local function createTracker(robot, initX, initY, initZ, initRot, retryPolicy)
             return rot
         end
     }
+
+    for method, trackFunc in pairs(trackFuncs) do
+        tracker[method] = makeWrap(robot[method], trackFunc)
+    end
+
+    tracker.pushPolicy("AsIs")
 
     tracker.rotate = function(to)
         local method = planRotation(rot, ReverseRotMap[to])

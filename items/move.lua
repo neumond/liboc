@@ -117,7 +117,11 @@ end
 local function createPath(nav)
     local prevPoint = nav:pointAtCurrentPosition()
     assert(prevPoint ~= nil)
+
+    nav.robotTracker.pushPolicy("AsIs")
     local path = PathWriter(nav.robotTracker):result()
+    nav.robotTracker.popPolicy()
+
     local nextPoint = nav:pointAtCurrentPosition()
     if nextPoint == nil then
         nextPoint = enterNewWaypointName(function(ptName)
@@ -136,7 +140,10 @@ local function gotoPoint(nav)
     if wp ~= nil then
         term.clear()
         print("Going to point [" .. wp .. "] ...")
+
+        nav.robotTracker.pushPolicy("RetryUntilSuccess")
         nav:gotoPoint(wp)
+        nav.robotTracker.popPolicy()
     end
 end
 
