@@ -43,4 +43,8 @@ describe("dijsktra", function()
         chord(graph, "L", "M", 2)
         assert.is_nil(mod.dijkstra(graph, "a", "M"))
     end)
+    it("target is source, even on empty graph", function()
+        local graph = {}
+        assert.are_same({"a"}, mod.dijkstra(graph, "a", "a"))
+    end)
 end)

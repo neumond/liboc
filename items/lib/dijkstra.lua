@@ -14,6 +14,8 @@ local function dijkstra(graph, source, target)
     -- }
     -- graph is required to have both directions of every edge
 
+    if source == target then return {source} end
+
     assert(graph[source] ~= nil)
     assert(graph[target] ~= nil)
 

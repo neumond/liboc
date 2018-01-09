@@ -52,6 +52,13 @@ end
 M.strlen = M.string.len
 M.strsub = M.string.sub
 
+function M.strTrimLeft(s)
+    return s:gsub("^%s+", "")
+end
+function M.strTrimRight(s)
+    return s:gsub("%s+$", "")
+end
+
 
 function M.iterChars(text)
     local i = 0

@@ -1,22 +1,6 @@
 local utils = require("utils")
-
-
-local WaypointNav = utils.makeClass(RotationNav, function(self, super, robot, points)
-    super(robot)
-    self.currentX = 0
-    self.currentY = 0
-    self.currentZ = 0
-    self.points = {base=true}
-end)
-
-
-function WaypointNav:addPoint(name)
-    self.points[name] = true
-end
-
-
-function WaypointNav:connect(a, b)
-end
+local createTracker = require("roomBot.robotTracker").createTracker
+local dijkstra = require("lib.dijkstra").dijkstra
 
 
 local reverseActions = {
@@ -156,6 +140,129 @@ local function pathLength(eline)
         result = result + amount
     end
     return result
+end
+
+
+local function encodePosition(robotTracker)
+    local x, y, z = robotTracker.getPosition()
+    local rot = robotTracker.getRotation()
+    return string.format("%i:%i:%i:%s", x, y, z, rot)
+end
+
+
+-- WaypointNav
+
+
+local WaypointNav = utils.makeClass(function(self, robot, initial)
+    self.robotTracker = createTracker(robot)
+
+    self.paths = {}
+    self.weights = {}  -- duplicate of self.path, but with weights instead paths
+    self.pointNames = {}
+    self.posToPoint = {}
+
+    -- initial parameter value is produced by method :finalize()
+    if initial == nil then
+        self:registerPoint("Base")
+    else
+        for epos, name in pairs(initial.posToPoint) do
+            self:registerPoint(name, epos)
+        end
+        for _, chord in ipairs(initial.chords) do
+            self:addBidiChord(chord.from, chord.to, chord.path)
+        end
+    end
+end)
+
+
+function WaypointNav:addChord(from, to, path)
+    if self.paths[from] == nil then
+        self.paths[from] = {}
+        self.weights[from] = {}
+    end
+    self.paths[from][to] = path
+    self.weights[from][to] = pathLength(path)
+end
+
+
+function WaypointNav:addBidiChord(from, to, path)
+    self:addChord(from, to, path)
+    self:addChord(to, from, reverseEncoded(path))
+end
+
+
+function WaypointNav:registerPoint(name, epos)
+    assert(self.pointNames[name] == nil)
+    self.pointNames[name] = true
+    if epos == nil then
+        epos = encodePosition(self.robotTracker)
+    end
+    self.posToPoint[epos] = name
+end
+
+
+function WaypointNav:pointExists(name)
+    return self.pointNames[name] ~= nil
+end
+
+
+function WaypointNav:getPointList()
+    local result = {}
+    for k, _ in pairs(self.pointNames) do
+        table.insert(result, k)
+    end
+    return result
+end
+
+
+function WaypointNav:pointAtCurrentPosition()
+    return self.posToPoint[encodePosition(self.robotTracker)]
+end
+
+
+function WaypointNav:finalize()
+    local chords = {}
+    local revTrack = {}
+
+    local function addRevTrack(from, to)
+        if revTrack[from] == nil then
+            revTrack[from] = {}
+        end
+        revTrack[from][to] = true
+    end
+
+    local function inRevTrack(from, to)
+        if revTrack[from] == nil then return false end
+        return revTrack[from][to] ~= nil
+    end
+
+    for from, chs in pairs(self.paths) do
+        for to, path in pairs(chs) do
+            if not inRevTrack(from, to) then
+                table.insert(chords, {from=from, to=to, path=path})
+                addRevTrack(from, to)
+                addRevTrack(to, from)
+            end
+        end
+    end
+
+    return {
+        chords=chords,
+        posToPoint=utils.copyTable(self.posToPoint)
+    }
+end
+
+
+function WaypointNav:gotoPoint(name)
+    local currentPoint = self:pointAtCurrentPosition()
+    assert(currentPoint ~= nil)
+    local pointList = dijkstra(self.weights, currentPoint, name)
+    assert(pointList[1] == currentPoint)
+    for i=2,#pointList do
+        local nextPoint = pointList[i]
+        execEncoded(self.robotTracker, self.paths[currentPoint][nextPoint])
+        currentPoint = nextPoint
+    end
 end
 
 

@@ -1,22 +1,25 @@
-local robot = require("robot")
 local keyboard = require("keyboard")
 local term = require("term")
 local event = require("event")
-local waypointNav = require("roomBot.waypointNav")
+local waypointMod = require("roomBot.waypointNav")
 local utils = require("utils")
 local Stack = require("lib.stack").Stack
+
+
+local FILENAME = "/home/waypoints_auto.lua"
 
 
 -- PathWriter
 
 
-local PathWriter = utils.makeClass(function(self)
+local PathWriter = utils.makeClass(function(self, robot)
     term.clear()
     print("Use arrow keys, z, x to direct the bot")
     print("Backspace to revert latest movement")
     print("Enter to finish the path")
 
     self.log = Stack()
+    self.robot = robot
     repeat
         local _, _, _, key = event.pull("key_down")
         local action = self.keyMap2[key]
@@ -49,7 +52,7 @@ end
 
 
 function PathWriter:doAction(action)
-    if robot[action]() then
+    if self.robot[action]() then
         self.log:push(action)
     end
 end
@@ -58,7 +61,7 @@ end
 function PathWriter:reverseAction()
     local action = self.log:tip()
     if action == nil then return end
-    if robot[waypointNav.reverseActions[action]]() then
+    if self.robot[waypointMod.reverseActions[action]]() then
         self.log:pop()
     end
 end
@@ -66,68 +69,109 @@ end
 
 function PathWriter:result()
     local r = {}
-    for action in self.log:iterFromBottom() do
+    for _, action in self.log:iterFromBottom() do
         table.insert(r, action)
     end
-    return waypointNav.encode(r)
+    return waypointMod.encode(r)
 end
 
 
--- WaypointWriter
-
-
-local WaypointWriter = utils.makeClass(function(self)
-    self.waypoints = {["Base"]=true}
-    self.currentWaypoint = "Base"
-    self.paths = {}
-end)
-
-
-function WaypointWriter:_addPath(from, to, path)
-    if self.paths[from] == nil then
-        self.paths[from] = {}
-    end
-    self.paths[from][to] = path
+local function writeDataToFile(fname, data)
+    local f = assert(io.open(fname, "w"))
+    f:write(require("serialization").serialize(data, false))
+    f:close()
 end
 
 
-function WaypointWriter:createPath()
-    local eline = PathWriter():result()
-    if eline == "" then return end
-
+local function enterNewWaypointName(existsCheck)
     term.clear()
     print("Enter name for the new waypoint")
-
-    local wname
-    repeat
-        wname = term.read()
-        if self.waypoints[wname] ~= nil then
+    while true do
+        local wname = utils.strTrimRight(term.read())
+        if wname == "" then
+            print("Waypoint name must not be empty")
+        elseif existsCheck(wname) then
             print("Waypoint with this name already exists, enter another name")
         else
-            break
+            return wname
         end
-    until false
-
-    self.waypoints[wname] = true
-    self:_addPath(currentWaypoint, wname, eline)
-    self:_addPath(wname, currentWaypoint, waypointNav.reverseEncoded(eline))
-    self.currentWaypoint = wname
+    end
 end
 
 
-function WaypointWriter:gotoWaypoint(name)
+local function chooseExistingWaypoint(hints, existsCheck)
+    term.clear()
+    print("Enter name of existing waypoint")
+    while true do
+        local wname = utils.strTrimRight(term.read({hint=hints}))
+        if wname == "" then return end
+        if existsCheck(wname) then
+            return wname
+        else
+            print("Waypoint doesn't exist, try again")
+        end
+    end
+end
 
+
+local function createPath(nav)
+    local prevPoint = nav:pointAtCurrentPosition()
+    assert(prevPoint ~= nil)
+    local path = PathWriter(nav.robotTracker):result()
+    local nextPoint = nav:pointAtCurrentPosition()
+    if nextPoint == nil then
+        nextPoint = enterNewWaypointName(function(ptName)
+            return nav:pointExists(ptName)
+        end)
+        nav:registerPoint(nextPoint)
+    end
+    nav:addBidiChord(prevPoint, nextPoint, path)
+end
+
+
+local function gotoPoint(nav)
+    local wp = chooseExistingWaypoint(nav:getPointList(), function(ptName)
+        return nav:pointExists(ptName)
+    end)
+    if wp ~= nil then
+        term.clear()
+        print("Going to point [" .. wp .. "] ...")
+        nav:gotoPoint(wp)
+    end
+end
+
+
+local function printMainMenu(nav)
+    term.clear()
+    print("Waypoint map creation tool")
+    print("Choose option:")
+    print("[p] Start new path here")
+    print("[g] Go to registered point")
+    print("[q] Save & quit")
+    print()
+    print("Current point: " .. nav:pointAtCurrentPosition())
 end
 
 
 local function main()
-    term.clear()
-    print("Waypoint map creation tool")
+    local nav = waypointMod.WaypointNav(require("robot"))
 
-    local waypoints = {"Base"}
-    local paths = {}
-    local currentWaypoint = "Base"
+    printMainMenu(nav)
+    while true do
+        local _, _, _, key = event.pull("key_down")
+        if key == keyboard.keys.q then
+            break
+        elseif key == keyboard.keys.p then
+            createPath(nav)
+            printMainMenu(nav)
+        elseif key == keyboard.keys.g then
+            gotoPoint(nav)
+            printMainMenu(nav)
+        end
+    end
 
-    -- repeat
-    -- until key == keyboard.keys.enter
+    writeDataToFile(FILENAME, nav:finalize())
 end
+
+
+main()

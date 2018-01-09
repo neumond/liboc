@@ -24,6 +24,24 @@ for k, v in pairs(RotMap) do
     ReverseRotMap[v] = k
 end
 
+local RetryPolicies={
+    ["AsIs"]=function(robotFunc, trackFunc)
+        return function()
+            local r, a = robotFunc()
+            if r then trackFunc() end
+            return r, a
+        end
+    end,
+    ["RepeatUntilSuccess"]=function(robotFunc, trackFunc)
+        return function()
+            while not robotFunc() do
+            end
+            trackFunc()
+            return true
+        end
+    end
+}
+
 
 local function createFakeRobot()
     local fakeRobot = {}
@@ -31,15 +49,6 @@ local function createFakeRobot()
         return function() return true end
     end})
     return fakeRobot
-end
-
-
-local function makeWrap(robotFunc, trackFunc)
-    return function()
-        local r, a = robotFunc()
-        if r then trackFunc() end
-        return r, a
-    end
 end
 
 
@@ -112,7 +121,7 @@ function planMovement(rot, cx, cy, cz, x, y, z)
 end
 
 
-local function createTracker(robot, initX, initY, initZ, initRot)
+local function createTracker(robot, initX, initY, initZ, initRot, retryPolicy)
     local rot = 0
     local x, y, z = 0, 0, 0
 
@@ -120,6 +129,9 @@ local function createTracker(robot, initX, initY, initZ, initRot)
     if initY ~= nil then y = initY end
     if initZ ~= nil then z = initZ end
     if initRot ~= nil then rot = ReverseRotMap[initRot] end
+    if retryPolicy == nil then retryPolicy = "AsIs" end
+
+    local makeWrap = RetryPolicies[retryPolicy]
 
     local tracker = {
         forward=makeWrap(robot.forward, function()
@@ -161,7 +173,7 @@ local function createTracker(robot, initX, initY, initZ, initRot)
         if method == nil then return true end
         return tracker[method]()
     end
-    tracker.gotoPosition = function(tx, ty, tz, maxAttempts)
+    tracker.gotoPosition = function(tx, ty, tz)
         if maxAttempts == nil then maxAttempts = 1 end
         if tx == nil then tx = x end
         if ty == nil then ty = y end
@@ -174,12 +186,7 @@ local function createTracker(robot, initX, initY, initZ, initRot)
         for _, a in ipairs(actions) do
             local method, count = a[1], a[2]
             for i=1,count do
-                local att = 0
-                while not tracker[method]() do
-                    att = att + 1
-                    assert(att <= maxAttempts)
-                    -- TODO: os.sleep here?
-                end
+                assert(tracker[method]())
             end
         end
     end

@@ -52,7 +52,6 @@ local function main()
     end
 
     nav:gotoBase()
-    assert(robot.forward())
     robot.turnAround()
 end
 
