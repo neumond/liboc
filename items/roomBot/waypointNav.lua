@@ -19,6 +19,17 @@ function WaypointNav:connect(a, b)
 end
 
 
+local reverseActions = {
+    forward="back",
+    back="forward",
+    turnLeft="turnRight",
+    turnRight="turnLeft",
+    turnAround="turnAround",
+    up="down",
+    down="up"
+}
+
+
 local encodeTable = {
     forward="F",
     back="B",
@@ -33,6 +44,12 @@ local encodeTable = {
 local decodeTable = {}
 for k, v in pairs(encodeTable) do
     decodeTable[v] = k
+end
+
+
+local reverseEncodedMap = {}
+for k, v in pairs(encodeTable) do
+    reverseEncodedMap[v] = encodeTable[reverseActions[k]]
 end
 
 
@@ -99,10 +116,32 @@ local function encode(logData)
 end
 
 
+local function iterEncoded(eline)
+    local iter = string.gmatch(eline, "[A-Z][0-9]*")
+    return function()
+        local action = iter()
+        if action == nil then return end
+        return string.sub(action, 1, 1), tonumber(string.sub(action, 2)) or 1
+    end
+end
+
+
+local function reverseEncoded(eline)
+    local result = {}
+    for action, count in iterEncoded(eline) do
+        table.insert(
+            result,
+            reverseEncodedMap[action] .. (count > 1 and count or "")
+        )
+    end
+    utils.reverseArray(result)
+    return table.concat(result)
+end
+
+
 local function execEncoded(robot, eline)
-    for action in string.gmatch(eline, "[A-Z][0-9]*") do
-        local method = decodeTable[string.sub(action, 1, 1)]
-        local amount = tonumber(string.sub(action, 2)) or 1
+    for action, amount in iterEncoded(eline) do
+        local method = decodeTable[action]
         for i=1,amount do
             assert(robot[method]())
         end
@@ -110,8 +149,21 @@ local function execEncoded(robot, eline)
 end
 
 
+local function pathLength(eline)
+    local result = 0
+    for action, amount in iterEncoded(eline) do
+        if action == "A" then amount = amount * 2 end
+        result = result + amount
+    end
+    return result
+end
+
+
 return {
     WaypointNav=WaypointNav,
     encode=encode,
-    execEncoded=execEncoded
+    reverseEncoded=reverseEncoded,
+    execEncoded=execEncoded,
+    pathLength=pathLength,
+    reverseActions=reverseActions
 }
