@@ -1,10 +1,10 @@
 local makeClass = require("utils").makeClass
 local sides = require("sides")
-local PlaneNav = require("roomBot.planeNav").PlaneNav
+local createTracker = require("roomBot.robotTracker").createTracker
 
 
 local CrafterNav = makeClass(function(self, robot, chestCascades)
-    self.nav = PlaneNav(robot)
+    self.robotTracker = createTracker(robot)
     self.maxChests = chestCascades * 4
 end)
 
@@ -25,15 +25,15 @@ end
 
 
 function CrafterNav:gotoBase()
-    self.nav:gotoPosition(0, 0)
-    self.nav:rotate("Y-")
+    self.robotTracker.gotoPosition(0, 0)
+    self.robotTracker.rotate("Y-")
     return sides.front
 end
 
 
 function CrafterNav:gotoChest(n)
     local x, z, side = getChestPosition(n)
-    self.nav:gotoPosition(x, z)
+    self.robotTracker.gotoPosition(x, z)
     return side
 end
 

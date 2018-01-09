@@ -1,5 +1,5 @@
 local utils = require("utils")
-local PlaneNav = require("roomBot.planeNav").PlaneNav
+local createTracker = require("roomBot.robotTracker").createTracker
 
 
 -- TODO: sleep if no wood acquired
@@ -295,29 +295,28 @@ end
 
 
 function JackBot:walkTreeSlice()
-    local nav = PlaneNav(self.robot)
-    nav.currentZ = -1
+    local nav = createTracker(self.robot, 0, -1)
 
-    for x, z, d in enumInitialIntrusion(TREE_RINGS) do
-        nav:gotoPosition(x, z)
-        nav:rotate(d)
+    for x, y, d in enumInitialIntrusion(TREE_RINGS) do
+        nav.gotoPosition(x, y)
+        nav.rotate(d)
         self:chopForward()
     end
 
-    for x, z, d in enumInwardSpiral(TREE_RINGS) do
-        nav:gotoPosition(x, z)
-        nav:rotate(d)
+    for x, y, d in enumInwardSpiral(TREE_RINGS) do
+        nav.gotoPosition(x, y)
+        nav.rotate(d)
         self:chopUp()
         self:chopDown()
         self:chopForward()
     end
 
-    nav:gotoPosition(0, 0)
+    nav.gotoPosition(0, 0)
     self:chopUp()
     self:chopDown()
 
-    nav:gotoPosition(0, -1)
-    nav:rotate("Y+")
+    nav.gotoPosition(0, -1)
+    nav.rotate("Y+")
 end
 
 
@@ -371,18 +370,18 @@ end
 
 
 function JackBot:farmSessionInner()
-    local nav = PlaneNav(self.robot)
-    for x, z in enumGrid(self.config.width, self.config.height, self.config.step) do
-        nav:gotoPosition(x, z)
-        nav:rotate("X+")
+    local nav = createTracker(self.robot)
+    for x, y in enumGrid(self.config.width, self.config.height, self.config.step) do
+        nav.gotoPosition(x, y)
+        nav.rotate("X+")
         assert(self.robot.forward())
         self.robot.turnLeft()
         self:handleTree()
         self.robot.turnRight()
         assert(self.robot.back())
     end
-    nav:gotoPosition(0, 0)
-    nav:rotate("Y+")
+    nav.gotoPosition(0, 0)
+    nav.rotate("Y+")
 end
 
 

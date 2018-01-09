@@ -112,9 +112,15 @@ function planMovement(rot, cx, cy, cz, x, y, z)
 end
 
 
-local function createTracker(robot)
+local function createTracker(robot, initX, initY, initZ, initRot)
     local rot = 0
     local x, y, z = 0, 0, 0
+
+    if initX ~= nil then x = initX end
+    if initY ~= nil then y = initY end
+    if initZ ~= nil then z = initZ end
+    if initRot ~= nil then rot = ReverseRotMap[initRot] end
+
     local tracker = {
         forward=makeWrap(robot.forward, function()
             x = x + DXMap[rot]
