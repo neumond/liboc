@@ -26,7 +26,7 @@ end
 
 function CrafterNav:gotoBase()
     self.nav:gotoPosition(0, 0)
-    self.nav:rotate("Z-")
+    self.nav:rotate("Y-")
     return sides.front
 end
 

@@ -78,11 +78,11 @@ local function enumRingPositions(ring)
         if phase == 0 then
             return x + lower, lower, "X+"
         elseif phase == 1 then
-            return upper, x + lower, "Z+"
+            return upper, x + lower, "Y+"
         elseif phase == 2 then
             return upper - x, upper, "X-"
         else
-            return lower, upper - x, "Z-"
+            return lower, upper - x, "Y-"
         end
     end
 end
@@ -136,7 +136,7 @@ local function enumInitialIntrusion(w)
             x = 0
         end
         if phase == 1 then
-            return 0, -x, "Z-"
+            return 0, -x, "Y-"
         elseif phase == 2 then
             return -x, -w, "X-"
         else
@@ -317,7 +317,7 @@ function JackBot:walkTreeSlice()
     self:chopDown()
 
     nav:gotoPosition(0, -1)
-    nav:rotate("Z+")
+    nav:rotate("Y+")
 end
 
 
@@ -382,7 +382,7 @@ function JackBot:farmSessionInner()
         assert(self.robot.back())
     end
     nav:gotoPosition(0, 0)
-    nav:rotate("Z+")
+    nav:rotate("Y+")
 end
 
 

@@ -34,12 +34,12 @@ describe("Lumberjack", function()
         dotest({
             {-1, -1, "X+"},
             {0, -1, "X+"},
-            {1, -1, "Z+"},
-            {1, 0, "Z+"},
+            {1, -1, "Y+"},
+            {1, 0, "Y+"},
             {1, 1, "X-"},
             {0, 1, "X-"},
-            {-1, 1, "Z-"},
-            {-1, 0, "Z-"}
+            {-1, 1, "Y-"},
+            {-1, 0, "Y-"}
         }, 1)
     end)
     it("enumInwardRingPositions", function()
@@ -50,11 +50,11 @@ describe("Lumberjack", function()
         dotest({
             {-1, -1, "X+"},
             {0, -1, "X+"},
-            {1, -1, "Z+"},
-            {1, 0, "Z+"},
+            {1, -1, "Y+"},
+            {1, 0, "Y+"},
             {1, 1, "X-"},
             {0, 1, "X-"},
-            {-1, 1, "Z-"},
+            {-1, 1, "Y-"},
             {-1, 0, "X+"}  -- the difference is here
         }, 1)
     end)
@@ -64,13 +64,13 @@ describe("Lumberjack", function()
         end
 
         dotest({
-            -- {0, 0, "Z-"},  skip first position, we start at 0, -1
+            -- {0, 0, "Y-"},  skip first position, we start at 0, -1
             {0, -1, "X-"},
             {-1, -1, "X+"}
         }, 1)
         dotest({
-            -- {0, 0, "Z-"},  skip first position, we start at 0, -1
-            {0, -1, "Z-"},
+            -- {0, 0, "Y-"},  skip first position, we start at 0, -1
+            {0, -1, "Y-"},
             {0, -2, "X-"},
             {-1, -2, "X-"},
             {-2, -2, "X+"}
