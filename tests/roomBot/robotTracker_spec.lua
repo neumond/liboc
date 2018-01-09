@@ -2,7 +2,7 @@ require("busted.runner")()
 local mod = require("roomBot.robotTracker")
 
 
-describe("robotTracker", function()
+describe("tracker", function()
     local fakeRobot = mod.testing.createFakeRobot()
     local function check(t, x, y, z, rot)
         assert.are_same({x, y, z}, {t.getPosition()})
@@ -48,7 +48,7 @@ describe("robotTracker", function()
 end)
 
 
-describe("OpenNav", function()
+describe("navigation", function()
     describe("rotation", function()
         it("planRotation", function()
             local f = mod.testing.planRotation
@@ -82,20 +82,19 @@ describe("OpenNav", function()
     describe("movement", function()
         it("works", function()
             local robot = mod.createTracker(mod.testing.createFakeRobot())
-            local nav = mod.OpenNav(robot)
 
-            nav:gotoPosition(10, 10)
+            robot.gotoPosition(10, 10)
             assert.are_same({10, 10, 0}, {robot.getPosition()})
 
-            nav:gotoPosition(20, -8)
+            robot.gotoPosition(20, -8)
             assert.are_same({20, -8, 0}, {robot.getPosition()})
 
-            nav:gotoPosition(-4, 0)
+            robot.gotoPosition(-4, 0)
             assert.are_same({-4, 0, 0}, {robot.getPosition()})
 
-            nav:rotate("Y+")
+            robot.rotate("Y+")
 
-            nav:gotoPosition(2, 2)
+            robot.gotoPosition(2, 2)
             assert.are_same({2, 2, 0}, {robot.getPosition()})
         end)
     end)

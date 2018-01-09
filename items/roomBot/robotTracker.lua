@@ -1,15 +1,6 @@
 local makeClass = require("utils").makeClass
 
 
-local function makeWrap(robotFunc, trackFunc)
-    return function()
-        local r, a = robotFunc()
-        if r then trackFunc() end
-        return r, a
-    end
-end
-
-
 local DXMap = {
     [0] = 0,
     [1] = 1,
@@ -34,46 +25,6 @@ for k, v in pairs(RotMap) do
 end
 
 
-local function createTracker(robot)
-    local rot = 0
-    local x, y, z = 0, 0, 0
-    return {
-        forward=makeWrap(robot.forward, function()
-            x = x + DXMap[rot]
-            y = y + DYMap[rot]
-        end),
-        back=makeWrap(robot.back, function()
-            x = x - DXMap[rot]
-            y = y - DYMap[rot]
-        end),
-        up=makeWrap(robot.up, function()
-            z = z + 1
-        end),
-        down=makeWrap(robot.down, function()
-            z = z - 1
-        end),
-        turnLeft=makeWrap(robot.turnLeft, function()
-            rot = (rot + 3) % 4
-        end),
-        turnRight=makeWrap(robot.turnRight, function()
-            rot = (rot + 1) % 4
-        end),
-        turnAround=makeWrap(robot.turnAround, function()
-            rot = (rot + 2) % 4
-        end),
-        getPosition=function()
-            return x, y, z
-        end,
-        getRotation=function()
-            return RotMap[rot]
-        end,
-        getRotationNum=function()
-            return rot
-        end
-    }
-end
-
-
 local function createFakeRobot()
     local fakeRobot = {}
     setmetatable(fakeRobot, {__index=function(t, k)
@@ -83,9 +34,13 @@ local function createFakeRobot()
 end
 
 
-local OpenNav = makeClass(function(self, robotTracker)
-    self.robot = robotTracker
-end)
+local function makeWrap(robotFunc, trackFunc)
+    return function()
+        local r, a = robotFunc()
+        if r then trackFunc() end
+        return r, a
+    end
+end
 
 
 local function planRotation(from, to)
@@ -157,41 +112,78 @@ function planMovement(rot, cx, cy, cz, x, y, z)
 end
 
 
-function OpenNav:rotate(to)
-    local method = planRotation(self.robot.getRotationNum(), ReverseRotMap[to])
-    if method == nil then return true end
-    return self.robot[method]()
-end
+local function createTracker(robot)
+    local rot = 0
+    local x, y, z = 0, 0, 0
+    local tracker = {
+        forward=makeWrap(robot.forward, function()
+            x = x + DXMap[rot]
+            y = y + DYMap[rot]
+        end),
+        back=makeWrap(robot.back, function()
+            x = x - DXMap[rot]
+            y = y - DYMap[rot]
+        end),
+        up=makeWrap(robot.up, function()
+            z = z + 1
+        end),
+        down=makeWrap(robot.down, function()
+            z = z - 1
+        end),
+        turnLeft=makeWrap(robot.turnLeft, function()
+            rot = (rot + 3) % 4
+        end),
+        turnRight=makeWrap(robot.turnRight, function()
+            rot = (rot + 1) % 4
+        end),
+        turnAround=makeWrap(robot.turnAround, function()
+            rot = (rot + 2) % 4
+        end),
+        getPosition=function()
+            return x, y, z
+        end,
+        getRotation=function()
+            return RotMap[rot]
+        end,
+        getRotationNum=function()
+            return rot
+        end
+    }
 
-
-function OpenNav:gotoPosition(x, y, z, maxAttempts)
-    if maxAttempts == nil then maxAttempts = 1 end
-    local cx, cy, cz = self.robot.getPosition()
-    if x == nil then x = cx end
-    if y == nil then y = cy end
-    if z == nil then z = cz end
-    local actions = planMovement(
-        self.robot.getRotation(),
-        cx, cy, cz,
-        x, y, z
-    )
-    for _, a in ipairs(actions) do
-        local method, count = a[1], a[2]
-        for i=1,count do
-            local att = 0
-            while not self.robot[method]() do
-                att = att + 1
-                assert(att <= maxAttempts)
-                -- TODO: os.sleep here?
+    tracker.rotate = function(to)
+        local method = planRotation(rot, ReverseRotMap[to])
+        if method == nil then return true end
+        return tracker[method]()
+    end
+    tracker.gotoPosition = function(tx, ty, tz, maxAttempts)
+        if maxAttempts == nil then maxAttempts = 1 end
+        if tx == nil then tx = x end
+        if ty == nil then ty = y end
+        if tz == nil then tz = z end
+        local actions = planMovement(
+            RotMap[rot],
+            x, y, z,
+            tx, ty, tz
+        )
+        for _, a in ipairs(actions) do
+            local method, count = a[1], a[2]
+            for i=1,count do
+                local att = 0
+                while not tracker[method]() do
+                    att = att + 1
+                    assert(att <= maxAttempts)
+                    -- TODO: os.sleep here?
+                end
             end
         end
     end
+
+    return tracker
 end
 
 
 return {
     createTracker=createTracker,
-    OpenNav=OpenNav,
     testing={
         createFakeRobot=createFakeRobot,
         planRotation=function(from, to)
