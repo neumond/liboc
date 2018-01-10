@@ -32,30 +32,20 @@ end
 
 
 local function createSlotIterator()
-    assert(robot.inventorySize() >= 1, "Robot must have inventory")
-
-    local slot = 0
-    local count = 0
-
     local function findNextSlot()
-        slot = slot + 1
-        while slot <= robot.inventorySize() do
-            count = robot.count(slot)
-            if count > 0 then
+        for slot = 1,robot.inventorySize() do
+            if robot.count(slot) > 0 then
                 robot.select(slot)
                 return true
-            else
-                slot = slot + 1
             end
         end
         return false
     end
 
     return function()
-        if count <= 0 then
+        if robot.count() <= 0 then
             if not findNextSlot() then return false end
         end
-        count = count - 1
         return true
     end
 end
