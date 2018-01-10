@@ -1,5 +1,6 @@
 local utils = require("utils")
 local createTracker = require("roomBot.robotTracker").createTracker
+local primitive = require("roomBot.primitive")
 
 
 -- TODO: sleep if no wood acquired
@@ -25,25 +26,6 @@ local COLORS = {
     WALK = 0x0080FF,
     CHOP = 0xFF8000
 }
-
-
-local function enumGrid(width, height, step)
-    local x = 0
-    local y = 1
-    return function()
-        x = x + 1
-        if x > width then
-            x = 1
-            y = y + 1
-        end
-        if y > height then return end
-        if y % 2 == 1 then
-            return (x - 1) * step, (y - 1) * step
-        else
-            return (width - x) * step, (y - 1) * step
-        end
-    end
-end
 
 
 local function ringSide(ring)
@@ -371,7 +353,7 @@ end
 
 function JackBot:farmSessionInner()
     local nav = createTracker(self.robot)
-    for x, y in enumGrid(self.config.width, self.config.height, self.config.step) do
+    for x, y in primitive.enumGrid(self.config.width, self.config.height, self.config.step) do
         nav.gotoPosition(x, y)
         nav.rotate("X+")
         assert(self.robot.forward())
@@ -434,7 +416,6 @@ end
 return {
     JackBot=JackBot,
     testing={
-        enumGrid=enumGrid,
         ringPerimeter=ringPerimeter,
         enumRingPositions=enumRingPositions,
         enumInwardRingPositions=enumInwardRingPositions,

@@ -1,9 +1,8 @@
 local robot = require("robot")
 local term = require("term")
-local enumGrid = require("roomBot.jackBot").testing.enumGrid
+local primitive = require("roomBot.primitive")
 local createTracker = require("roomBot.robotTracker").createTracker
-local simpleMenu = require("lib.simpleMenu")
-local Menu = simpleMenu.Menu
+local Menu = require("lib.simpleMenu").Menu
 
 
 local function getItemCount()
@@ -56,7 +55,7 @@ local function buildRectangle(width, height)
     local slotFunc = createSlotIterator()
     local tracker = createTracker(robot, 0, -1)
     tracker.pushPolicy("RetryUntilSuccess")
-    for x, y in enumGrid(width, height, 1) do
+    for x, y in primitive.enumGrid(width, height, 1) do
         tracker.gotoPosition(x, y)
         if not robot.detectDown() then
             if not slotFunc() then break end
@@ -78,16 +77,23 @@ end
 
 local function buildWalls(width, height, wallHeight)
     if not requireItems(perimeter(width, height) * wallHeight) then return end
-
     local slotFunc = createSlotIterator()
     local tracker = createTracker(robot, 0, -1, 0)
-
-    -- TODO: iterate perimeter
-
-    tracker:gotoPosition(0, 0)
-    tracker:gotoPosition(0, -1)
-    tracker:gotoPosition(0, -1, 0)
-    tracker:rotate("Y+")
+    tracker.pushPolicy("RetryUntilSuccess")
+    for z=1,wallHeight do
+        tracker.gotoPosition(0, 0, z)
+        for x, y in primitive.enumPerimeter(width, height) do
+            tracker.gotoPosition(x, y)
+            if not robot.detectDown() then
+                if not slotFunc() then break end
+                tracker.placeDown()
+            end
+        end
+    end
+    tracker.gotoPosition(0, 0)
+    tracker.gotoPosition(0, -1)
+    tracker.gotoPosition(0, -1, 0)
+    tracker.rotate("Y+")
 end
 
 

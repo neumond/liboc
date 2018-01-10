@@ -4,23 +4,6 @@ local tMod = require("lib.testing")
 
 
 describe("Lumberjack", function()
-    it("walks grids properly", function()
-        local function dotest(expected, ...)
-            assert.are_same(expected, tMod.accumulate(mod.testing.enumGrid(...)))
-        end
-
-        dotest({
-            {0, 0},
-            {5, 0},
-            {10, 0},
-            {10, 5},
-            {5, 5},
-            {0, 5},
-            {0, 10},
-            {5, 10},
-            {10, 10}
-        }, 3, 3, 5)
-    end)
     it("ringPerimeter", function()
         assert.are_equal(1 * 1, mod.testing.ringPerimeter(0))
         assert.are_equal(3 * 3 - 1 * 1, mod.testing.ringPerimeter(1))
