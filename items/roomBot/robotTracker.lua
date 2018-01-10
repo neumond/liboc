@@ -26,13 +26,13 @@ for k, v in pairs(RotMap) do
 end
 
 local RetryPolicies={
-    ["AsIs"]=function(robotFunc, trackFunc)
-        local r, a = robotFunc()
+    ["AsIs"]=function(robotFunc, trackFunc, ...)
+        local r, a = robotFunc(...)
         if r then trackFunc() end
         return r, a
     end,
-    ["RetryUntilSuccess"]=function(robotFunc, trackFunc)
-        while not robotFunc() do
+    ["RetryUntilSuccess"]=function(robotFunc, trackFunc, ...)
+        while not robotFunc(...) do
         end
         trackFunc()
         return true
@@ -123,7 +123,6 @@ local function createTracker(robot, initX, initY, initZ, initRot)
     local x, y, z = 0, 0, 0
     local policyStack = Stack()
 
-
     if initX ~= nil then x = initX end
     if initY ~= nil then y = initY end
     if initZ ~= nil then z = initZ end
@@ -152,12 +151,15 @@ local function createTracker(robot, initX, initY, initZ, initRot)
         end,
         turnAround=function()
             rot = (rot + 2) % 4
-        end
+        end,
+        place=function() end,
+        placeDown=function() end,
+        placeUp=function() end
     }
 
     local function makeWrap(robotFunc, trackFunc)
-        return function()
-            return policyStack:tip()(robotFunc, trackFunc)
+        return function(...)
+            return policyStack:tip()(robotFunc, trackFunc, ...)
         end
     end
 
@@ -191,7 +193,6 @@ local function createTracker(robot, initX, initY, initZ, initRot)
         return tracker[method]()
     end
     tracker.gotoPosition = function(tx, ty, tz)
-        if maxAttempts == nil then maxAttempts = 1 end
         if tx == nil then tx = x end
         if ty == nil then ty = y end
         if tz == nil then tz = z end

@@ -112,18 +112,6 @@ local function mu5(m)
 end
 
 
-local function waitForKey()
-    local event = require("event")
-    repeat
-        local _, _, _, key = event.pull("key_down")
-        -- 200 up
-        -- 208 down
-        -- 203 left
-        -- 205 right
-    until key == 28
-end
-
-
 local function scrollingHandler(root, sm)
     local event = require("event")
     repeat

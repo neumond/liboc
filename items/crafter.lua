@@ -5,14 +5,7 @@ local CrafterStorage = require("roomBot.crafterStorage").CrafterStorage
 local CrafterBot = require("roomBot.crafterBot").CrafterBot
 local CrafterMenu = require("roomBot.crafterMenu").CrafterMenu
 local term = require("term")
-local event = require("event")
-
-
-local function waitForKey()
-    repeat
-        local _, _, _, key = event.pull("key_down")
-    until key == 28
-end
+local waitForKey = require("lib.simpleMenu").waitForKey
 
 
 local function main()

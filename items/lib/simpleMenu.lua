@@ -1,13 +1,13 @@
 local utils = require("utils")
 local event = require("event")
 local component = require("component")
+local keyboard = require("keyboard")
 local gpu = component.gpu
-local M = {}
 local KEYS = {
-    ["up"]=200,
-    ["down"]=208,
-    ["enter"]=28,
-    ["back"]=203
+    ["up"]=keyboard.keys.up,
+    ["down"]=keyboard.keys.down,
+    ["enter"]=keyboard.keys.enter,
+    ["back"]=keyboard.keys.back
 }
 local CURSOR = ">"
 
@@ -57,14 +57,14 @@ function outputTextToWindow(text, x, y, w, h)
 end
 
 
-function M.clearScreen()
+function clearScreen()
     local w, h = gpu.getResolution()
     gpu.fill(1, 1, w, h, " ")
 end
 
 
 local Menu = utils.makeClass(function(self, allowBack, preSelect)
-    M.clearScreen()
+    clearScreen()
     self.planeX, self.planeY = 1, 1
     self.planeWidth, self.planeHeight = gpu.getResolution()
 
@@ -77,7 +77,6 @@ local Menu = utils.makeClass(function(self, allowBack, preSelect)
     self.choicePoints = {}
     self.choiceValues = {}
 end)
-M.Menu = Menu
 
 
 function Menu:_writeText(text)
@@ -165,4 +164,14 @@ function Menu:run()
 end
 
 
-return M
+local function waitForKey()
+    repeat
+        local _, _, _, key = event.pull("key_down")
+    until key == keyboard.keys.enter
+end
+
+
+return {
+    Menu=Menu,
+    waitForKey=waitForKey
+}
